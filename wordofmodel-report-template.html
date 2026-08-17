@@ -1,0 +1,445 @@
+<!-- Word of Model — monthly report template v1
+     Sample data throughout. Client and competitors are fictional.
+     Replace {{tokens}} at build time. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word of Model — Sitebook — July 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#F7F6F2;
+    --card:#FFFFFF;
+    --ink:#15171C;
+    --ink-soft:#5C5F68;
+    --ink-faint:#8E9199;
+    --rule:#DEDCD4;
+    --mark:#FFE566;        /* highlighter: a competitor */
+    --mark-you:#9BDBFF;    /* highlighter: the client */
+    --pen:#C8332B;         /* red pen: annotation and absence */
+    --good:#2E7D5B;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --wrap:940px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+
+  /* ---------- masthead ---------- */
+  .masthead{border-bottom:2px solid var(--ink);padding:20px 0 14px;margin-bottom:56px}
+  .masthead .wrap{display:flex;justify-content:space-between;align-items:baseline;gap:24px;flex-wrap:wrap}
+  .wordmark{
+    font-family:var(--cond);font-weight:700;font-size:15px;
+    letter-spacing:.16em;text-transform:uppercase;
+  }
+  .wordmark span{color:var(--ink-faint)}
+  .issue{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.04em}
+
+  /* ---------- section furniture ---------- */
+  section{margin-bottom:72px}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;font-weight:500;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+    display:flex;align-items:center;gap:12px;margin-bottom:18px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1{
+    font-family:var(--cond);font-weight:700;
+    font-size:clamp(38px,7vw,68px);line-height:.98;letter-spacing:-.02em;
+    margin:0 0 20px;
+  }
+  h2{
+    font-family:var(--cond);font-weight:700;
+    font-size:clamp(26px,4vw,38px);line-height:1.05;letter-spacing:-.015em;
+    margin:0 0 18px;
+  }
+  h3{font-size:16px;font-weight:600;margin:0 0 6px;letter-spacing:-.005em}
+  p{margin:0 0 16px;max-width:66ch}
+  .lede{font-size:19px;line-height:1.55;color:var(--ink-soft)}
+  .note{font-family:var(--mono);font-size:12px;color:var(--ink-faint);line-height:1.5}
+
+  /* ---------- signature: the markup ---------- */
+  mark{background:var(--mark);color:inherit;padding:.05em .18em;border-radius:2px}
+  mark.you{background:var(--mark-you)}
+  .sweep{background-size:0% 100%;background-repeat:no-repeat;animation:sweep .5s ease forwards}
+  .sweep:nth-of-type(1){animation-delay:.35s}
+  .sweep:nth-of-type(2){animation-delay:.5s}
+  .sweep:nth-of-type(3){animation-delay:.65s}
+  .sweep:nth-of-type(4){animation-delay:.8s}
+  @keyframes sweep{from{background-size:0% 100%}to{background-size:100% 100%}}
+  @media (prefers-reduced-motion:reduce){
+    .sweep{animation:none;background-size:100% 100%}
+  }
+
+  .excerpt{
+    background:var(--card);border:1px solid var(--rule);
+    padding:32px 34px;position:relative;
+  }
+  .excerpt .src{
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-faint);margin-bottom:18px;
+  }
+  .excerpt .said{
+    font-family:var(--mono);font-size:15px;line-height:1.85;margin:0;max-width:none;
+  }
+  .penmark{
+    display:inline-flex;align-items:center;gap:8px;margin-top:24px;
+    font-family:var(--mono);font-size:13px;color:var(--pen);
+    border-top:2px solid var(--pen);padding-top:10px;
+  }
+
+  /* ---------- numbers ---------- */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .stat{background:var(--card);padding:26px 24px}
+  .stat .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+  .stat .v{font-family:var(--cond);font-weight:700;font-size:52px;line-height:1;margin:10px 0 6px;letter-spacing:-.02em}
+  .stat .d{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .stat .d.down{color:var(--pen)}
+  .stat .d.up{color:var(--good)}
+
+  /* ---------- leaderboard ---------- */
+  .board{width:100%;border-collapse:collapse;font-size:15px}
+  .board th{
+    font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);text-align:left;
+    padding:0 12px 10px 0;border-bottom:1px solid var(--rule);white-space:nowrap;
+  }
+  .board th.num,.board td.num{text-align:right;width:1%;white-space:nowrap}
+  .board td{padding:11px 12px 11px 0;border-bottom:1px solid var(--rule);vertical-align:middle}
+  .board tr.self td{background:rgba(155,219,255,.22);font-weight:600}
+  .board .bar{display:block;height:8px;background:var(--ink);opacity:.16;min-width:2px}
+  .board .bar.rec{background:var(--ink);opacity:.85;margin-top:3px}
+  .board .zero{color:var(--pen);font-weight:600}
+  .barcell{width:38%;min-width:110px}
+
+  /* ---------- scorecard ---------- */
+  .grid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .score{border-collapse:collapse;font-size:14px;min-width:600px}
+  .score th{
+    font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;
+    color:var(--ink-faint);text-transform:uppercase;padding:0 10px 12px;text-align:center;
+  }
+  .score th.q{text-align:left;max-width:300px;text-transform:none;letter-spacing:0;
+    font-family:var(--sans);font-size:14px;color:var(--ink);font-weight:400;padding-right:20px}
+  .score td{padding:9px 10px;text-align:center;border-top:1px solid var(--rule)}
+  .score td.q{text-align:left;max-width:320px;padding-right:20px;line-height:1.4}
+  .cell{display:inline-block;width:18px;height:18px;border:1.5px solid var(--ink);vertical-align:middle}
+  .cell.miss{border-color:var(--rule);background:transparent}
+  .cell.named{background:var(--mark-you);border-color:var(--ink)}
+  .cell.rec{background:var(--ink)}
+  .key{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
+  .key i{display:inline-block;width:13px;height:13px;border:1.5px solid var(--ink);margin-right:7px;vertical-align:-2px;font-style:normal}
+
+  /* ---------- actions ---------- */
+  .action{
+    background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--ink);
+    padding:22px 26px;margin-bottom:14px;display:flex;gap:22px;align-items:flex-start;
+  }
+  .action .n{
+    font-family:var(--cond);font-weight:700;font-size:34px;line-height:1;
+    color:var(--ink-faint);flex:none;width:34px;
+  }
+  .action p{margin:0;font-size:15px;color:var(--ink-soft)}
+  .action .why{
+    font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+    margin-top:10px;display:block;
+  }
+
+  /* ---------- sources ---------- */
+  .sources{list-style:none;padding:0;margin:0;border-top:1px solid var(--rule)}
+  .sources li{
+    display:flex;justify-content:space-between;gap:16px;align-items:baseline;
+    padding:11px 0;border-bottom:1px solid var(--rule);font-size:15px;
+  }
+  .sources .dom{font-family:var(--mono);font-size:14px}
+  .sources .ct{font-family:var(--mono);font-size:13px;color:var(--ink-soft)}
+  .sources li.self{background:rgba(155,219,255,.22);padding-left:10px;padding-right:10px}
+
+  /* ---------- appendix ---------- */
+  details{border-top:1px solid var(--rule)}
+  details summary{
+    cursor:pointer;padding:16px 0;font-family:var(--mono);font-size:13px;
+    letter-spacing:.04em;list-style:none;display:flex;justify-content:space-between;gap:16px;
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"open";color:var(--ink-faint)}
+  details[open] summary::after{content:"close"}
+  details .body{padding:0 0 26px}
+
+  footer{border-top:2px solid var(--ink);padding:22px 0 60px;margin-top:20px}
+  footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+
+  a{color:var(--ink);text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--pen);outline-offset:3px}
+
+  @media (max-width:680px){
+    .stats{grid-template-columns:1fr}
+    .stat .v{font-size:44px}
+    .excerpt{padding:24px 20px}
+    .excerpt .said{font-size:14px}
+    .barcell{display:none}
+    .board th.barcell{display:none}
+  }
+  @media print{
+    body{background:#fff}
+    .sweep{animation:none;background-size:100% 100%}
+    details{display:block}
+    details .body{display:block!important}
+    section{break-inside:avoid;margin-bottom:36px}
+  }
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="wordmark">Word of Model <span>/ monthly report</span></div>
+    <div class="issue">SITEBOOK &nbsp;·&nbsp; JULY 2026 &nbsp;·&nbsp; REPORT 04</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ HERO: the evidence ============ -->
+  <section>
+    <div class="eyebrow">What was said about you</div>
+    <h1>Four companies got named.<br>You weren't one of them.</h1>
+    <p class="lede">This is ChatGPT answering the question your buyers ask right before they shortlist. It's reproduced word for word, exactly as it came back on 28 July.</p>
+
+    <div class="excerpt">
+      <div class="src">ChatGPT · 28 July 2026 · "best software for a small construction firm managing 5 to 20 active jobs"</div>
+      <p class="said">For a firm managing 5 to 20 active jobs, the options people most often land on are <mark class="sweep">Buildpath</mark>, which keeps scheduling and client approvals in one place, and <mark class="sweep">Foreman HQ</mark>, which is generally stronger on cost tracking. <mark class="sweep">Trellisworks</mark> is worth a look if you want something lighter, and <mark class="sweep">Steadyhand</mark> has a good reputation for on-site mobile use. Most firms this size start with Buildpath because the onboarding is fastest.</p>
+      <span class="penmark">Sitebook: not mentioned</span>
+    </div>
+
+    <p class="note" style="margin-top:18px">The same question, asked on five platforms, produced this result on four of them.</p>
+  </section>
+
+  <!-- ============ the numbers ============ -->
+  <section>
+    <div class="eyebrow">Where you stand</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="k">Share of Model</div>
+        <div class="v">32%</div>
+        <div class="d down">↓ 4 points since June · 8 of 25 answers</div>
+      </div>
+      <div class="stat">
+        <div class="k">Times recommended</div>
+        <div class="v">0</div>
+        <div class="d">Named eight times. Recommended none.</div>
+      </div>
+      <div class="stat">
+        <div class="k">When they don't name you</div>
+        <div class="v">10%</div>
+        <div class="d down">2 of 20 unbranded answers · branded 100%</div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px">Share of Model is the share of answers that name you at all. The third figure strips out the question that contains your name, which is the only one you were always going to win.</p>
+  </section>
+
+  <!-- ============ leaderboard ============ -->
+  <section>
+    <div class="eyebrow">Named, and actually recommended</div>
+    <h2>Getting mentioned is not the same as getting chosen</h2>
+    <p>Most reporting stops at the first column. The second column is the one that decides whether anybody buys.</p>
+
+    <table class="board">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th class="num">Named</th>
+          <th class="num">Recommended</th>
+          <th class="barcell">&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Buildpath</td><td class="num">19</td><td class="num">14</td>
+          <td class="barcell"><span class="bar" style="width:100%"></span><span class="bar rec" style="width:74%"></span></td>
+        </tr>
+        <tr>
+          <td>Foreman HQ</td><td class="num">15</td><td class="num">9</td>
+          <td class="barcell"><span class="bar" style="width:79%"></span><span class="bar rec" style="width:47%"></span></td>
+        </tr>
+        <tr>
+          <td>Trellisworks</td><td class="num">12</td><td class="num">7</td>
+          <td class="barcell"><span class="bar" style="width:63%"></span><span class="bar rec" style="width:37%"></span></td>
+        </tr>
+        <tr>
+          <td>Steadyhand</td><td class="num">9</td><td class="num">4</td>
+          <td class="barcell"><span class="bar" style="width:47%"></span><span class="bar rec" style="width:21%"></span></td>
+        </tr>
+        <tr class="self">
+          <td>Sitebook</td><td class="num">8</td><td class="num zero">0</td>
+          <td class="barcell"><span class="bar" style="width:42%"></span></td>
+        </tr>
+        <tr>
+          <td>Nailgun</td><td class="num">6</td><td class="num">3</td>
+          <td class="barcell"><span class="bar" style="width:32%"></span><span class="bar rec" style="width:16%"></span></td>
+        </tr>
+        <tr>
+          <td>Kerbside</td><td class="num">4</td><td class="num">2</td>
+          <td class="barcell"><span class="bar" style="width:21%"></span><span class="bar rec" style="width:11%"></span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:16px">Kerbside was not on your competitor list. It is now being recommended to your buyers twice a month.</p>
+  </section>
+
+  <!-- ============ scorecard ============ -->
+  <section>
+    <div class="eyebrow">Question by question</div>
+    <h2>The five questions, across five platforms</h2>
+
+    <div class="grid">
+      <table class="score">
+        <thead>
+          <tr>
+            <th class="q">&nbsp;</th>
+            <th>ChatGPT</th><th>Gemini</th><th>Perplexity</th><th>Claude</th><th>Google AI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="q">Best software for a small construction firm managing 5 to 20 active jobs</td>
+            <td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell named"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td>
+          </tr>
+          <tr>
+            <td class="q">How do small builders track job costs and variations without a full ERP</td>
+            <td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td>
+          </tr>
+          <tr>
+            <td class="q">Alternatives to Buildpath for a residential builder</td>
+            <td><i class="cell named"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td>
+          </tr>
+          <tr>
+            <td class="q">What do builders use to get client approvals signed off on site</td>
+            <td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td><td><i class="cell miss"></i></td>
+          </tr>
+          <tr>
+            <td class="q">Is Sitebook any good, and what do reviews say</td>
+            <td><i class="cell named"></i></td><td><i class="cell named"></i></td><td><i class="cell named"></i></td><td><i class="cell named"></i></td><td><i class="cell named"></i></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="key">
+      <span><i class="cell rec"></i>Recommended</span>
+      <span><i class="cell named"></i>Named only</span>
+      <span><i class="cell miss"></i>Absent</span>
+    </div>
+    <p class="note" style="margin-top:16px">Row two is the question closest to what you actually solve. It returned nothing on all five platforms, for the third month running.</p>
+  </section>
+
+  <!-- ============ sources ============ -->
+  <section>
+    <div class="eyebrow">Where the answers came from</div>
+    <h2>Somebody else is supplying the evidence</h2>
+    <p>Every domain the five platforms cited this month, and how often.</p>
+
+    <ul class="sources">
+      <li><span class="dom">buildpath.com</span><span class="ct">12</span></li>
+      <li><span class="dom">capterra.com</span><span class="ct">9</span></li>
+      <li><span class="dom">reddit.com</span><span class="ct">7</span></li>
+      <li><span class="dom">foremanhq.com</span><span class="ct">6</span></li>
+      <li class="self"><span class="dom">sitebook.com</span><span class="ct">5 &nbsp;· all five on the branded question</span></li>
+      <li><span class="dom">getapp.com</span><span class="ct">4</span></li>
+      <li><span class="dom">buildersguide.com.au</span><span class="ct">3</span></li>
+    </ul>
+    <p class="note" style="margin-top:16px">Your own site was cited five times and every one of them came from the question that already contained your name. On the questions a stranger would ask, nothing of yours was used.</p>
+  </section>
+
+  <!-- ============ actions ============ -->
+  <section>
+    <div class="eyebrow">This month</div>
+    <h2>Three things, in order</h2>
+
+    <div class="action">
+      <div class="n">1</div>
+      <div>
+        <h3>Claim your Capterra and GetApp profiles</h3>
+        <p>Between them they were cited 13 times this month and you have no presence on either. Buildpath has 40+ reviews on Capterra. Ask ten existing customers for one review each.</p>
+        <span class="why">First because it is the cheapest fix available and it feeds every platform at once.</span>
+      </div>
+    </div>
+
+    <div class="action">
+      <div class="n">2</div>
+      <div>
+        <h3>Publish your pricing</h3>
+        <p>Three of the five platforms noted that your pricing is not public. Two then recommended competitors whose pricing is. Opacity is being read as a reason to skip you.</p>
+        <span class="why">Second because it is a one-page change with a direct line to the recommendation.</span>
+      </div>
+    </div>
+
+    <div class="action">
+      <div class="n">3</div>
+      <div>
+        <h3>Write the job-costing guide nobody has written</h3>
+        <p>Question two returns nothing useful on any platform, which means the category answer is unclaimed. A genuinely thorough guide to tracking job costs and variations without an ERP would be the only serious source on the topic.</p>
+        <span class="why">Third because it is the slowest, and the only one that compounds.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ appendix ============ -->
+  <section>
+    <div class="eyebrow">The evidence</div>
+    <h2>All 25 answers, word for word</h2>
+    <p>Nothing summarised. Read them yourself and argue with them if you want to.</p>
+
+    <details>
+      <summary>Question 1 · Best software for a small construction firm managing 5 to 20 active jobs</summary>
+      <div class="body">
+        <div class="excerpt">
+          <div class="src">ChatGPT · 28 July 2026</div>
+          <p class="said">For a firm managing 5 to 20 active jobs, the options people most often land on are <mark>Buildpath</mark>, which keeps scheduling and client approvals in one place, and <mark>Foreman HQ</mark>, which is generally stronger on cost tracking. <mark>Trellisworks</mark> is worth a look if you want something lighter, and <mark>Steadyhand</mark> has a good reputation for on-site mobile use. Most firms this size start with Buildpath because the onboarding is fastest.</p>
+          <span class="penmark">Sitebook: not mentioned</span>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Question 2 · How do small builders track job costs and variations without a full ERP</summary>
+      <div class="body"><p class="note">[Five captured answers go here.]</p></div>
+    </details>
+
+    <details>
+      <summary>Question 3 · Alternatives to Buildpath for a residential builder</summary>
+      <div class="body"><p class="note">[Five captured answers go here.]</p></div>
+    </details>
+
+    <details>
+      <summary>Question 4 · What do builders use to get client approvals signed off on site</summary>
+      <div class="body"><p class="note">[Five captured answers go here.]</p></div>
+    </details>
+
+    <details>
+      <summary>Question 5 · Is Sitebook any good, and what do reviews say</summary>
+      <div class="body"><p class="note">[Five captured answers go here.]</p></div>
+    </details>
+  </section>
+
+  <section>
+    <div class="eyebrow">How this was measured</div>
+    <p class="note" style="max-width:70ch">Five questions, approved by you on 3 May 2026, asked once each on ChatGPT, Gemini, Perplexity, Claude and Google's AI answers between 26 and 28 July 2026, from an Australian connection with no conversation history. Answers were captured in full and scored on two things: whether you were named, and whether you were recommended. Share of Model is answers naming you, divided by answers captured. Nothing in this report is estimated or modelled.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Word of Model · wordofmodel.ai</span>
+    <span>Next report: 28 August 2026</span>
+  </div>
+</footer>
