@@ -19,10 +19,19 @@ interface ScanBody {
   edited?: boolean;
 }
 
+/**
+ * The manual fallback asks for two things: what you sell and who buys it. So
+ * what_they_sell and category_term each stand in for the other when only one of
+ * them is filled, rather than refusing a form we ourselves only asked two
+ * questions on. Rejecting that submission would put the dead end back one screen
+ * further along.
+ */
 function confirmProfile(p: Partial<ConfirmedProfile> | undefined): ConfirmedProfile | null {
   const brand = p?.brand_name?.trim();
-  const category = p?.category_term?.trim();
-  const sells = p?.what_they_sell?.trim() || category;
+  const sold = p?.what_they_sell?.trim();
+  const term = p?.category_term?.trim();
+  const sells = sold || term;
+  const category = term || sold;
   if (!brand || !category || !sells) return null;
   return {
     brand_name: brand.slice(0, 120),

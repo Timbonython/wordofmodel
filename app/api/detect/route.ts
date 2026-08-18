@@ -1,10 +1,10 @@
-import { normaliseDomain } from '@/lib/domain';
+import { brandFromDomain, normaliseDomain } from '@/lib/domain';
 import { detectBusiness, needsManualEntry } from '@/lib/detect';
 import { findCachedScan } from '@/lib/db';
 import { checkRateLimit, clientIp, hashIp } from '@/lib/ratelimit';
 import { ndjson } from '@/lib/stream';
-import { readSite } from '@/lib/site';
-import type { FreeResult } from '@/lib/types';
+import { SiteReadError, readSite } from '@/lib/site';
+import type { FreeResult, ManualReason, Profile } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -47,13 +47,53 @@ export async function POST(request: Request) {
       return;
     }
 
+    // Everything from here can fail, and only one of the failures is the
+    // visitor's to fix. A site that will not answer, a page with nothing on it,
+    // or a detect call that comes back empty are all our problem, and the answer
+    // to all three is the same: hand over the form and let them tell us. The one
+    // thing that must never happen at step 2 is a dead end.
     emit({ type: 'stage', stage: 'reading', label: `Reading ${domain}` });
-    const site = await readSite(domain);
-    emit({ type: 'site_fetched', urls: site.urls, chars: site.text.length });
 
-    emit({ type: 'stage', stage: 'detecting', label: 'Working out what you sell' });
-    const profile = await detectBusiness(site.text);
+    let profile: Profile | null = null;
+    let reason: ManualReason = null;
 
-    emit({ type: 'detected', profile, needs_manual: needsManualEntry(profile) });
+    try {
+      const site = await readSite(domain);
+      emit({ type: 'site_fetched', urls: site.urls, chars: site.text.length });
+
+      emit({ type: 'stage', stage: 'detecting', label: 'Working out what you sell' });
+      profile = await detectBusiness(site.text);
+      if (needsManualEntry(profile)) reason = 'unclear';
+    } catch (err) {
+      // A hostname that does not resolve is a typo. Correcting the address is
+      // the fastest way out of that one, so it stays an error at step 1 rather
+      // than becoming a form that would scan a site that does not exist.
+      if (err instanceof SiteReadError && err.kind === 'not_found') {
+        emit({ type: 'error', message: err.message });
+        return;
+      }
+      reason =
+        err instanceof SiteReadError
+          ? err.kind === 'thin'
+            ? 'thin'
+            : 'unreachable'
+          : 'detect_failed';
+    }
+
+    // Prefilled from the domain rather than blank. A form that already has your
+    // name in it reads as a correction; an empty one reads as a failure.
+    const fallback: Profile = {
+      brand_name: brandFromDomain(domain) || null,
+      what_they_sell: null,
+      buyer: null,
+      country: null,
+      category_term: null,
+    };
+
+    const out: Profile = profile
+      ? { ...profile, brand_name: profile.brand_name ?? fallback.brand_name }
+      : fallback;
+
+    emit({ type: 'detected', profile: out, needs_manual: reason !== null, manual_reason: reason });
   });
 }

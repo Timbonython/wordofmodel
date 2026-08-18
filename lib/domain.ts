@@ -24,6 +24,21 @@ export function normaliseDomain(input: string): string | null {
   return s;
 }
 
+/**
+ * A first guess at the brand from the domain, for prefilling the manual form.
+ * "zapme.co" -> "Zapme". It is only ever a starting point in an editable field:
+ * the visitor corrects it, and the scan uses what they say.
+ */
+export function brandFromDomain(domain: string): string {
+  const label = domain.split('.')[0] ?? '';
+  if (!label) return '';
+  return label
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 /** Hostname out of a URL, www stripped. Null if unparseable. */
 export function domainOf(url: string): string {
   try {

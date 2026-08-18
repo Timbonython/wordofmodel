@@ -91,10 +91,21 @@ export interface GatedResult {
   beaten_by: string | null;
 }
 
+/**
+ * Why the visitor is being asked to fill the form in themselves. null means they
+ * are not: we read the site and the profile came back whole.
+ *
+ *   unreachable  the site would not give us a page
+ *   thin         we read it and there was nothing usable on it
+ *   unclear      we read it and the model could not name the brand or category
+ *   detect_failed the detect call itself failed
+ */
+export type ManualReason = 'unreachable' | 'thin' | 'unclear' | 'detect_failed' | null;
+
 export type ScanEvent =
   | { type: 'stage'; stage: string; label: string }
   | { type: 'site_fetched'; urls: string[]; chars: number }
-  | { type: 'detected'; profile: Profile; needs_manual: boolean }
+  | { type: 'detected'; profile: Profile; needs_manual: boolean; manual_reason: ManualReason }
   | { type: 'question'; question: string }
   | { type: 'engine_started'; engine: EngineId; label: string }
   | { type: 'engine_done'; engine: EngineId; label: string; ms: number; model: string; citations: number }

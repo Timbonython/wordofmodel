@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { normaliseDomain } from '@/lib/domain';
 import { readNdjson } from '@/lib/stream';
-import type { FreeResult, Profile, ScanEvent } from '@/lib/types';
+import type { FreeResult, ManualReason, Profile, ScanEvent } from '@/lib/types';
 import { ScanProgress, type Step, type StepState } from './ScanProgress';
 import { ScanResult } from './ScanResult';
 
@@ -18,6 +18,33 @@ interface Editable {
 }
 
 const BLANK: Editable = { brand_name: '', what_they_sell: '', buyer: '', country: '', category_term: '' };
+
+/**
+ * Say which thing went wrong, in the visitor's terms, and never imply the fault
+ * is theirs. "We could not read it" is true and survives being read by the
+ * person whose site it is. The scan continues from here either way.
+ */
+const MANUAL_COPY: Record<
+  NonNullable<ManualReason>,
+  { eyebrow: string; lede: (domain: string) => string }
+> = {
+  unreachable: {
+    eyebrow: 'We could not read your site',
+    lede: (d) => `${d} would not let us read it just now. That is common and it says nothing about you, so we will ask you instead.`,
+  },
+  thin: {
+    eyebrow: 'We could not read enough',
+    lede: (d) => `There was not much text on ${d} for us to go on. Plenty of good sites are built that way.`,
+  },
+  unclear: {
+    eyebrow: 'We read it, but we are not sure',
+    lede: (d) => `We read ${d} and we would rather not guess what you sell. A wrong question makes the answer worthless.`,
+  },
+  detect_failed: {
+    eyebrow: 'That did not work our end',
+    lede: () => 'Something failed on our side while we were reading it. Nothing to do with your site.',
+  },
+};
 
 function toEditable(profile: Profile): Editable {
   return {
@@ -35,6 +62,7 @@ export function ScanPanel() {
   const [domain, setDomain] = useState('');
   const [profile, setProfile] = useState<Editable>(BLANK);
   const [manual, setManual] = useState(false);
+  const [manualReason, setManualReason] = useState<ManualReason>(null);
   const [edited, setEdited] = useState(false);
   const [question, setQuestion] = useState<string | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -80,6 +108,7 @@ export function ScanPanel() {
         finishActive();
         setProfile(toEditable(event.profile));
         setManual(event.needs_manual);
+        setManualReason(event.manual_reason);
         setPhase('confirm');
         break;
 
@@ -159,6 +188,8 @@ export function ScanPanel() {
     setResult(null);
     setQuestion(null);
     setEdited(false);
+    setManual(false);
+    setManualReason(null);
     setSteps([]);
     setPhase('detecting');
     scanRegion.current?.scrollIntoView({ block: 'nearest' });
@@ -177,7 +208,7 @@ export function ScanPanel() {
   async function onRun(event: React.FormEvent) {
     event.preventDefault();
     if (!profile.brand_name.trim() || !(profile.what_they_sell.trim() || profile.category_term.trim())) {
-      setError('We need the brand name and what you sell.');
+      setError('We need your brand name and what you sell. The rest we can work with.');
       return;
     }
     setError(null);
@@ -259,10 +290,11 @@ export function ScanPanel() {
         <form className="confirm" onSubmit={onRun}>
           {manual ? (
             <>
-              <div className="eyebrow">We could not tell from your site</div>
-              <p>
-                There was not enough on {domain} for us to work out what you sell. Fill these in and we will ask a
-                question built on your words, not our guess.
+              <div className="eyebrow">{MANUAL_COPY[manualReason ?? 'unclear'].eyebrow}</div>
+              <p>{MANUAL_COPY[manualReason ?? 'unclear'].lede(domain)}</p>
+              <p className="note">
+                Tell us what you sell and who buys it. That is all we need, and the question gets built from your words
+                rather than our guess.
               </p>
             </>
           ) : (
