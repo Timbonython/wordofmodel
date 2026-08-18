@@ -36,7 +36,7 @@ export interface RateVerdict {
  * do not call this, so a repeat visitor reading their own result is never
  * refused.
  */
-export async function checkRateLimit(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist'): Promise<RateVerdict> {
+export async function checkRateLimit(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login'): Promise<RateVerdict> {
   const applicable = kind === 'scan' ? LIMITS : [{ kind, windowMinutes: 60, max: 20, message: 'Too many requests. Try again shortly.' }];
 
   for (const limit of applicable) {
@@ -56,6 +56,6 @@ export async function checkRateLimit(ipHash: string, kind: 'scan' | 'reveal' | '
   return { ok: true };
 }
 
-export async function recordAttempt(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist'): Promise<void> {
+export async function recordAttempt(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login'): Promise<void> {
   await db().from('rate_events').insert({ ip_hash: ipHash, kind });
 }

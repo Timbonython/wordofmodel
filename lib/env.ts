@@ -20,6 +20,14 @@ export const env = {
   get supabaseSecretKey() {
     return required('SUPABASE_SECRET_KEY');
   },
+  /**
+   * Used only by the server side auth client in lib/auth.ts. It is RLS bound
+   * and safe to expose, but nothing in this build talks to Supabase from a
+   * browser, so it is deliberately not named NEXT_PUBLIC_.
+   */
+  get supabasePublishableKey() {
+    return required('SUPABASE_PUBLISHABLE_KEY');
+  },
   get resendKey() {
     return required('RESEND_API_KEY');
   },
