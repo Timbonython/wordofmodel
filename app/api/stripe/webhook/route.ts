@@ -1,0 +1,205 @@
+import type Stripe from 'stripe';
+import { env } from '@/lib/env';
+import { stripe } from '@/lib/stripe';
+import { db } from '@/lib/db';
+import { priceKeyOf } from '@/lib/checkout';
+import {
+  claimStripeEvent,
+  getSubscriptionByStripeId,
+  markStripeEventHandled,
+  releaseStripeEvent,
+  upsertSubscription,
+} from '@/lib/billing';
+import { sendConfirmationEmail, sendPaymentFailedAlert } from '@/lib/billing-mail';
+import { getScope } from '@/lib/onboarding';
+
+/**
+ * Stripe webhooks.
+ *
+ * Four properties this handler has to hold, in order of how expensive they are
+ * to get wrong:
+ *
+ *   1. The signature is verified against the RAW body. Anyone can POST here.
+ *      Parsing before verifying, or verifying a re-serialised body, makes the
+ *      check meaningless.
+ *   2. Every event is claimed in stripe_events first. Stripe retries a non-200
+ *      for three days, and a replayed checkout.session.completed would send a
+ *      second receipt.
+ *   3. A handler that throws releases its claim and returns 500, so Stripe's
+ *      retry is processed rather than skipped as a duplicate. A paid
+ *      subscription with no row is the worst outcome available here.
+ *   4. An event we do not handle still returns 200. Anything else teaches Stripe
+ *      the endpoint is broken and eventually disables it.
+ *
+ * Delivery is not ordered. upsertSubscription drops an event older than the last
+ * one applied, which is what stops a late subscription.updated from resurrecting
+ * a cancellation.
+ */
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+export async function POST(request: Request) {
+  const signature = request.headers.get('stripe-signature');
+  if (!signature) return new Response('Missing signature', { status: 400 });
+
+  // Raw text, before anything parses it.
+  const body = await request.text();
+
+  let event: Stripe.Event;
+  try {
+    event = await stripe().webhooks.constructEventAsync(
+      body,
+      signature,
+      env.stripeWebhookSecret,
+    );
+  } catch (err) {
+    // Never echo the reason. It is either a misconfigured secret, which belongs
+    // in the server log, or somebody probing, who gets nothing.
+    console.error('Stripe signature check failed:', err instanceof Error ? err.message : err);
+    return new Response('Invalid signature', { status: 400 });
+  }
+
+  const fresh = await claimStripeEvent(event);
+  if (!fresh) return Response.json({ received: true, duplicate: true });
+
+  try {
+    await handle(event);
+    await markStripeEventHandled(event.id);
+    return Response.json({ received: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`Stripe webhook ${event.type} (${event.id}) failed:`, message);
+    await releaseStripeEvent(event.id);
+    return new Response('Handler failed', { status: 500 });
+  }
+}
+
+async function handle(event: Stripe.Event): Promise<void> {
+  const eventAt = new Date(event.created * 1000);
+
+  switch (event.type) {
+    case 'checkout.session.completed':
+      return onCheckoutCompleted(event.data.object, eventAt);
+
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+      return onSubscriptionChanged(event.data.object, eventAt);
+
+    case 'invoice.payment_failed':
+      return onPaymentFailed(event.data.object);
+
+    default:
+      // Handled by returning 200 and doing nothing.
+      return;
+  }
+}
+
+/**
+ * The moment somebody becomes a subscriber. The subscription is retrieved
+ * rather than read off the session, because the session carries only an id and
+ * the period dates live on the subscription item.
+ */
+async function onCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  eventAt: Date,
+): Promise<void> {
+  if (session.mode !== 'subscription' || session.payment_status === 'unpaid') return;
+
+  const subscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+  if (!subscriptionId) throw new Error('Checkout session completed with no subscription');
+
+  const accountId = session.metadata?.account_id;
+  const scopeId = session.metadata?.scope_id ?? session.client_reference_id ?? undefined;
+  if (!accountId || !scopeId) {
+    throw new Error(`Checkout session ${session.id} has no account_id or scope_id`);
+  }
+
+  const sub = await stripe().subscriptions.retrieve(subscriptionId);
+  const { row, created } = await upsertSubscription({
+    sub,
+    accountId,
+    scopeId,
+    priceKey: priceKeyOf(sub),
+    eventAt,
+  });
+
+  // The receipt people go looking for. Only on the first write, so a Stripe
+  // retry that got past the claim cannot send it twice.
+  //
+  // Never allowed to fail the handler. Throwing here would release the event and
+  // Stripe would redeliver, but the subscription row now exists, `created` would
+  // be false on the retry, and the receipt would be lost for good. The
+  // subscription is the thing that must be right; the email is loud in the log
+  // and can be resent by hand.
+  if (created) {
+    try {
+      const scope = await getScope(scopeId);
+      const email = session.customer_details?.email ?? (await accountEmail(accountId));
+      if (email && scope) {
+        await sendConfirmationEmail({
+          to: email,
+          brandName: scope.brand_name,
+          reportDay: row.report_day,
+          firstReportAt: row.current_period_end,
+          priceKey: row.price_key,
+        });
+      }
+    } catch (err) {
+      console.error(
+        `Confirmation email failed for subscription ${sub.id}. Send it by hand:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+}
+
+/**
+ * Status, cancellation and renewal date. Also the safety net for a subscription
+ * created outside the wizard: without a row, nothing downstream will ever run a
+ * report for it, and a paying customer would sit in silence.
+ */
+async function onSubscriptionChanged(sub: Stripe.Subscription, eventAt: Date): Promise<void> {
+  const existing = await getSubscriptionByStripeId(sub.id);
+
+  const accountId = existing?.account_id ?? sub.metadata?.account_id;
+  const scopeId = existing?.scope_id ?? sub.metadata?.scope_id;
+  if (!accountId || !scopeId) {
+    // Nothing to attach it to. Loud, because it means a subscription exists that
+    // no report will ever be generated for.
+    throw new Error(`Subscription ${sub.id} has no account_id or scope_id in metadata`);
+  }
+
+  await upsertSubscription({
+    sub,
+    accountId,
+    scopeId,
+    priceKey: existing?.price_key ?? priceKeyOf(sub),
+    eventAt,
+  });
+}
+
+/**
+ * Never cancel here. Smart Retries run four attempts over about two weeks; the
+ * subscription goes past_due, report generation pauses, and the customer gets an
+ * email. Cancelling on a first declined card loses people whose card simply
+ * expired.
+ */
+async function onPaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+  await sendPaymentFailedAlert({
+    customerId: customerId ?? null,
+    email: invoice.customer_email,
+    amountDue: invoice.amount_due,
+    currency: invoice.currency,
+    attemptCount: invoice.attempt_count ?? null,
+    hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+  });
+}
+
+async function accountEmail(accountId: string): Promise<string | null> {
+  const { data } = await db().from('accounts').select('email').eq('id', accountId).limit(1);
+  return (data?.[0] as { email: string } | undefined)?.email ?? null;
+}

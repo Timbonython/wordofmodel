@@ -196,7 +196,7 @@ export function ScanResult({
             <p>
               <strong>USD 249/mo.</strong> Founding rate USD 149/mo, first 20 subscribers, locked for 12 months.
             </p>
-            <a className="button" href="#pricing">
+            <a className="button" href={`/start?scan=${scanId}`}>
               Start my first report
             </a>
           </div>

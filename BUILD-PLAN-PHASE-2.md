@@ -158,3 +158,24 @@ constraint documented in the migration and CLAUDE.md. Magic-link auth entirely s
 
 **Note:** `SUPABASE_PUBLISHABLE_KEY` is now required (server-side only, not `NEXT_PUBLIC_`). Auth
 changed that; it genuinely wasn't needed for the scan-only build.
+
+**Session 2 — DONE, 19 Aug 2026.** `supabase/migrations/0003_billing.sql` (subscriptions,
+stripe_events, three columns on scopes). Wizard at `/start`: detect, confirm, four competitors, five
+questions with per-slot rewrite, approve, pay. Approval is written before the Checkout Session, not
+after. Stripe test mode, two prices by lookup key, `npm run stripe:setup` creates product, prices and
+portal configuration. Webhooks for checkout completed, subscription created/updated/deleted and
+payment failed, idempotent through `stripe_events` and guarded against out-of-order delivery.
+Customer Portal at `/account` behind magic link, plan switching off, cancel at period end. True
+founding count on the pricing block and in the wizard. Free scan untouched and verified.
+
+Site copy rebuilt from the updated `wordofmodel-site-copy.md`, copied in from the Cowork folder: the
+locked five in Section 5 step 4, step 6 for the quarterly, the quarterly line in Sections 4 and 8, and
+both new FAQ entries. `npm run copycheck` clean.
+
+`wordofmodel-onboarding-billing-spec.md` amended twice: slot 2 of the generation prompt now
+interpolates `[buyer]`, and the step 5 confirmed copy no longer puts Claude in the monthly run.
+
+**Found while testing: Stripe Managed Payments is on by default on new accounts** and forces
+`automatic_tax` on. Turned off per the spec's deliberate tax decision. It is also a plausible answer
+to the EU/UK VAT question this plan parks, so it is worth ten minutes with the accountant alongside
+that one.

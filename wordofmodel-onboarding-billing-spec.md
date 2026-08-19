@@ -1,6 +1,19 @@
 # Word of Model — Onboarding & Billing Build Spec v1
 **1 August 2026 · Build target: Claude Code**
 
+**Amended 19 August 2026, twice, during the session that built this:**
+
+- **Step 3, the generation prompt.** Slot 2 read "written in first person by a buyer". Slot 4
+  interpolates `[buyer]` and slot 2 did not, so the situation question came back written for a
+  generic buyer: a profile of "marketing managers at mid sized businesses" produced "I run a small
+  business in Australia". Reproduced on both the batch generation and the single slot rewrite. Slot 2
+  is the one this document calls the most important of the five, and a situation question written for
+  the wrong buyer measures the wrong market. Now `[buyer]`.
+- **Step 5, the confirmed copy.** It listed ChatGPT, Gemini, Perplexity, Claude and Google's AI
+  answers, which is the old five and puts Claude in the monthly run. The surface set was frozen on
+  10 August: five monthly by API or SERP, and Claude and Copilot quarterly and hand read. Corrected,
+  with the quarterly stated rather than implied.
+
 ---
 
 ## The one decision that shapes everything
@@ -97,7 +110,7 @@ Write five questions a real buyer would ask an AI assistant while choosing
 a supplier of [what_they_sell] in [country]. Follow this structure exactly:
 
 1. CATEGORY: who is best at [category_term] in [country]
-2. SITUATION: written in first person by a buyer describing their actual
+2. SITUATION: written in first person by [buyer] describing their actual
    circumstance, then asking what they should do or who they should use
 3. ALTERNATIVES: what are the alternatives to [largest_competitor]
 4. HOW-DO-PEOPLE: how do [buyer] usually handle [the problem being solved]
@@ -164,7 +177,9 @@ Not GST-registered, so no Australian GST is charged. Configure Stripe Tax off de
 
 **Copy:**
 > ### You're in. First report lands [date].
-> We'll run your five questions across ChatGPT, Gemini, Perplexity, Claude and Google's AI answers, and you'll have the whole thing - numbers, competitors, verbatim answers, and three things to do - in your inbox on [date]. Same date every month after that.
+> We'll run your five questions across ChatGPT, Gemini, Grok, Perplexity and Google's AI answers, and you'll have the whole thing - numbers, competitors, verbatim answers, and three things to do - in your inbox on [date]. Same date every month after that.
+>
+> Four times a year we also read Claude and Microsoft Copilot by hand, because neither can be captured any other way without substituting a different system and calling it their answer.
 >
 > Nothing needed from you in the meantime.
 

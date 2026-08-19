@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "copycheck": "node scripts/copycheck.mjs",
     "check": "npm run typecheck && npm run copycheck",
-    "smoke": "node --env-file=.env.local scripts/smoke.mjs"
+    "smoke": "node --env-file=.env.local scripts/smoke.mjs",
+    "stripe:setup": "node --env-file=.env.local scripts/stripe-setup.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -19,7 +20,8 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "resend": "^6.20.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "stripe": "^22.5.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

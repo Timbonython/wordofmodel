@@ -110,6 +110,8 @@ Every month, on the same date.
 
 **Three things to do this month.** Ranked. Not eight, not a backlog. Three, in order, with why that one is first.
 
+**And once a quarter, two more surfaces.** Claude and Microsoft Copilot, read by hand, because that is the only honest way to read them.
+
 ---
 
 # 5. HOW IT WORKS
@@ -120,9 +122,11 @@ Every month, on the same date.
 
 **3. You approve them.** This bit matters. If you read the five and think nobody would ever ask that, we go again. The whole exercise is worthless if you don't believe the questions, so we don't run anything until you do.
 
-**4. We run them across five AI platforms.** ChatGPT, Gemini, Perplexity, Claude and Google's AI answers.
+**4. We run them across five AI platforms.** ChatGPT, Gemini, Grok, Perplexity and Google's AI answers. The same five every month, so the number means something when you compare it to last month.
 
 **5. Your report lands in seven days.** Then the same date, every month.
+
+**6. Once a quarter, two more by hand.** Claude and Microsoft Copilot can't be asked automatically without substituting something else and calling it their answer. So we ask them ourselves, and put what they said in your quarterly review.
 
 ---
 
@@ -158,6 +162,7 @@ You already spend money on being found, and you've started wondering whether it 
 
 Five questions. Five AI platforms. Twenty five answers captured word for word, every month.
 Competitor leaderboard, source analysis, and three ranked actions.
+Plus a quarterly deep read that adds Claude and Copilot by hand.
 Cancel any time, no contract.
 
 **Founding rate: USD 149 a month.** First 20 subscribers, locked for twelve months.
@@ -181,6 +186,12 @@ Yes. We set the market when you sign up, because the answers genuinely differ by
 
 **What if the news is good?**
 Then we'll tell you that. We're not in the business of manufacturing a problem. Plenty of businesses come up well on one question and vanish on the next, which is its own useful thing to know.
+
+**Why those five, and why aren't Claude and Copilot in the monthly?**
+Because we won't estimate an answer and call it a reading. ChatGPT, Gemini, Grok, Perplexity and Google's AI answers can all be asked directly and captured word for word, the same way, every month. Claude and Copilot can't, not without swapping in a different system and hoping you don't check. So we ask those two by hand, once a quarter, and we tell you that's what we did. Five measured identically every month. Seven once a quarter, two of them read by a person.
+
+**Isn't Copilot just ChatGPT with a different logo?**
+Nearly, and it makes no difference. Copilot runs mostly on OpenAI's models, sometimes Anthropic's, sometimes Microsoft's own. It still answers differently to ChatGPT, because it searches a different index and it's been given different instructions. Same engine, different car. That's the whole reason we measure the places people actually ask, not the models underneath them.
 
 **Who's behind it?**
 Word of Model was built by a marketer with thirty years in digital and creative, who got tired of clients asking what AI says about them and having no honest way to answer.

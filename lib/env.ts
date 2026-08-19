@@ -31,6 +31,40 @@ export const env = {
   get resendKey() {
     return required('RESEND_API_KEY');
   },
+  get stripeSecretKey() {
+    return required('STRIPE_SECRET_KEY');
+  },
+  get stripeWebhookSecret() {
+    return required('STRIPE_WEBHOOK_SECRET');
+  },
+  get stripeFoundingPriceId() {
+    return required('STRIPE_PRICE_FOUNDING_MONTHLY');
+  },
+  get stripeStandardPriceId() {
+    return required('STRIPE_PRICE_STANDARD_MONTHLY');
+  },
+  /**
+   * Which Stripe mode this build is allowed to talk to. Defaults to test, so
+   * forgetting to set it can only ever make the build safer. assertTestMode in
+   * lib/stripe.ts refuses to start on a mismatch between this and the key.
+   */
+  get stripeMode(): 'test' | 'live' {
+    return process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+  },
+  /**
+   * The Customer Portal configuration created by scripts/stripe-setup.mjs.
+   * Optional: with no id Stripe falls back to the account's default portal
+   * configuration, which is fine to develop against but has plan switching on,
+   * and plan switching off a founding price is the one thing the portal must
+   * not allow.
+   */
+  get stripePortalConfigurationId(): string | null {
+    return process.env.STRIPE_PORTAL_CONFIGURATION_ID || null;
+  },
+  /** Where failed payments and new subscriptions get reported. */
+  get alertEmail(): string | null {
+    return process.env.ALERT_EMAIL || null;
+  },
   get resendFrom() {
     return process.env.RESEND_FROM || 'Word of Model <results@wordofmodel.ai>';
   },

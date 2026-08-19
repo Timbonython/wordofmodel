@@ -1,11 +1,22 @@
+import Link from 'next/link';
 import { ScanPanel } from '@/components/scan/ScanPanel';
-import { WaitlistForm } from '@/components/WaitlistForm';
+import { foundingStateOrNull } from '@/lib/billing';
+
+// The founding count changes at most twenty times, ever. A minute of cache
+// keeps the number honest and keeps the front page off the database on every
+// visit: it is the growth engine, and it was prerendered before this.
+export const revalidate = 60;
 
 /**
  * One page, sections 1 to 10 of wordofmodel-site-copy.md. The scan is the hero:
  * the field itself on the first screen, not a button that scrolls to a form.
+ *
+ * The founding count in the pricing block is read live. It is the real number of
+ * places left, and it has to stay the real number: if it is real it is
+ * persuasive, and if it is not, somebody will screenshot it.
  */
-export default function Page() {
+export default async function Page() {
+  const founding = await foundingStateOrNull();
   return (
     <>
       <header className="masthead">
@@ -168,6 +179,10 @@ export default function Page() {
               <h3>Three things to do this month</h3>
               <p>Ranked. Not eight, not a backlog. Three, in order, with why that one is first.</p>
             </div>
+            <div className="get">
+              <h3>And once a quarter, two more surfaces</h3>
+              <p>Claude and Microsoft Copilot, read by hand, because that is the only honest way to read them.</p>
+            </div>
           </div>
         </section>
 
@@ -196,13 +211,20 @@ export default function Page() {
             </li>
             <li>
               <p>
-                <strong>We run them across five AI platforms.</strong> ChatGPT, Gemini, Perplexity, Claude and Google's
-                AI answers.
+                <strong>We run them across five AI platforms.</strong> ChatGPT, Gemini, Grok, Perplexity and Google's AI
+                answers. The same five every month, so the number means something when you compare it to last month.
               </p>
             </li>
             <li>
               <p>
                 <strong>Your report lands in seven days.</strong> Then the same date, every month.
+              </p>
+            </li>
+            <li>
+              <p>
+                <strong>Once a quarter, two more by hand.</strong> Claude and Microsoft Copilot can't be asked
+                automatically without substituting something else and calling it their answer. So we ask them
+                ourselves, and put what they said in your quarterly review.
               </p>
             </li>
           </ol>
@@ -250,16 +272,30 @@ export default function Page() {
             <p className="amount">USD 249 / month</p>
             <p>
               Five questions. Five AI platforms. Twenty five answers captured word for word, every month. Competitor
-              leaderboard, source analysis, and three ranked actions. Cancel any time, no contract.
+              leaderboard, source analysis, and three ranked actions. Plus a quarterly deep read that adds Claude and
+              Copilot by hand. Cancel any time, no contract.
             </p>
-            <p>
-              <span className="founding">Founding rate: USD 149 a month.</span> First 20 subscribers, locked for twelve
-              months.
-            </p>
-            {/* Where the onboarding wizard will go. */}
-            <WaitlistForm source="pricing" cta="Start with a free scan" />
+            {founding === null ? (
+              <p>
+                <span className="founding">Founding rate: USD 149 a month.</span> First 20 subscribers, locked for
+                twelve months.
+              </p>
+            ) : founding.remaining > 0 ? (
+              <p>
+                <span className="founding">Founding rate: USD 149 a month.</span>{' '}
+                {founding.remaining === 1
+                  ? 'One of the 20 places left'
+                  : `${founding.remaining} of the 20 places left`}
+                , locked for twelve months.
+              </p>
+            ) : (
+              <p className="note">All 20 founding places are taken.</p>
+            )}
+            <Link className="button" href="/start">
+              Start with a free scan
+            </Link>
             <p className="note" style={{ marginTop: 14 }}>
-              Leave your address and we will set you up by hand. No card taken on this page.
+              Three minutes. You approve your five questions before anything is charged.
             </p>
           </div>
         </section>
@@ -304,6 +340,31 @@ export default function Page() {
               <p>
                 Then we'll tell you that. We're not in the business of manufacturing a problem. Plenty of businesses
                 come up well on one question and vanish on the next, which is its own useful thing to know.
+              </p>
+            </div>
+          </details>
+
+          <details className="faq">
+            <summary>Why those five, and why aren't Claude and Copilot in the monthly?</summary>
+            <div className="body">
+              <p>
+                Because we won't estimate an answer and call it a reading. ChatGPT, Gemini, Grok, Perplexity and
+                Google's AI answers can all be asked directly and captured word for word, the same way, every month.
+                Claude and Copilot can't, not without swapping in a different system and hoping you don't check. So we
+                ask those two by hand, once a quarter, and we tell you that's what we did. Five measured identically
+                every month. Seven once a quarter, two of them read by a person.
+              </p>
+            </div>
+          </details>
+
+          <details className="faq">
+            <summary>Isn't Copilot just ChatGPT with a different logo?</summary>
+            <div className="body">
+              <p>
+                Nearly, and it makes no difference. Copilot runs mostly on OpenAI's models, sometimes Anthropic's,
+                sometimes Microsoft's own. It still answers differently to ChatGPT, because it searches a different
+                index and it's been given different instructions. Same engine, different car. That's the whole reason we
+                measure the places people actually ask, not the models underneath them.
               </p>
             </div>
           </details>

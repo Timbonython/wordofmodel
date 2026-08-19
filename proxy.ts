@@ -12,7 +12,12 @@ import { createServerClient } from '@supabase/ssr';
  * the whole site and the free scan is the growth engine:
  *
  *   - the matcher excludes the scan routes. They are anonymous, they hold a
- *     request open for up to 300 seconds, and there is nothing to refresh.
+ *     request open for up to 300 seconds, and there is nothing to refresh. The
+ *     wizard routes are excluded for the same reason: onboarding happens before
+ *     there is an account to have a session for.
+ *   - it excludes the Stripe webhook, which must not be touched at all. That
+ *     route verifies a signature over the raw body, and anything in front of it
+ *     that could read, buffer or alter that body breaks the check.
  *   - the environment is read straight from process.env and a missing value
  *     returns the request untouched rather than throwing. A misconfigured auth
  *     env should cost you a login, never the front page.
@@ -54,6 +59,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/scan|api/detect|api/reveal|api/waitlist|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/scan|api/detect|api/reveal|api/waitlist|api/wizard|api/stripe|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
   ],
 };

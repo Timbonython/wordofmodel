@@ -249,6 +249,103 @@ set the magic link email template to the token hash URL above.
 lives in `proxy.ts` at the repo root, and its matcher deliberately excludes `/api/scan`,
 `/api/detect`, `/api/reveal` and `/api/waitlist`.
 
+## Phase 2, session 2: the wizard and Stripe (done)
+
+`supabase/migrations/0003_billing.sql`. Paste into Supabase → SQL Editor, after 0002. It adds
+`subscriptions` and `stripe_events`, and three columns to `scopes` (`brand_name` not null,
+`what_they_sell`, `website`). Nothing in 0001 or 0002 is altered.
+
+**The flow, and its order.** `/start` → confirm the business → confirm four competitors → approve
+five questions → pay → `/start/confirmed`.
+
+**Competitors come before questions, and that is not the order the session brief asked for.** Slot 3
+is "what are the alternatives to [largest_competitor]", so the question generator cannot run until
+a competitor set exists. The billing spec has it this way for that reason.
+
+**They approve before they pay.** `approveOnboarding()` writes the account, scope, competitors and
+questions with `approved_at` set, and only then is a Checkout Session created. An abandoned checkout
+leaves an account and a scope with no subscription, which is a lead, not a subscriber: nothing reads
+a scope without checking `subscriptions`.
+
+**Things decided here that are easy to get wrong later:**
+
+- `current_period_end` is on the subscription **item** in API version `2026-07-29.dahlia`, not on the
+  subscription. Reading it from the subscription returns undefined and silently writes null.
+  `periodEnd()` in `lib/stripe.ts` is the only place that should read it.
+- The API version is pinned in `lib/stripe.ts`, not left to the SDK default, so a package bump cannot
+  change webhook behaviour underneath the handlers.
+- `stripe_events` is the idempotency gate. The handler inserts the event id first; a conflict means
+  it has been handled and the handler returns 200 without doing anything. A handler that throws
+  **deletes** its claim so Stripe's retry is processed rather than skipped.
+- Webhook delivery is not ordered. `subscriptions.stripe_event_at` holds the last applied event time
+  and an older event is dropped, which is what stops a late `subscription.updated` resurrecting a
+  cancellation.
+- The confirmation email is sent inside a try/catch. Throwing would release the event, Stripe would
+  redeliver, `created` would be false on the retry, and the receipt would be lost for good.
+- `assertPrice()` checks currency, amount, interval and the absence of a trial before every Checkout
+  Session. A price id is an opaque string and a wrong one is invisible until an invoice goes out.
+  Same discipline as `assertSonar`.
+- `lib/scope.ts` exists because the wizard renders the slot labels in the browser and `lib/accounts.ts`
+  is `server-only`. Constants live there; anything touching the database stays in `accounts.ts`.
+
+**The founding counter.** Active **or ever**: a founding subscriber who cancels does not return their
+place. Counted in `foundingState()` over `subscriptions` where `price_key = 'founding_monthly'` and
+status is not `incomplete_expired`. Confirmed subscriptions only, so a checkout in progress holds
+nothing: two people paying simultaneously for seat 20 both get founding. Decided trade, costs one
+discount once, and it is the honest direction to fail in. The number on the pricing block and in the
+wizard is that real count. The front page caches it for 60 seconds and falls back to the offer
+without a count if Supabase is unreachable.
+
+**Stripe, test mode.** One product `Word of Model - Monthly Report` (spaced hyphen: it prints on
+Checkout and on every invoice). Two prices by lookup key, `founding_monthly` USD 14900 and
+`standard_monthly` USD 24900, both monthly, no trial. `npm run stripe:setup` creates them and the
+portal configuration idempotently and prints the env vars. Price ids are pinned by id in env, not
+looked up by key at runtime. `STRIPE_MODE` plus the key prefix guard each other in `assertTestMode()`.
+
+Portal has `subscription_update` **off**. The founding price is locked for twelve months by being a
+normal recurring price, and a portal that can switch plan can move somebody off it without anybody
+deciding to. Cancellation is at period end, no proration, one click from `/account`.
+
+Stripe Tax is off deliberately, not by accident. Not GST registered. The EU/UK VAT question is still
+open and is for the accountant before the first overseas sale.
+
+**Managed Payments, and why it is off.** Stripe's merchant of record product is **on by default on
+new accounts**, and it refuses any Checkout Session with `automatic_tax` off: it handles tax for you,
+so the two cannot both be true. The first real session creation failed on exactly this. Sessions now
+pass `managed_payments: { enabled: false }` so the tax position stays the one that was decided rather
+than the one that was defaulted: Tim is the merchant of record, no Australian GST is charged, and no
+Stripe default silently answers the EU/UK VAT question.
+
+**That question is now a real fork, and it is Tim's and the accountant's.** Managed Payments is a
+plausible answer to the VAT problem the spec parks: it makes Stripe the merchant of record and puts
+EU and UK VAT on them. It also changes the fees and whose name is on the invoice, so it is a
+commercial decision, not a configuration one. Deciding to turn it on means deleting that one line and
+setting `automatic_tax: { enabled: true }`.
+
+**Slot 2 was amended.** The spec's generation prompt interpolated `[buyer]` into slot 4 but not slot
+2, so the situation question came back written for a generic buyer: a profile of "marketing managers
+at mid sized businesses" produced "I run a small business in Australia", on both the batch generation
+and the single slot rewrite. Slot 2 is the slot the spec calls the most important of the five. The
+spec was amended on 19 Aug 2026 rather than the code diverging from it, and both now read `[buyer]`.
+`wordofmodel-onboarding-billing-spec.md` carries an amendment note at the top.
+
+**Step 5 copy was amended** in the same spec for the same reason the site copy was: it listed
+ChatGPT, Gemini, Perplexity, Claude and Google's AI answers, which is the old five and puts Claude in
+the monthly run.
+
+**Verified end to end, 19 Aug 2026, test mode.** Wizard approval writes account, scope, five questions
+with `approved_at`, and four competitors before any session exists. Real Checkout Session created on
+the founding price. Against genuine Stripe events pulled from `stripe.events.list`: bad signature
+rejected 400, real event accepted, row written with `current_period_end` off the item, `report_day`
+capped, replay refused by the idempotency gate, an out-of-order event dropped, cancellation applied.
+Founding counter holds a seat through cancellation, a standard subscription does not consume one, and
+the pricing block renders the true remaining count. Test rows and Stripe customers cleaned up after.
+
+**Still to do by hand:** `stripe listen --forward-to localhost:3000/api/stripe/webhook` for a real
+`whsec_` in `STRIPE_WEBHOOK_SECRET` (the end to end run used a locally set secret, so Stripe's own
+delivery is the one link not yet exercised); in the dashboard set Smart Retries to four attempts
+ending in `past_due` rather than cancel; add the production webhook endpoint before deploying.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

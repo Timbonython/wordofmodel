@@ -123,3 +123,40 @@ export async function askText(prompt: string): Promise<string> {
   if (!text) throw new Error('Empty response');
   return text;
 }
+
+/**
+ * A utility call with web search on. Used by the onboarding wizard's competitor
+ * proposal, which the spec specifies as one call with search enabled and JSON
+ * only.
+ *
+ * Search is not optional there. Asked without it the model returns the four
+ * best known names in the category from training data, which for a small market
+ * is a list of the wrong companies, and the competitor screen only earns its
+ * place if it surfaces someone the customer had not thought of.
+ *
+ * Longer timeout than askJson for the same reason askChatGpt has one: a search
+ * backed answer runs several queries before it writes anything.
+ */
+export async function askJsonSearched<T>(
+  prompt: string,
+  schemaName: string,
+  schema: object,
+  countryIso2: string | null,
+): Promise<T> {
+  const tool: Record<string, unknown> = { type: 'web_search' };
+  if (countryIso2) tool.user_location = { type: 'approximate', country: countryIso2 };
+
+  const j = await post(
+    {
+      model: MODELS.utility,
+      input: prompt,
+      tools: [tool],
+      text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
+    },
+    120_000,
+    schemaName,
+  );
+  const { text } = readEnvelope(j);
+  if (!text) throw new Error(`Empty ${schemaName} response`);
+  return JSON.parse(text) as T;
+}
