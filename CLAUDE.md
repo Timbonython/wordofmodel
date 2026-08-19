@@ -366,6 +366,45 @@ Supabase redirect allowlist, something like `https://*-reframe5.vercel.app/auth/
 links from preview deploys will be refused. Stripe needs no allowlisting, so Checkout redirects work
 on preview either way.
 
+## The confirmation email race, 19 Aug 2026
+
+**The first real production checkout produced a subscriber who paid and was never told.** The webhook
+returned 200, the subscription row was correct, and nothing anywhere logged a problem. Worth reading
+before touching the webhook, because the failure had no symptom.
+
+The send was gated on whether this handler had inserted the row:
+
+```js
+const { row, created } = await upsertSubscription(...)
+if (created) { try { ...send... } catch { console.error(...) } }
+```
+
+Stripe delivers `customer.subscription.created` and `checkout.session.completed` inside the same
+second, in no guaranteed order. In production `subscription.created` was claimed 464ms first and did
+the insert, so `checkout.session.completed` saw `created = false`, skipped the block entirely, and
+never entered the try. There was no log line to find, which is why chasing it through `vercel logs`
+turned up nothing: the CLI only returns request logs without `--follow`, and there was no runtime
+output to return anyway.
+
+**The gate was wrong in kind.** "Did I insert the row" is not "has this person been told".
+
+Now: `subscriptions.confirmation_sent_at` (migration 0004) and a conditional update that claims the
+send atomically. Both deliveries race it, Postgres serialises them, exactly one wins. A failed send
+writes the claim back to null so a redelivery retries, and calls `sendOpsAlert`, which logs **and**
+emails `ALERT_EMAIL` with the subscription, account, scope and reason. A missing address or missing
+scope throws into the same path instead of being a silent `if (email && scope)`.
+
+`sendOpsAlert` never throws. An alert that takes down the handler it reports from turns one silent
+failure into two loud ones, and if Resend is what is broken the console line is the last defence.
+
+**Verified against the exact failing order:** `subscription.created` delivered first inserts the row
+and sends nothing, `checkout.session.completed` then claims and sends, a redelivery sends nothing
+more, and a refused recipient releases the claim, returns 200, keeps the subscription and raises the
+alert. Tim's missing receipt from 12:36 was sent by replaying the event through the real path.
+
+**It was not RESEND_FROM.** That value was correct throughout and Resend had no record of a send at
+12:36, because none was attempted.
+
 **`WIZARD_LIVE` gates the public wizard CTAs, and only those.** Off, the pricing block and the scan
 result show the waitlist they showed before onboarding existed. It exists because Stripe is in test
 mode: a visitor sent to a test mode Checkout gets a page carrying Stripe's test banner that will not

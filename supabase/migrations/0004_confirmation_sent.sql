@@ -1,0 +1,33 @@
+-- Word of Model — make the confirmation email idempotent on its own terms.
+-- Run this in Supabase → SQL Editor, after 0003_billing.sql.
+--
+-- WHY THIS EXISTS. The webhook sent the receipt only when it was the handler
+-- that inserted the subscription row:
+--
+--     const { row, created } = await upsertSubscription(...)
+--     if (created) { ...send... }
+--
+-- Stripe delivers customer.subscription.created and checkout.session.completed
+-- within the same second and in no guaranteed order. On the first real
+-- production checkout, 19 Aug 2026, subscription.created arrived 464ms first and
+-- inserted the row, so checkout.session.completed saw created = false and never
+-- attempted the send. No error was raised and nothing was logged, because the
+-- try/catch around the send was never entered. A paying subscriber got no
+-- receipt and the system reported success.
+--
+-- The gate was wrong in kind, not in degree: "did I insert the row" is not the
+-- same question as "has this person been told". This column asks the second one.
+alter table public.subscriptions
+  add column if not exists confirmation_sent_at timestamptz;
+
+-- The send is claimed with a conditional update:
+--
+--   update public.subscriptions
+--      set confirmation_sent_at = now()
+--    where id = $1 and confirmation_sent_at is null
+--   returning id;
+--
+-- A row back means this process won the claim and must send. No row means
+-- somebody else already has it. A send that then fails writes null back, so the
+-- next delivery of the event can pick it up, and it alerts rather than passing
+-- quietly.

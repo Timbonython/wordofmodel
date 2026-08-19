@@ -206,3 +206,40 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/**
+ * An operational alert to whoever is on the hook, for a failure that a customer
+ * will feel but no request will surface. A confirmation email that never sends
+ * is the case this was written for: the webhook returns 200, the subscription is
+ * correct, and the only sign anything is wrong is a subscriber who paid and
+ * heard nothing.
+ *
+ * Never throws. An alert that takes down the handler it is reporting from turns
+ * one silent failure into two loud ones. If Resend is the thing that is broken,
+ * this fails too, and the console line is the last line of defence.
+ */
+export async function sendOpsAlert(input: {
+  subject: string;
+  lines: string[];
+}): Promise<void> {
+  const text = input.lines.join('\n');
+  console.error(`ALERT: ${input.subject}\n${text}`);
+
+  if (!env.alertEmail) {
+    console.error('ALERT_EMAIL is not set, so that alert went nowhere but here.');
+    return;
+  }
+
+  try {
+    const resend = new Resend(env.resendKey);
+    const { error } = await resend.emails.send({
+      from: env.resendFrom,
+      to: env.alertEmail,
+      subject: input.subject,
+      text,
+    });
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    console.error('The alert itself could not be sent:', err instanceof Error ? err.message : err);
+  }
+}

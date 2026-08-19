@@ -23,6 +23,7 @@ export interface SubscriptionRow {
   report_day: number;
   cancel_at_period_end: boolean;
   current_period_end: string | null;
+  confirmation_sent_at: string | null;
   stripe_event_at: string | null;
   created_at: string;
   updated_at: string;
@@ -232,4 +233,45 @@ export async function markStripeEventHandled(id: string, err?: string): Promise<
  */
 export async function releaseStripeEvent(id: string): Promise<void> {
   await db().from('stripe_events').delete().eq('id', id);
+}
+
+// ------------------------------------------------------- confirmation email
+
+/**
+ * Claims the right to send the confirmation email, atomically.
+ *
+ * Returns true exactly once per subscription. The conditional update is the
+ * whole mechanism: two concurrent webhook deliveries both run it, Postgres
+ * serialises them, and only the one that finds confirmation_sent_at still null
+ * gets a row back.
+ *
+ * This replaces gating the send on "did I insert the subscription row". That
+ * gate lost the receipt entirely whenever customer.subscription.created beat
+ * checkout.session.completed, which is the normal ordering, and it did so
+ * silently. See 0004_confirmation_sent.sql.
+ */
+export async function claimConfirmationEmail(subscriptionId: string): Promise<boolean> {
+  const { data, error } = await db()
+    .from('subscriptions')
+    .update({ confirmation_sent_at: new Date().toISOString() })
+    .eq('id', subscriptionId)
+    .is('confirmation_sent_at', null)
+    .select('id');
+  if (error) throw new Error(`Could not claim the confirmation email: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Hands the claim back after a failed send, so the next delivery of the event
+ * can try again. Without this a transient Resend outage would burn the only
+ * chance to send a receipt.
+ */
+export async function releaseConfirmationEmail(subscriptionId: string): Promise<void> {
+  const { error } = await db()
+    .from('subscriptions')
+    .update({ confirmation_sent_at: null })
+    .eq('id', subscriptionId);
+  if (error) {
+    console.error(`Could not release the confirmation claim for ${subscriptionId}: ${error.message}`);
+  }
 }

@@ -3,14 +3,17 @@ import { env } from '@/lib/env';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/db';
 import { priceKeyOf } from '@/lib/checkout';
+import type { PriceKey } from '@/lib/stripe';
 import {
+  claimConfirmationEmail,
   claimStripeEvent,
   getSubscriptionByStripeId,
   markStripeEventHandled,
+  releaseConfirmationEmail,
   releaseStripeEvent,
   upsertSubscription,
 } from '@/lib/billing';
-import { sendConfirmationEmail, sendPaymentFailedAlert } from '@/lib/billing-mail';
+import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
 import { getScope } from '@/lib/onboarding';
 
 /**
@@ -118,7 +121,7 @@ async function onCheckoutCompleted(
   }
 
   const sub = await stripe().subscriptions.retrieve(subscriptionId);
-  const { row, created } = await upsertSubscription({
+  const { row } = await upsertSubscription({
     sub,
     accountId,
     scopeId,
@@ -126,33 +129,76 @@ async function onCheckoutCompleted(
     eventAt,
   });
 
-  // The receipt people go looking for. Only on the first write, so a Stripe
-  // retry that got past the claim cannot send it twice.
-  //
-  // Never allowed to fail the handler. Throwing here would release the event and
-  // Stripe would redeliver, but the subscription row now exists, `created` would
-  // be false on the retry, and the receipt would be lost for good. The
-  // subscription is the thing that must be right; the email is loud in the log
-  // and can be resent by hand.
-  if (created) {
-    try {
-      const scope = await getScope(scopeId);
-      const email = session.customer_details?.email ?? (await accountEmail(accountId));
-      if (email && scope) {
-        await sendConfirmationEmail({
-          to: email,
-          brandName: scope.brand_name,
-          reportDay: row.report_day,
-          firstReportAt: row.current_period_end,
-          priceKey: row.price_key,
-        });
-      }
-    } catch (err) {
-      console.error(
-        `Confirmation email failed for subscription ${sub.id}. Send it by hand:`,
-        err instanceof Error ? err.message : err,
+  await sendReceipt({
+    row,
+    subId: sub.id,
+    accountId,
+    scopeId,
+    email: session.customer_details?.email ?? null,
+  });
+}
+
+/**
+ * The receipt people go looking for.
+ *
+ * The right to send is claimed against the subscription row, not inferred from
+ * having inserted it. That distinction is the whole bug this replaces: the send
+ * used to happen only when this handler did the insert, so whenever
+ * customer.subscription.created arrived first, which is the normal ordering, the
+ * receipt was never attempted and nothing said so.
+ *
+ * Every failure below is loud. A subscriber who has paid and heard nothing is
+ * not something to find out about from them.
+ */
+async function sendReceipt(input: {
+  row: { id: string; report_day: number; current_period_end: string | null; price_key: PriceKey };
+  subId: string;
+  accountId: string;
+  scopeId: string;
+  email: string | null;
+}): Promise<void> {
+  const { row, subId } = input;
+
+  let claimed = false;
+  try {
+    claimed = await claimConfirmationEmail(row.id);
+    if (!claimed) return;
+
+    const scope = await getScope(input.scopeId);
+    const email = input.email ?? (await accountEmail(input.accountId));
+
+    if (!email || !scope) {
+      throw new Error(
+        `no ${!email ? 'email address' : 'scope'} to send to (account ${input.accountId})`,
       );
     }
+
+    await sendConfirmationEmail({
+      to: email,
+      brandName: scope.brand_name,
+      reportDay: row.report_day,
+      firstReportAt: row.current_period_end,
+      priceKey: row.price_key,
+    });
+  } catch (err) {
+    // Hand the claim back so the next delivery of this event can try again.
+    if (claimed) await releaseConfirmationEmail(row.id);
+
+    await sendOpsAlert({
+      subject: `Confirmation email failed: ${subId}`,
+      lines: [
+        'A subscriber has paid and has not been told.',
+        '',
+        `Subscription: ${subId}`,
+        `Account:      ${input.accountId}`,
+        `Scope:        ${input.scopeId}`,
+        `Reason:       ${err instanceof Error ? err.message : String(err)}`,
+        '',
+        'The subscription itself is recorded correctly and the webhook returned 200.',
+        'The claim has been released, so Stripe redelivering this event will retry',
+        'the send. If it does not, send the welcome email by hand.',
+      ],
+    });
   }
 }
 
