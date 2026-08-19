@@ -366,14 +366,15 @@ Supabase redirect allowlist, something like `https://*-reframe5.vercel.app/auth/
 links from preview deploys will be refused. Stripe needs no allowlisting, so Checkout redirects work
 on preview either way.
 
-**`IP_HASH_SALT` is still unset, and there is a trap in that.** It falls back to
-`SUPABASE_SECRET_KEY`, so a missing salt is never a plaintext address, which is why it has been left.
-But the fallback means **the salt and the database credential are the same string**. Rotating
-`SUPABASE_SECRET_KEY`, which is an ordinary thing to do and the exact thing you would do in a hurry
-if a key leaked, silently changes every hash: rate limiting stops recognising returning visitors, and
-every IP hash already in `scans` and `rate_events` becomes uncomparable with every new one. Nothing
-errors. Set a dedicated `IP_HASH_SALT` before that ever happens, and note that setting it late has
-the same one-off effect, so do it at a quiet moment and expect the old hashes to be orphaned.
+**`IP_HASH_SALT` is set, and the fallback is gone.** It used to fall back to `SUPABASE_SECRET_KEY`,
+which meant a missing salt was never a plaintext address but the salt and the database credential
+were the same string. Rotating that credential, an ordinary thing to do and exactly what you would do
+in a hurry after a leak, silently rehashed every visitor: rate limiting stopped recognising anyone,
+and every hash already in `scans` and `rate_events` became uncomparable with every new one, with
+nothing erroring. Done on 19 Aug 2026 while the tables were nearly empty, so the one-off orphaning
+cost nothing. `env.ipHashSalt` is now `required()`: a missing salt takes the scan routes down, which
+is recoverable in a minute. Changing the value has the same orphaning effect, so set it once and
+leave it.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

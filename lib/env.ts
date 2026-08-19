@@ -76,11 +76,22 @@ export const env = {
     return process.env.RESEND_REPLY_TO || 'hello@wordofmodel.ai';
   },
   /**
-   * Salt for hashing visitor IPs. Set IP_HASH_SALT in production. Falls back to
-   * the Supabase secret so a missing salt is never a plaintext IP.
+   * Salt for hashing visitor IPs. Required, with no fallback.
+   *
+   * It used to fall back to the Supabase secret, which kept a missing salt from
+   * ever meaning a plaintext address but made the salt and the database
+   * credential the same string. Rotating that credential, an ordinary thing to
+   * do and exactly what you would do in a hurry after a leak, silently rehashed
+   * every visitor: rate limiting stopped recognising anyone, and every hash
+   * already in scans and rate_events became uncomparable with every new one.
+   * Nothing errored.
+   *
+   * So it fails loudly instead. A missing salt now takes the route down, which
+   * is recoverable in a minute, rather than quietly corrupting the only record
+   * of who has already been here.
    */
   get ipHashSalt() {
-    return process.env.IP_HASH_SALT || required('SUPABASE_SECRET_KEY');
+    return required('IP_HASH_SALT');
   },
   /**
    * The base URL this deployment is actually reachable at.
