@@ -366,6 +366,19 @@ Supabase redirect allowlist, something like `https://*-reframe5.vercel.app/auth/
 links from preview deploys will be refused. Stripe needs no allowlisting, so Checkout redirects work
 on preview either way.
 
+**`WIZARD_LIVE` gates the public wizard CTAs, and only those.** Off, the pricing block and the scan
+result show the waitlist they showed before onboarding existed. It exists because Stripe is in test
+mode: a visitor sent to a test mode Checkout gets a page carrying Stripe's test banner that will not
+take their card, and this product is sold on honesty.
+
+`/start` stays reachable by URL either way, and every wizard route keeps working, so the full flow
+including checkout and the webhook can be walked on production while visitors still see the
+waitlist. Both wizard pages are already noindex, so an unlinked page will not be found.
+
+Set `true` on preview and development, deliberately **unset on production**. It defaults to false, so
+forgetting it can only ever be the safe way round. Flipping it on production is the last step of
+going live, after `sk_live_`, the production webhook endpoint and the Supabase allowlist.
+
 **`IP_HASH_SALT` is set, and the fallback is gone.** It used to fall back to `SUPABASE_SECRET_KEY`,
 which meant a missing salt was never a plaintext address but the salt and the database credential
 were the same string. Rotating that credential, an ordinary thing to do and exactly what you would do

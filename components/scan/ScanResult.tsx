@@ -21,6 +21,7 @@ export function ScanResult({
   free,
   cached,
   runAt,
+  wizardLive = false,
 }: {
   scanId: string;
   domain: string;
@@ -28,6 +29,7 @@ export function ScanResult({
   free: FreeResult;
   cached: boolean;
   runAt: string;
+  wizardLive?: boolean;
 }) {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -196,7 +198,7 @@ export function ScanResult({
             <p>
               <strong>USD 249/mo.</strong> Founding rate USD 149/mo, first 20 subscribers, locked for 12 months.
             </p>
-            <a className="button" href={`/start?scan=${scanId}`}>
+            <a className="button" href={wizardLive ? `/start?scan=${scanId}` : '#pricing'}>
               Start my first report
             </a>
           </div>

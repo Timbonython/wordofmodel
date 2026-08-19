@@ -65,6 +65,25 @@ export const env = {
   get stripePortalConfigurationId(): string | null {
     return process.env.STRIPE_PORTAL_CONFIGURATION_ID || null;
   },
+  /**
+   * Whether the wizard is offered to visitors.
+   *
+   * Off, the pricing block and the scan result keep the waitlist they had
+   * before onboarding existed. It exists because Stripe is in test mode: a
+   * visitor sent to a test mode Checkout gets a page carrying Stripe's test
+   * banner that will not take their card, and this product is sold on honesty.
+   *
+   * It gates the public CTAs and nothing else. /start stays reachable by URL and
+   * every wizard route keeps working, so the whole flow including checkout and
+   * the webhook can be walked on production while visitors still see the
+   * waitlist. Both wizard pages are already noindex.
+   *
+   * Defaults to false, so forgetting to set it can only ever be the safe way
+   * round. Flip it to "true" on production when the live keys are in.
+   */
+  get wizardLive(): boolean {
+    return process.env.WIZARD_LIVE === 'true';
+  },
   /** Where failed payments and new subscriptions get reported. */
   get alertEmail(): string | null {
     return process.env.ALERT_EMAIL || null;

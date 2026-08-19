@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ScanPanel } from '@/components/scan/ScanPanel';
+import { WaitlistForm } from '@/components/WaitlistForm';
 import { foundingStateOrNull } from '@/lib/billing';
+import { env } from '@/lib/env';
 
 // The founding count changes at most twenty times, ever. A minute of cache
 // keeps the number honest and keeps the front page off the database on every
@@ -17,6 +19,7 @@ export const revalidate = 60;
  */
 export default async function Page() {
   const founding = await foundingStateOrNull();
+  const wizardLive = env.wizardLive;
   return (
     <>
       <header className="masthead">
@@ -44,7 +47,7 @@ export default async function Page() {
           <p className="lede">Nobody told you whether you were in that list.</p>
           <p className="hero-cta">Find out in about a minute. Free.</p>
 
-          <ScanPanel />
+          <ScanPanel wizardLive={wizardLive} />
         </section>
 
         {/* ============ 2. THE SHIFT ============ */}
@@ -291,12 +294,23 @@ export default async function Page() {
             ) : (
               <p className="note">All 20 founding places are taken.</p>
             )}
-            <Link className="button" href="/start">
-              Start with a free scan
-            </Link>
-            <p className="note" style={{ marginTop: 14 }}>
-              Three minutes. You approve your five questions before anything is charged.
-            </p>
+            {wizardLive ? (
+              <>
+                <Link className="button" href="/start">
+                  Start with a free scan
+                </Link>
+                <p className="note" style={{ marginTop: 14 }}>
+                  Three minutes. You approve your five questions before anything is charged.
+                </p>
+              </>
+            ) : (
+              <>
+                <WaitlistForm source="pricing" cta="Start with a free scan" />
+                <p className="note" style={{ marginTop: 14 }}>
+                  Leave your address and we will set you up by hand. No card taken on this page.
+                </p>
+              </>
+            )}
           </div>
         </section>
 

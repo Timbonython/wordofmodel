@@ -56,7 +56,12 @@ function toEditable(profile: Profile): Editable {
   };
 }
 
-export function ScanPanel() {
+/**
+ * wizardLive gates the offer CTA at the end of the result and nothing else. See
+ * the note on env.wizardLive: while Stripe is in test mode a visitor must not be
+ * sent to a Checkout page that cannot take their card.
+ */
+export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [domainInput, setDomainInput] = useState('');
   const [domain, setDomain] = useState('');
@@ -344,6 +349,7 @@ export function ScanPanel() {
           free={result.free}
           cached={result.cached}
           runAt={result.runAt}
+          wizardLive={wizardLive}
         />
       ) : null}
 
