@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from 'next/font/google';
+import { env } from '@/lib/env';
 import './globals.css';
 
 // The report template's type stack, self hosted by next/font so the site and the
@@ -30,7 +31,10 @@ const description =
   'Your buyers stopped Googling. They started asking. Find out whether AI names you when it recommends companies in your category. One question, two engines, free.';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://wordofmodel.ai'),
+  // Same resolution as every other absolute URL in the build, so a preview
+  // deploy's canonical and OG tags point at the preview rather than at the live
+  // site. See the note on env.siteUrl.
+  metadataBase: new URL(env.siteUrl),
   title,
   description,
   openGraph: {

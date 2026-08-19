@@ -1,6 +1,10 @@
 // Server-only. Never log a value from here.
 import 'server-only';
 
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
 function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing environment variable ${name}`);
@@ -78,8 +82,44 @@ export const env = {
   get ipHashSalt() {
     return process.env.IP_HASH_SALT || required('SUPABASE_SECRET_KEY');
   },
-  get siteUrl() {
-    return process.env.NEXT_PUBLIC_SITE_URL || 'https://wordofmodel.ai';
+  /**
+   * The base URL this deployment is actually reachable at.
+   *
+   * It is not decoration. Every link that has to come back to us is built from
+   * it: the magic link redirect, Stripe's Checkout success and cancel URLs, the
+   * Customer Portal return URL, and the account link in the confirmation email.
+   * A wrong value here sends a preview deploy's subscriber to production, or a
+   * local one to the live site.
+   *
+   * Resolved in this order, and each step exists for a reason:
+   *
+   *   1. NEXT_PUBLIC_SITE_URL   set on Production only, deliberately. Preview
+   *                             must not have a static value or every preview
+   *                             deploy would redirect to production.
+   *   2. the production alias   belt and braces. If step 1 is ever missing on a
+   *                             production deploy, fall back to the project's
+   *                             own production URL rather than to the unique
+   *                             deployment URL, which nobody has allowlisted.
+   *   3. VERCEL_URL             the preview case. Unique per deployment, which
+   *                             is exactly what is wanted: the deploy that is
+   *                             running is the deploy you come back to.
+   *   4. localhost              local dev. Before this, a missing variable made
+   *                             local magic links point at the live site.
+   *
+   * Server side only, despite the NEXT_PUBLIC_ name on step 1: this module is
+   * server-only and nothing in the build reads siteUrl from a browser.
+   */
+  get siteUrl(): string {
+    const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+    if (explicit) return stripTrailingSlash(explicit);
+
+    if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+    }
+
+    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+
+    return `http://localhost:${process.env.PORT || 3000}`;
   },
 };
 

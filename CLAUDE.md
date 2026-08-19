@@ -346,6 +346,35 @@ the pricing block renders the true remaining count. Test rows and Stripe custome
 delivery is the one link not yet exercised); in the dashboard set Smart Retries to four attempts
 ending in `past_due` rather than cancel; add the production webhook endpoint before deploying.
 
+## Environment, decided 19 Aug 2026
+
+All variables are synced to Vercel across production, preview and development, except
+`NEXT_PUBLIC_SITE_URL`, which is **production only on purpose**.
+
+**Base URL resolution** lives in `env.siteUrl` and is what every link back to us is built from: the
+magic link redirect, Stripe's Checkout success and cancel URLs, the portal return URL, the account
+link in the confirmation email, and `metadataBase` in the layout. Order: `NEXT_PUBLIC_SITE_URL`, then
+`VERCEL_PROJECT_PRODUCTION_URL` when `VERCEL_ENV=production` (belt and braces if the first is ever
+missing on a production deploy), then `VERCEL_URL`, then `http://localhost:$PORT`.
+
+A static preview value would send every preview deploy's subscriber to production. Deriving from
+`VERCEL_URL` means a preview comes back to itself.
+
+**The consequence, and it needs doing before preview auth works:** `VERCEL_URL` is unique per
+deployment, so no individual preview URL can be pre-allowlisted in Supabase. Add a wildcard to the
+Supabase redirect allowlist, something like `https://*-reframe5.vercel.app/auth/callback`, or magic
+links from preview deploys will be refused. Stripe needs no allowlisting, so Checkout redirects work
+on preview either way.
+
+**`IP_HASH_SALT` is still unset, and there is a trap in that.** It falls back to
+`SUPABASE_SECRET_KEY`, so a missing salt is never a plaintext address, which is why it has been left.
+But the fallback means **the salt and the database credential are the same string**. Rotating
+`SUPABASE_SECRET_KEY`, which is an ordinary thing to do and the exact thing you would do in a hurry
+if a key leaked, silently changes every hash: rate limiting stops recognising returning visitors, and
+every IP hash already in `scans` and `rate_events` becomes uncomparable with every new one. Nothing
+errors. Set a dedicated `IP_HASH_SALT` before that ever happens, and note that setting it late has
+the same one-off effect, so do it at a quiet moment and expect the old hashes to be orphaned.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
