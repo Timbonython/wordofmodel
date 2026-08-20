@@ -296,6 +296,12 @@ discount once, and it is the honest direction to fail in. The number on the pric
 wizard is that real count. The front page caches it for 60 seconds and falls back to the offer
 without a count if Supabase is unreachable.
 
+**Amended 20 Aug 2026: it counts DISTINCT `account_id`, not subscription rows.** The schema has
+always allowed an account to hold several scopes with a subscription each, so a row count would let
+one agency take four of the twenty seats. "The first 20 subscribers" reads as twenty companies, and
+it is the wrong customer to penalise. Consequence: an account already holding a place adds a second
+market without consuming another seat, and gets the founding rate on it while seats remain.
+
 **Stripe, test mode.** One product `Word of Model - Monthly Report` (spaced hyphen: it prints on
 Checkout and on every invoice). Two prices by lookup key, `founding_monthly` USD 14900 and
 `standard_monthly` USD 24900, both monthly, no trial. `npm run stripe:setup` creates them and the
@@ -450,6 +456,14 @@ never as movement. Delta reporting has to read all three.
 - Copy changes for "within 24 hours" are **written but held** until a run delivers end to
   end. Do not ship them before then.
 - Extraction, Share of Model and the report are Session 4.
+- **Multiple scopes per account — Session 5.** The schema and the whole run pipeline already
+  support it: nothing built in Session 3 needs changing, `scopes.account_id` has no unique
+  constraint, `subscriptions` carries both ids, and RLS matches on account. Three application
+  blockers: `upsertScope()` reuses the account's FIRST scope, so a second market overwrites the
+  first or silently no-ops; `getSubscriptionForAccount()` and `/account` render exactly one
+  subscription; and the Customer Portal is not configured for an account with several
+  subscriptions, so cancelling one market and keeping the other is a support email. The founding
+  counter part of this was fixed 20 Aug 2026.
 
 ## Environment, decided 19 Aug 2026
 

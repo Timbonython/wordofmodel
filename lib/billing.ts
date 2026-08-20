@@ -47,26 +47,48 @@ export interface FoundingState {
 }
 
 /**
- * Active or ever. A founding subscriber who cancels does not return their place:
- * the promise was the first twenty subscribers, not the first twenty still here.
- * Only incomplete_expired is excluded, because that is a checkout that never
- * became a subscription at all.
+ * TWENTY BUSINESSES, NOT TWENTY SUBSCRIPTIONS. Counted over DISTINCT account_id.
  *
- * The number this returns is displayed. It is the real count, and it has to
- * stay the real count: a scarcity number somebody can disprove with a screenshot
- * costs more than the scarcity was worth.
+ * Changed 20 Aug 2026. It used to count subscription rows, which was fine while every
+ * account had exactly one scope and wrong the moment one did not. The schema has always
+ * allowed an account to hold several scopes with a subscription each - an agency, or a
+ * business selling into both AU and US and wanting two reports rather than one averaged
+ * one - and under a row count that agency would have taken four of the twenty seats on
+ * its own.
+ *
+ * Two reasons that is the wrong answer. "The first 20 subscribers" reads to a customer as
+ * twenty companies, and a claim that quietly means something else is the kind of thing
+ * that gets found out. And it penalised exactly the wrong customer: the one buying the
+ * most.
+ *
+ * Active or ever. A founding subscriber who cancels does not return their place: the
+ * promise was the first twenty, not the first twenty still here. Only incomplete_expired
+ * is excluded, because that is a checkout that never became a subscription at all.
+ *
+ * A consequence worth knowing rather than discovering: an account already holding a
+ * founding place adds a second market without consuming another seat, and gets the
+ * founding rate on it while seats remain. That follows from the rate being promised to a
+ * business rather than to a subscription, and it is the generous direction to be wrong in.
+ *
+ * The number this returns is displayed. It is the real count and it has to stay the real
+ * count: a scarcity number somebody can disprove with a screenshot costs more than the
+ * scarcity was worth.
  */
 export async function foundingState(): Promise<FoundingState> {
-  const { count, error } = await db()
+  // count(distinct) is not expressible through the query builder, so the account ids are
+  // read and deduplicated here. Bounded by design - the founding set is twenty accounts
+  // and their markets - so this is a handful of rows, not a scan. If it ever is not,
+  // it becomes an RPC.
+  const { data, error } = await db()
     .from('subscriptions')
-    .select('id', { count: 'exact', head: true })
+    .select('account_id')
     .eq('price_key', 'founding_monthly')
     .neq('status', 'incomplete_expired');
 
   // A counter that cannot be read must not silently hand out the founding rate.
   if (error) throw new Error(`Founding count failed: ${error.message}`);
 
-  const taken = count ?? 0;
+  const taken = new Set((data ?? []).map((r) => (r as { account_id: string }).account_id)).size;
   const remaining = Math.max(0, FOUNDING_SEATS - taken);
   return {
     taken,
