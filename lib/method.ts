@@ -71,17 +71,84 @@ export function geoNote(surfaceLabel: string, geo: GeoSent, marketLabel: string,
 }
 
 /**
- * Google AI Overviews do not fire on every query, and a question that produced no
- * overview is excluded from the score rather than counted as an absence. Reported out
- * loud, because the alternative is a number that moves with Google's trigger rate and
- * looks like the market moving.
+ * GOOGLE AI OVERVIEW COVERAGE. A FINDING FOR THE REPORT BODY, NOT A METHOD NOTE.
+ *
+ * How often Google chose to answer a question with AI at all is intelligence about the
+ * subscriber's category, and it belongs where they will read it. Google declining to
+ * generate an overview for a question means classic search still carries the weight for
+ * those buyers - which changes what they should do about it. Stated plainly that is
+ * useful. Buried in a methodology footnote it reads as an excuse for a missing number.
+ *
+ * MEASURED on the first real run, 20 Aug 2026, eSIM category, US market, three samples
+ * per question:
+ *
+ *   category        0/3   never
+ *   alternatives    0/3   never
+ *   situation       2/3   sometimes
+ *   how_do_people   3/3   always
+ *   branded         3/3   always
+ *
+ * Two things fall out of that. The rate is a real property of the question, not noise -
+ * plain comparison questions got nothing and situational or branded ones always did. And
+ * `situation` at 2/3 is exactly why the surface is sampled three times: a single sample
+ * had a one in three chance of recording "Google shows nothing here" about a question
+ * Google answers most of the time.
+ *
+ * The earlier bake-off, run on one category, showed 10 out of 10 and I called the trigger
+ * risk smaller than feared. This category shows 8 of 15. One category was not enough to
+ * generalise from.
+ */
+export function aiOverviewCoverage(input: {
+  questionsAnswered: number;
+  questionsAsked: number;
+  samplesAnswered: number;
+  samplesTaken: number;
+}): { headline: string; whatItMeans: string } | null {
+  const { questionsAnswered, questionsAsked, samplesAnswered, samplesTaken } = input;
+  if (questionsAsked === 0) return null;
+
+  const headline =
+    `Google showed an AI Overview for ${questionsAnswered} of your ${questionsAsked} questions ` +
+    `this month (${samplesAnswered} of ${samplesTaken} times we asked).`;
+
+  if (questionsAnswered === questionsAsked) {
+    return {
+      headline,
+      whatItMeans:
+        'Google answers every question your buyers ask with AI, so the overview is the ' +
+        'first thing they read. Being absent from it is being absent from the answer.',
+    };
+  }
+
+  if (questionsAnswered === 0) {
+    return {
+      headline,
+      whatItMeans:
+        'Google is not answering these questions with AI at all. For your buyers, classic ' +
+        'search results still carry the weight, and the ranked links matter more here than ' +
+        'they do in most categories.',
+    };
+  }
+
+  return {
+    headline,
+    whatItMeans:
+      `Google answers some of these questions with AI and leaves the rest to ordinary ` +
+      `search results. On the ${questionsAsked - questionsAnswered} it left alone, the ` +
+      `ranked links are still what your buyers see.`,
+  };
+}
+
+/**
+ * The same fact in method-note form, for the questions excluded from the score.
+ * A question Google did not answer is left out of the denominator rather than counted
+ * against the subscriber - Google not answering is not Google not mentioning you.
  */
 export function noAnswerNote(answered: number, asked: number): string {
   if (answered === asked) return '';
   return (
-    `Google showed an AI Overview for ${answered} of your ${asked} questions. The ` +
-    `${asked - answered} with no overview are left out of the score rather than counted ` +
-    'against you: Google not answering is not the same as Google not mentioning you.'
+    `The ${asked - answered} ${asked - answered === 1 ? 'question' : 'questions'} Google did ` +
+    'not answer are left out of the score rather than counted against you.'
   );
 }
 

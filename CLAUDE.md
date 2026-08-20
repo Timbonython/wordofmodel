@@ -455,7 +455,11 @@ never as movement. Delta reporting has to read all three.
   it is, the baseline run comes from the daily scheduler or `/api/run/start` by hand.
 - Copy changes for "within 24 hours" are **written but held** until a run delivers end to
   end. Do not ship them before then.
-- Extraction, Share of Model and the report are Session 4.
+- Extraction, Share of Model and the report are Session 4. **The Google AI Overview
+  trigger rate goes in the REPORT BODY, not the method note** — `aiOverviewCoverage()` in
+  `lib/method.ts`. A low rate is a finding about the subscriber's category: Google
+  declining to answer means classic search still carries the weight for their buyers.
+  Stated plainly it is intelligence; buried it reads as an excuse.
 - **Multiple scopes per account — Session 5.** The schema and the whole run pipeline already
   support it: nothing built in Session 3 needs changing, `scopes.account_id` has no unique
   constraint, `subscriptions` carries both ids, and RLS matches on account. Three application
