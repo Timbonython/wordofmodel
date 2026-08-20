@@ -22,7 +22,17 @@ export interface WizardProfile {
   brand_name: string;
   what_they_sell: string;
   buyer: string;
+  /**
+   * The market as prose, for the question generation prompts: "in United States" writes
+   * a better question than "in US". DERIVED from market_country, never typed - see
+   * parseProfile in lib/wizard-input.ts.
+   */
   country: string;
+  /**
+   * ISO 3166-1 alpha-2, chosen from a closed list. Every geo parameter the pipeline sends
+   * derives from this and nothing else, so it is the field that has to be right.
+   */
+  market_country: string;
   category_term: string;
   website: string;
 }
@@ -266,6 +276,7 @@ async function upsertScope(accountId: string, profile: WizardProfile): Promise<S
     account_id: accountId,
     category: profile.category_term,
     market: profile.country,
+    market_country: profile.market_country,
     buyer: profile.buyer,
     brand_name: profile.brand_name,
     what_they_sell: profile.what_they_sell,

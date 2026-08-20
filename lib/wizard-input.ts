@@ -1,5 +1,6 @@
 import 'server-only';
 import { QUESTION_SLOTS, type QuestionSlot } from './accounts';
+import { isSupportedMarket, marketName } from './geo';
 import {
   MAX_COMPETITORS,
   MIN_COMPETITORS,
@@ -26,18 +27,32 @@ function text(value: unknown, field: string, max: number): string {
 }
 
 /**
- * brand_name, category_term and country are what the questions get built from,
+ * brand_name, category_term and the market are what the questions get built from,
  * so all three are required. what_they_sell and buyer are asked for on the same
  * screen and fall back to the category rather than blocking somebody who left a
  * box empty.
+ *
+ * THE MARKET IS NO LONGER TYPED. It arrives as an ISO code from a closed select and is
+ * checked against the same table lib/geo.ts builds parameters from, so a market that
+ * reaches the database is always one we can actually ask a question in. The prose form
+ * is DERIVED from it rather than accepted, which is what stops the two disagreeing.
+ *
+ * The old field was free text labelled "Primary market" and the one scope that ever
+ * existed had "burner phone numbers" in it. Nothing objected, and the five generated
+ * questions came back spanning four different countries.
  */
 export function parseProfile(input: unknown): WizardProfile {
   const p = (input ?? {}) as Record<string, unknown>;
   const category_term = text(p.category_term, 'What you sell', 120);
+  const market_country = typeof p.market_country === 'string' ? p.market_country.trim().toUpperCase() : '';
+  if (!isSupportedMarket(market_country)) {
+    throw new InputError('Choose the country your buyers are in.');
+  }
   return {
     brand_name: text(p.brand_name, 'Your brand name', 120),
     category_term,
-    country: text(p.country, 'Your primary market', 80),
+    market_country,
+    country: marketName(market_country),
     what_they_sell: typeof p.what_they_sell === 'string' && p.what_they_sell.trim()
       ? text(p.what_they_sell, 'What you sell', 200)
       : category_term,

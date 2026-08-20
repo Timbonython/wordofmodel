@@ -1,0 +1,17 @@
+{
+  "note": "THE GROUND TRUTH. Fill this in from a clean logged-out browser on a US VPN, in the same window as the API run. Copy to control.json when done.",
+  "captured_at": "REPLACE with the time you started, e.g. 2026-08-21T09:15:00+10:00",
+  "conditions": {
+    "vpn_exit": "REPLACE e.g. New York, US",
+    "browser": "REPLACE e.g. Chrome 141, fresh profile",
+    "logged_out": true,
+    "extensions": "none"
+  },
+  "results": [
+    { "slot": "category",      "ai_overview_shown": null, "sources_listed": null, "first_sentence": "" },
+    { "slot": "situation",     "ai_overview_shown": null, "sources_listed": null, "first_sentence": "" },
+    { "slot": "alternatives",  "ai_overview_shown": null, "sources_listed": null, "first_sentence": "" },
+    { "slot": "how_do_people", "ai_overview_shown": null, "sources_listed": null, "first_sentence": "" },
+    { "slot": "branded",       "ai_overview_shown": null, "sources_listed": null, "first_sentence": "" }
+  ]
+}

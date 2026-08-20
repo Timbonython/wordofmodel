@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { SLOT_LABEL, QUESTION_SLOTS, type QuestionSlot } from '@/lib/scope';
+import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
+import { iso2 } from '@/lib/domain';
 
 /**
  * The onboarding wizard.
@@ -20,9 +22,25 @@ export interface WizardProfileInput {
   brand_name: string;
   what_they_sell: string;
   buyer: string;
-  country: string;
+  /** ISO 3166-1 alpha-2, chosen from a closed list. The prose form is derived server side. */
+  market_country: string;
   category_term: string;
   website: string;
+}
+
+/**
+ * Default when we cannot read a country off the site, or read one we cannot measure.
+ *
+ * US because the build plan says US first, Australia second - not because of where Tim
+ * sits. It is a starting point in a field the subscriber then confirms, exactly like
+ * every other field on this screen.
+ */
+const DEFAULT_MARKET = 'US';
+
+/** A country name from the detector to a market we can actually build parameters for. */
+function resolveMarket(name: string | null): string {
+  const code = iso2(name);
+  return code && isSupportedMarket(code) ? code : DEFAULT_MARKET;
 }
 
 interface Question {
@@ -45,7 +63,7 @@ const EMPTY: WizardProfileInput = {
   brand_name: '',
   what_they_sell: '',
   buyer: '',
-  country: '',
+  market_country: DEFAULT_MARKET,
   category_term: '',
   website: '',
 };
@@ -72,6 +90,7 @@ export default function Wizard({
 }) {
   const [step, setStep] = useState<Step>('business');
   const [domain, setDomain] = useState(prefill?.website ?? '');
+  const [unsupportedMarket, setUnsupportedMarket] = useState<string | null>(null);
   const [detected, setDetected] = useState(Boolean(prefill));
   const [profile, setProfile] = useState<WizardProfileInput>(prefill ?? EMPTY);
   const [competitors, setCompetitors] = useState<string[]>([]);
@@ -102,18 +121,34 @@ export default function Wizard({
 
   const detect = () =>
     run('Reading your site', async () => {
-      const out = await post<{ domain: string; profile: Partial<WizardProfileInput> }>(
-        '/api/wizard/detect',
-        { domain },
-      );
+      // The detector's shape is NOT WizardProfileInput: it returns `country` as a name
+      // read off the site ("Australia"), where the wizard holds an ISO code. Typing it as
+      // a Partial<WizardProfileInput> hid that difference and is what let a country name
+      // flow into a field that is not one.
+      const out = await post<{
+        domain: string;
+        profile: {
+          brand_name?: string | null;
+          what_they_sell?: string | null;
+          buyer?: string | null;
+          country?: string | null;
+          category_term?: string | null;
+        };
+      }>('/api/wizard/detect', { domain });
       setProfile({
         brand_name: out.profile.brand_name ?? '',
         what_they_sell: out.profile.what_they_sell ?? '',
         buyer: out.profile.buyer ?? '',
-        country: out.profile.country ?? '',
+        market_country: resolveMarket(out.profile.country ?? null),
         category_term: out.profile.category_term ?? '',
         website: out.domain,
       });
+      // If we read a country off the site and cannot measure it, SAY SO. Quietly
+      // defaulting a Brazilian business to the United States is the same bug the closed
+      // list was added to prevent - a market nobody chose, invisible in the result.
+      const read = out.profile.country ?? null;
+      const code = iso2(read);
+      setUnsupportedMarket(read && (!code || !isSupportedMarket(code)) ? read : null);
       setDetected(true);
     });
 
@@ -212,12 +247,31 @@ export default function Wizard({
                   onChange={(v) => set('what_they_sell', v)}
                 />
                 <Field label="Who buys it" value={profile.buyer} onChange={(v) => set('buyer', v)} />
-                <Field
-                  label="Primary market"
-                  hint="The answers genuinely differ by country"
-                  value={profile.country}
-                  onChange={(v) => set('country', v)}
-                />
+                <label className="wizard-field">
+                  <span className="k">Where your buyers are</span>
+                  <span className="h">
+                    The answers genuinely differ by country, and this is what we ask each
+                    assistant from
+                  </span>
+                  <select
+                    className="field"
+                    value={profile.market_country}
+                    onChange={(e) => set('market_country', e.target.value)}
+                  >
+                    {MARKET_OPTIONS.map((m) => (
+                      <option key={m.code} value={m.code}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                  {unsupportedMarket && (
+                    <span className="h note-warn">
+                      We read your market as {unsupportedMarket}, which we don&apos;t cover
+                      yet. Pick the closest one, or email hello@wordofmodel.ai and
+                      we&apos;ll add it before your first report.
+                    </span>
+                  )}
+                </label>
                 <Field
                   label="Category"
                   hint="The phrase a buyer would search"
@@ -234,7 +288,7 @@ export default function Wizard({
                     Boolean(busy) ||
                     !profile.brand_name.trim() ||
                     !profile.category_term.trim() ||
-                    !profile.country.trim()
+                    !profile.market_country
                   }
                 >
                   {busy ?? 'Next: who we measure you against'}

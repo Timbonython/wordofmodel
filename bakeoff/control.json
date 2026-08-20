@@ -1,0 +1,63 @@
+{
+  "note": "GROUND TRUTH, captured by Tim 20 Aug 2026. US VPN, fresh incognito Chrome window per observation, logged out. THREE observations per question rather than the one the protocol asked for.\n\nRECORDED AS REPORTED, NOT INVENTED. Tim confirmed: every question showed an AI Overview on every observation (15 of 15); every overview listed multiple sources and answered the question asked; the three repeats per question were 'very similar' to each other. Exact source counts and first sentences were not captured, so they are null here rather than filled in with plausible numbers. That limits the test to PRESENCE AGREEMENT, which is criterion 1 and the one that decides it. Citation coverage against the browser cannot be computed from this control.",
+  "captured_at": "2026-08-20 (same window as bakeoff/api-results.json, ran_at 2026-08-20T10:36:23Z)",
+  "conditions": {
+    "vpn_exit": "US",
+    "browser": "Chrome, fresh incognito window per observation",
+    "logged_out": true,
+    "extensions": "none",
+    "observations_per_question": 3
+  },
+  "results": [
+    {
+      "slot": "category",
+      "question": "Who's best for HR and payroll software for growing companies in the United States?",
+      "ai_overview_shown": true,
+      "sources_listed": null,
+      "first_sentence": "",
+      "observations": 3,
+      "all_observations_showed_overview": true,
+      "note": "multiple sources listed, not counted; repeats reported as very similar"
+    },
+    {
+      "slot": "situation",
+      "question": "I run ops at a 120-person US company and we've outgrown our current HR, payroll, and IT setup, what should I do and who should I use?",
+      "ai_overview_shown": true,
+      "sources_listed": null,
+      "first_sentence": "",
+      "observations": 3,
+      "all_observations_showed_overview": true,
+      "note": "multiple sources listed, not counted; repeats reported as very similar"
+    },
+    {
+      "slot": "alternatives",
+      "question": "What are the main alternatives to Gusto for a growing US company?",
+      "ai_overview_shown": true,
+      "sources_listed": null,
+      "first_sentence": "",
+      "observations": 3,
+      "all_observations_showed_overview": true,
+      "note": "multiple sources listed, not counted; repeats reported as very similar"
+    },
+    {
+      "slot": "how_do_people",
+      "question": "How do operations managers at 50 to 500 person companies in the United States usually handle HR, payroll, and IT software as they grow?",
+      "ai_overview_shown": true,
+      "sources_listed": null,
+      "first_sentence": "",
+      "observations": 3,
+      "all_observations_showed_overview": true,
+      "note": "multiple sources listed, not counted; repeats reported as very similar"
+    },
+    {
+      "slot": "branded",
+      "question": "Is Rippling any good, and what do people say about it?",
+      "ai_overview_shown": true,
+      "sources_listed": null,
+      "first_sentence": "",
+      "observations": 3,
+      "all_observations_showed_overview": true,
+      "note": "multiple sources listed, not counted; repeats reported as very similar"
+    }
+  ]
+}

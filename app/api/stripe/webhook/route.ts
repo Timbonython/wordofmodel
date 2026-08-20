@@ -14,6 +14,8 @@ import {
   upsertSubscription,
 } from '@/lib/billing';
 import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
+import { ensureBaselineRun } from '@/lib/run';
+import { kickChains } from '@/lib/cron';
 import { getScope } from '@/lib/onboarding';
 
 /**
@@ -136,6 +138,49 @@ async function onCheckoutCompleted(
     scopeId,
     email: session.customer_details?.email ?? null,
   });
+
+  await openFirstRun(scopeId, sub.id);
+}
+
+/**
+ * Open the subscriber's first run, within 24 hours of them paying.
+ *
+ * THIS HANDLER MAKES NO ENGINE CALLS. It inserts a run row and its queue - a cheap write
+ * - and hands off to the tick chain. Fifty five paid API calls inside a webhook would put
+ * minutes of third-party latency on a path Stripe expects to answer quickly, on the one
+ * path in this build that has already failed silently once.
+ *
+ * Failure here NEVER breaks the webhook. Throwing would release the stripe_events claim,
+ * Stripe would redeliver, and the receipt logic would run again - trading a missing first
+ * run for a missing receipt. Instead it alerts, and the daily scheduler opens the run
+ * anyway through scopesAwaitingFirstRun(). Two independent routes to the same outcome,
+ * because one route is what cost us the confirmation email.
+ */
+async function openFirstRun(scopeId: string, subId: string): Promise<void> {
+  try {
+    const started = await ensureBaselineRun(scopeId);
+    if (!started) return;
+    // Fire and forget. If the kick never lands the sweeper finds the pending jobs within
+    // five minutes.
+    await kickChains();
+  } catch (err) {
+    await sendOpsAlert({
+      subject: `First run could not be opened: ${subId}`,
+      lines: [
+        'A subscriber has paid and their first run was not queued.',
+        '',
+        `Subscription: ${subId}`,
+        `Scope:        ${scopeId}`,
+        `Reason:       ${err instanceof Error ? err.message : String(err)}`,
+        '',
+        'The payment, the subscription row and the receipt are all fine, and the webhook',
+        'returned 200. The daily scheduler will open this run through',
+        'scopesAwaitingFirstRun(), so the 24 hour promise still holds - but if the cause',
+        'is a configuration problem (fewer than five approved questions is the likely',
+        'one) the scheduler will fail the same way and nobody will be told twice.',
+      ],
+    });
+  }
 }
 
 /**

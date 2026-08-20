@@ -1,0 +1,19 @@
+{
+  "note": "Generated 20 Aug 2026 through lib/wizard-prompts.ts questionsPrompt - the real production prompt, not hand-picked keywords. Head terms like 'best HR software' would show a flattering AI Overview trigger rate and tell us nothing, because that is not the shape this product asks in. The open risk is that conversational buyer questions trigger overviews far less often, and this is where that shows up.",
+  "market": "US",
+  "profile": {
+    "brand_name": "Rippling",
+    "what_they_sell": "HR, payroll and IT software for growing companies",
+    "country": "United States",
+    "category_term": "HR and payroll software",
+    "buyer": "operations managers at 50 to 500 person US companies",
+    "largest_competitor": "Gusto"
+  },
+  "questions": [
+    { "slot": "category",      "text": "Who's best for HR and payroll software for growing companies in the United States?" },
+    { "slot": "situation",     "text": "I run ops at a 120-person US company and we've outgrown our current HR, payroll, and IT setup, what should I do and who should I use?" },
+    { "slot": "alternatives",  "text": "What are the main alternatives to Gusto for a growing US company?" },
+    { "slot": "how_do_people", "text": "How do operations managers at 50 to 500 person companies in the United States usually handle HR, payroll, and IT software as they grow?" },
+    { "slot": "branded",       "text": "Is Rippling any good, and what do people say about it?" }
+  ]
+}

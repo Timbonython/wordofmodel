@@ -350,6 +350,20 @@ mark.you {
   color: var(--ink-faint);
 }
 
+/* The market selector on the wizard's first screen. It uses .field so it sits in the
+   same rhythm as the text inputs beside it, but a select needs the native arrow back and
+   does not inherit the text cursor. */
+select.field {
+  appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% + 2px), calc(100% - 15px) calc(50% + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 40px;
+}
+
 .field:disabled {
   background: var(--paper);
   color: var(--ink-soft);
@@ -1095,4 +1109,11 @@ footer .wrap {
 .account-facts dd {
   margin: 0;
   text-align: right;
+}
+
+/* Said out loud, not defaulted quietly: we read a market we cannot measure. Uses the
+   report's red-pen colour, the same device that marks an absence in the report itself. */
+.wizard-field .h.note-warn {
+  color: var(--red, #c0392b);
+  margin-top: 6px;
 }

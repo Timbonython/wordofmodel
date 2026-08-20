@@ -32,6 +32,74 @@ export const env = {
   get supabasePublishableKey() {
     return required('SUPABASE_PUBLISHABLE_KEY');
   },
+  get googleKey() {
+    return required('GOOGLE_API_KEY');
+  },
+  get xaiKey() {
+    return required('XAI_API_KEY');
+  },
+  get serpApiKey() {
+    return required('SERPAPI_KEY');
+  },
+  get dataForSeoLogin() {
+    return required('DATAFORSEO_LOGIN');
+  },
+  get dataForSeoPassword() {
+    return required('DATAFORSEO_PASSWORD');
+  },
+  /**
+   * Which SERP provider the google_aio surface is captured through.
+   *
+   * Deliberately unset until the bake-off has run. Unset means google_aio is not in
+   * the monthly surface set at all, so a run is five questions across four surfaces
+   * and captures_expected is 20. That is a complete run, not a broken one: a surface
+   * we have not committed to is a surface we do not claim to measure.
+   *
+   * Committing it later changes the Share of Model denominator for every subscriber
+   * at once, which is a configuration change and must be reported as one. runs.surfaces
+   * is what makes that visible - see the note in 0005.
+   */
+  get serpProvider(): 'serpapi' | 'dataforseo' | null {
+    const v = process.env.SERP_PROVIDER;
+    return v === 'serpapi' || v === 'dataforseo' ? v : null;
+  },
+  /** Guards the manual run trigger and the Vercel Cron routes. */
+  get cronSecret() {
+    return required('CRON_SECRET');
+  },
+  /**
+   * Per-run spend ceiling, in USD. Snapshotted onto runs.cost_ceiling_usd at creation
+   * so changing this later cannot retroactively rewrite what a past run should have
+   * done.
+   *
+   * SOFT by nature: cost is only known once a call returns, so concurrent tick chains
+   * can overshoot by up to one capture each. The code must never describe it as exact.
+   *
+   * Eight dollars against a measured run cost of USD 3.78 at the approved sampling
+   * depth. Five was the first number and it was too tight: 32% headroom, which two
+   * Grok retries at USD 0.19 each would eat into, and a ceiling that trips on a bad
+   * day produces a partial run that holds and does not ship - a self-inflicted version
+   * of the exact failure the ceiling exists to prevent.
+   *
+   * This catches runaway loops. Actual spend is read from captures.cost_usd, which is
+   * per capture and marked reported or computed, not from where the ceiling sits.
+   */
+  get runCostCeilingUsd(): number {
+    const v = Number(process.env.RUN_COST_CEILING_USD);
+    return Number.isFinite(v) && v > 0 ? v : 8.0;
+  },
+  /**
+   * The Vercel region this invocation is running in, recorded on every capture.
+   *
+   * For Grok and Gemini, which accept no location parameter, the network origin IS
+   * the location - so this is the only record of where those two thought we were.
+   * vercel.json pins iad1 and it must never change: the product sells a
+   * month-over-month delta, and an origin that drifts moves the number for a reason
+   * that has nothing to do with the market.
+   */
+  get vercelRegion(): string {
+    return process.env.VERCEL_REGION || 'local';
+  },
   get resendKey() {
     return required('RESEND_API_KEY');
   },
@@ -166,6 +234,27 @@ export const MODELS = {
   answer: process.env.OPENAI_MODEL_ANSWER || 'gpt-5.5',
   utility: process.env.OPENAI_MODEL_UTILITY || 'gpt-5.4-mini',
   sonar: process.env.PERPLEXITY_MODEL || 'perplexity/sonar',
+  /**
+   * Verified against the live API 20 Aug 2026, and this pin is not arbitrary.
+   *
+   * gemini-3.6-flash returns HTTP 200, a fluent answer, and NO groundingMetadata: it
+   * ignores the google_search tool and answers from training data. promptTokenCount
+   * came back as 7, against 772 on gemini-3.5-flash for the same question, which is
+   * the search results being absent. Reproduced. gemini-3.6 and 3.7 also 503
+   * intermittently.
+   *
+   * gemini-3.5-flash grounds reliably: 20 grounding chunks, four real search queries.
+   *
+   * Flash rather than Pro on purpose. We measure surfaces, not flagships, and
+   * consumer Gemini serves Flash to free users - which is what most buyers see.
+   *
+   * NEVER an alias. gemini-flash-latest resolves to gemini-3.7-flash today and
+   * something else tomorrow, silently, which would move every subscriber's number for
+   * a reason that is not the market.
+   */
+  gemini: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+  /** Verified 20 Aug 2026. xAI returns the model id it answered with. */
+  grok: process.env.XAI_MODEL || 'grok-4.6',
 };
 
 /**

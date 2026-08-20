@@ -346,6 +346,111 @@ the pricing block renders the true remaining count. Test rows and Stripe custome
 delivery is the one link not yet exercised); in the dashboard set Smart Retries to four attempts
 ending in `past_due` rather than cancel; add the production webhook endpoint before deploying.
 
+## Phase 2, session 3: the monthly run pipeline (built, not yet exercised end to end)
+
+Migrations `0005_run_pipeline.sql`, `0006_capture_provenance.sql`, `0007_sampling.sql`, all
+applied. Engine modules for all five surfaces, the runner, the SERP bake-off, and the
+wizard's country field. **No real run has executed yet** — there are no scopes.
+
+### The surfaces, verified live 20 Aug 2026
+
+| Surface | Model returned | Cost/answer | Latency | Cost source |
+|---|---|---|---|---|
+| chatgpt | `gpt-5.5-2026-04-23` | $0.363 | 67s (83s avg, 120s peak) | computed |
+| grok | `grok-4.6` | $0.138 | 74s | **reported** |
+| gemini | `gemini-3.5-flash` | $0.030 | 27s | computed |
+| perplexity | `perplexity/sonar` | $0.006 | 15s | **reported** |
+| google_aio | n/a, Google does not disclose | ~$0.03 | 8-34s | n/a |
+
+**A run is 55 captures, not 25**, and costs about **$3.69** against a **$8.00** ceiling.
+Wall clock: **~8 min normal, ~30 min with retries, ~71 min pathological**, hard-stopped by
+`max_attempts = 4`. Against a 24 hour promise that is 20x to 180x headroom.
+
+### Defects found by building, in order of how much they would have cost
+
+1. **`scopes.market` never held a market.** The wizard field was free text labelled
+   "Primary market" and the one scope that existed had `"burner phone numbers"` in it. Its
+   five generated questions named four different countries — a Share of Model computed
+   across four markets. Fixed by `scopes.market_country` (ISO, closed list, NOT NULL, **no
+   default**) plus a country selector. The prose `market` is now derived, so the two cannot
+   disagree.
+2. **SerpApi returns only a `page_token` for conversational questions.** 22 of 22 buyer
+   questions; 4 of 4 head terms came back inline. Without following the token this surface
+   would have reported "no AI Overview" on **every real question**, and benchmarking on
+   head terms would have hidden it. Costs 2 billable requests per capture, not 1.
+3. **`gemini-3.6-flash` returns 200 and silently does not search.** No `groundingMetadata`,
+   `promptTokenCount` 7 against 772 when grounded. Same failure the free scan spec
+   documents for Sonar. Pinned to `3.5-flash`, and `captures.grounded` is checked on every
+   capture regardless — a model's choice is not a contract.
+4. **Gemini's citation URLs are all Google's.** Every `groundingChunk.web.uri` is a
+   `vertexaisearch.cloud.google.com` redirect. `domainOf()` would have recorded Google as
+   the source of 100% of Gemini citations, and "who owns the answer" is section 5 of the
+   report. The real domain is in `web.title`.
+5. **`claim_capture_job` returned a phantom row.** PostgREST renders a NULL composite as
+   `{"id":null,...}` — truthy — so `if (!job) return` would have run a capture against a
+   null id. Fixed in 0006 with `returns setof`: no work is `[]`.
+6. **Every surface is non-deterministic.** Repeat answers share 0.31–0.44 of their words,
+   Google included. But the brands named are far steadier (Perplexity named the same 9
+   companies in all 3 runs, varying only on 6 at the tail) and **cited domains are the
+   noisiest thing we collect** (Gemini shared 1 domain of 7 between runs). The framing that
+   survives, and which is now in `lib/method.ts`: **non-deterministic in prose, largely
+   stable in substance.**
+7. **`Grok` cost 32x the build plan's estimate** — $0.95/subscriber/month against $0.03,
+   because it chose to run 8–11 web searches per question. Not capped: capping tool calls
+   produces an answer Grok would not have given. `captures.search_calls` records it instead.
+8. **The spec's "Grok — live search enabled" names a retired API.** `search_parameters`
+   was withdrawn 12 Jan 2026. The replacement accepts no location at all, which is what
+   made Grok location-neutral.
+9. **DataForSEO fails 40% of the time** (6 of 15, `Internal SE Server Error`) and its
+   defaults serve AI Overviews from cache. Not chosen, and **explicitly not a fallback** —
+   a provider failing two in five cannot rescue a run.
+10. **Sampling broke the capture unique key**, and `runs.cost_usd` needed an atomic
+    increment or four concurrent chains would lose three of every four. Both in 0007.
+
+### Decisions, settled
+
+- **First report within 24 hours**, not 7 days. The webhook opens a baseline run (a cheap
+  insert, no engine calls) and the daily scheduler independently opens one for any live
+  subscription whose scope has never had a run. **Two routes, neither depending on the
+  other** — the Session 2 lesson.
+- **A 24-of-25 run does not ship.** It goes `partial`, alerts, and holds.
+- **`no_answer` is excluded from the Share of Model denominator** and reported explicitly.
+  Google not answering is not Google not mentioning you.
+- **Share of Model**: answers naming the brand ÷ answers received, across the four
+  unbranded questions, `branded` reported separately as the control. Computed **per surface
+  as well as overall**, and for competitors on the identical denominator.
+- **The mixing rule.** google_aio is sampled 3x and contributes a FRACTION (0.67), not a
+  thresholded yes and not 3 rows. The unit of the denominator is **one surface answering
+  one question**, not one draw. Repeated samples average into that unit rather than
+  multiplying its weight, which is what lets sampling depth vary per surface without
+  redefining the metric.
+- **Sampling depth follows cost, not importance**: chatgpt 1x, grok 1x, gemini 3x,
+  perplexity 3x, google_aio 3x. The method note says so rather than implying evenness.
+- **Extraction is deterministic for mentions and domains, LLM at temperature 0 only for
+  recommended-versus-named and position**, with `extraction_version` and `extractor_model`
+  on the row.
+- **SerpApi committed** on zero silent misses and zero failures to deliver. Its one silent
+  failure mode (1 in 15 returning an overview with no references) is now a loud retryable
+  error.
+- **`vercel.json` pins `iad1` and it must never change.** Grok and Gemini accept no
+  location parameter, so the network origin IS their geography. See
+  `vercel.json.README.md`.
+
+### The third thing that can move a trend line without the market moving
+
+0002 warns about the competitor set. 0005 adds `runs.surfaces`. 0007 adds `runs.samples`.
+All three are configuration, and a change in any of them must be reported as its own line,
+never as movement. Delta reporting has to read all three.
+
+### Outstanding
+
+- **No end to end run yet.** Needs a scope with five approved questions.
+- Production Stripe webhook endpoint still not registered (CLAUDE.md go-live item). Until
+  it is, the baseline run comes from the daily scheduler or `/api/run/start` by hand.
+- Copy changes for "within 24 hours" are **written but held** until a run delivers end to
+  end. Do not ship them before then.
+- Extraction, Share of Model and the report are Session 4.
+
 ## Environment, decided 19 Aug 2026
 
 All variables are synced to Vercel across production, preview and development, except

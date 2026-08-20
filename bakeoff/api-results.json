@@ -1,0 +1,291 @@
+{
+  "ran_at": "2026-08-20T10:36:23.850Z",
+  "market": "US",
+  "results": [
+    {
+      "slot": "category",
+      "question": "Who's best for HR and payroll software for growing companies in the United States?",
+      "provider": "serpapi",
+      "present": true,
+      "text": "For growing companies in the United States, top options include\nfor simple all-in-one HR and automated taxes, ADP RUN for scaling compliance, Rippling for combining HR and IT, and Paychex Flex for deep hands-on support.\n\nTop HR and Payroll Platforms\n\nGusto: Best overall for user-friendly design, automated multi-state tax filings, and built-in employee benefits administration.\n\nADP RUN: Best for scaling businesses that expect rapid growth and need robust compliance infrastructure across all 50 states.\n\n: Best for fast-growing tech or remote teams needing to manage HR, payroll, apps, and computer equipment in one dashboard.\n\nPaychex Flex: Best for growing teams that need flexible HR options, time tracking, and reliable 24/7 customer support.\n\nOnPay: Best value for straightforward, transparent pricing with no hidden fees for multi-state payroll and HR compliance.\n\nIf you tell me your number of employees, whether they are local or multi-state, and your budget, I can recommend the exact platform for your team.",
+      "first_sentence": "For growing companies in the United States, top options include for simple all-in-one HR and automated taxes, ADP RUN for scaling compliance, Rippling for combining HR and IT, and Paychex Flex for dee",
+      "citation_count": 7,
+      "domains": [
+        "forbes.com",
+        "gusto.com",
+        "equalpaytoday.org",
+        "airwallex.com",
+        "uschamber.com",
+        "cnbc.com",
+        "pcmag.com"
+      ],
+      "cost_usd": null,
+      "requests": 2,
+      "notes": {
+        "usedPageToken": true,
+        "aiOverviewError": null,
+        "searchStatus": "Success",
+        "cachedAt": null
+      },
+      "latency_ms": 13757
+    },
+    {
+      "slot": "category",
+      "question": "Who's best for HR and payroll software for growing companies in the United States?",
+      "provider": "dataforseo",
+      "present": true,
+      "text": "For growing U.S. companies, the best HR and payroll software choices depend on your specific expansion speed and team makeup. Top options include `Gusto for smooth all-in-one mid-size onboarding, ADP RUN for long-term multi-state scaling, and Rippling for combining HR with IT and device management`.[](https://www.forbes.com/advisor/business/software/best-payroll-services/) [[1]](https://www.forbes.com/advisor/business/software/best-payroll-services/)[[2]](https://gusto.com/product/solutions/size/small-business)[[3]](https://www.airwallex.com/en-us/blog/best-payroll-software)Best Options for Growth\n\n- **Gusto:** Best all-in-one platform for small to midsize teams. It handles local, state, and federal taxes in all 50 states with easy benefits setup.[](https://www.uschamber.com/co/run/human-resources/payroll-services-for-small-business) [[1]](https://www.uschamber.com/co/run/human-resources/payroll-services-for-small-business)\n- **ADP RUN:** Best for businesses expecting heavy future expansion. It scales smoothly from a local team to a large, multi-state workforce.[](https://www.forbes.com/advisor/business/software/best-payroll-services/) \n- **Rippling:** Best for tech-forward or fast-scaling companies. It uniquely unifies HR, payroll, app access, and computer management into one system.[[1]](https://www.paycor.com/resource-center/articles/best-hr-software/)[[2]](https://www.recruiterslineup.com/best-hcm-software/)[[3]](https://esim.holafly.com/business/best-hr-software-for-small-business/)[[4]](https://www.myculture.ai/blog/best-human-resources-software-for-small-business)[[5]](https://www.benefitnews.com/news/11-best-human-resources-management-software-systems)\n- **Paychex Flex:** Best for growing businesses that need robust, hands-on customer support and flexible HR modules.[](https://www.equalpaytoday.org/best-payroll-software-small-businesses/) [[1]](https://www.equalpaytoday.org/best-payroll-software-small-businesses/)\n- **Justworks:** Best PEO option for heavy compliance support, employee benefits, and risk management.[](https://www.forbes.com/advisor/business/software/best-payroll-services/) [[1]](https://www.hibob.com/blog/top-us-payroll-companies/)\n\nIf you tell me your **current employee count** and **whether you hire across multiple states or countries** , I can recommend the exact platform that fits your stage of growth.",
+      "first_sentence": "For growing U.S. companies, the best HR and payroll software choices depend on your specific expansion speed and team makeup. Top options include `Gusto for smooth all-in-one mid-size onboarding, ADP ",
+      "citation_count": 6,
+      "domains": [
+        "forbes.com",
+        "hibob.com",
+        "gusto.com",
+        "uschamber.com",
+        "equalpaytoday.org",
+        "airwallex.com"
+      ],
+      "cost_usd": 0.004,
+      "requests": 1,
+      "notes": {
+        "asynchronous": true,
+        "itemTypes": [
+          "ai_overview",
+          "organic",
+          "people_also_ask",
+          "related_searches"
+        ]
+      },
+      "latency_ms": 8389
+    },
+    {
+      "slot": "situation",
+      "question": "I run ops at a 120-person US company and we've outgrown our current HR, payroll, and IT setup, what should I do and who should I use?",
+      "provider": "serpapi",
+      "present": true,
+      "text": "At 120 employees, your company is at a critical transition point where manual processes break down. You need to migrate from standalone tools to unified platforms: an HRIS/Payroll suite like Rippling or Gusto, and an IT/Device management tool\n\nlike Jamf or Kandji, combined with a modern identity provider like Okta.\n\nHR and Payroll\n\nRippling: Best for 120 employees because it uniquely ties HR, payroll, and IT device management into a single database.\n\nGusto:\nGreat if your HR needs are straightforward and you want an interface that is very easy for staff to use.\n\nJustworks: A Professional Employer Organization (PEO) model that handles compliance, heavy benefits administration, and HR for you.\n\nIT and Device Management\n\nApple Business Manager / Jamf: The gold standard if your team uses Mac computers, making setup fast and secure.\n\nKandji:\nA modern, highly automated choice for Apple device management that saves time for lean ops teams.\n\nMicrosoft Intune: Best if your company relies on Windows PCs and a full Microsoft enterprise software stack.\n\nSecurity and Access (Identity Providers)\n\nOkta: Safely manages employee logins and single sign-on across all your business apps.\n\nGoogle Workspace:\nActs as a basic identity provider if you already use Google for email and simple access controls.\n\nIf you want to narrow this down, tell me:\n\nAre your employees mostly on Mac or Windows\n?\n\nDo you need help with health insurance and benefits administration?\n\nAre you open to a PEO like Justworks, or do you want to run payroll directly?",
+      "first_sentence": "At 120 employees, your company is at a critical transition point where manual processes break down. You need to migrate from standalone tools to unified platforms: an HRIS/Payroll suite like Rippling ",
+      "citation_count": 9,
+      "domains": [
+        "learn.g2.com",
+        "gusto.com",
+        "gable.to",
+        "siit.io",
+        "hackernoon.com",
+        "peoplegoal.com",
+        "workstream.us",
+        "reddit.com",
+        "peoplemanagingpeople.com"
+      ],
+      "cost_usd": null,
+      "requests": 2,
+      "notes": {
+        "usedPageToken": true,
+        "aiOverviewError": null,
+        "searchStatus": "Success",
+        "cachedAt": null
+      },
+      "latency_ms": 27810
+    },
+    {
+      "slot": "situation",
+      "question": "I run ops at a 120-person US company and we've outgrown our current HR, payroll, and IT setup, what should I do and who should I use?",
+      "provider": "dataforseo",
+      "present": true,
+      "text": "At 120 employees, your company has outgrown basic tools and needs unified platforms. Move to **Rippling** or **Deel** for combined HR, payroll, and IT device management, or use **BambooHR** paired with **Gusto** for HR and payroll alongside **Jamf** or **Kandji** for IT.Step 1: Fix HR and Payroll Your manual processes will break at this size. You need a system that handles benefits, time tracking, and compliance automatically.[[1]](https://www.varshealth.com/post/best-staffing-scheduling-software-hospitals)[[2]](https://ones.com/blog/best-human-resource-management-software-9-leading-picks/)\n\n- Choose **Rippling** if you want HR and IT device management in one place.\n- Choose **Gusto** or **Justworks** if you want simple, reliable payroll and human resources.\n- Choose **BambooHR** if your main goal is deep HR tracking and staff management.[[1]](https://www.remofirst.com/post/best-eor-services)[[2]](https://info.wonolo.com/blog/best-hr-apps?hs_amp=true)[[3]](https://www.myculture.ai/blog/best-human-resources-software-for-small-business)[[4]](https://www.youtube.com/watch?v=GwJmpiavbCE)[[5]](https://tmetric.com/best-software/best-employee-management-software)\n\nStep 2: Fix IT and Device Management You cannot set up laptops by hand anymore. You need automated device setup and security controls.\n\n- Use **Rippling IT** to ship and set up computers automatically when you hire someone.\n- Use **Jamf** if your company uses Apple Mac computers.\n- Use **Kandji** for easy Apple device management.\n- Use **Microsoft Intune** if your company uses Windows PCs.[[1]](https://www.paylocity.com/why-paylocity/compare/lists/best-hris-systems-for-midsize-companies/)[[2]](https://www.emptrust.com/10-leading-hr-onboarding-software-in-2026-for-seamless-global-hiring/)[[3]](https://www.hr.software/best-eor/us)\n\nStep 3: Connect Your Tools Your systems must talk to each other to save time.[[1]](https://wheniwork.com/blog/best-employee-rostering-software)\n\n- Connect your HR tool to your email and chat apps.\n- Set automatic access so new hires get accounts on day one.\n- Remove access instantly when someone leaves the company.[[1]](https://peoplemanagingpeople.com/hr-operations/hr-systems-integration/)\n\nIf you'd like, let me know:\n\n- Are you mostly on **Mac or Windows**?\n- Do you have an **IT person** on staff right now?\n\nI can help you pick the exact combination of tools for your team.",
+      "first_sentence": "At 120 employees, your company has outgrown basic tools and needs unified platforms. Move to **Rippling** or **Deel** for combined HR, payroll, and IT device management, or use **BambooHR** paired wit",
+      "citation_count": 12,
+      "domains": [
+        "varshealth.com",
+        "ones.com",
+        "remofirst.com",
+        "info.wonolo.com",
+        "myculture.ai",
+        "youtube.com",
+        "tmetric.com",
+        "paylocity.com",
+        "emptrust.com",
+        "hr.software",
+        "wheniwork.com",
+        "peoplemanagingpeople.com"
+      ],
+      "cost_usd": 0.004,
+      "requests": 1,
+      "notes": {
+        "asynchronous": true,
+        "itemTypes": [
+          "ai_overview",
+          "organic",
+          "people_also_ask",
+          "related_searches"
+        ]
+      },
+      "latency_ms": 28646
+    },
+    {
+      "slot": "alternatives",
+      "question": "What are the main alternatives to Gusto for a growing US company?",
+      "provider": "serpapi",
+      "present": true,
+      "text": "For a growing US company scaling past Gusto, the main alternatives depend on whether you need unified IT management, a PEO benefits bundle, multi-state or global scaling, or predictable flat-rate budgeting. Top options include:\n\nRippling: Best for tech-forward or fast-scaling teams needing both HR and IT device/app management unified on one platform.\n\nJustworks: Best for companies wanting a Professional Employer Organization (PEO) model to secure enterprise-grade health benefits and co-employment compliance.\n\nNetchex or ADP RUN: Best for expanding headcounts that require dedicated human support, robust compliance, and multi-location management.\n\nOnPay: Best for budget-conscious teams wanting transparent, flat-rate pricing without complex enterprise module add-ons.\n\nIf you'd like to narrow this down, please tell me:\n\nYour approximate headcount\nand growth rate\n\nWhether you need global contractor/employee support or just US operations\n\nIf you are looking for a PEO model\n(like Justworks) or standalone software\n\nI can recommend the single best fit for your stage.",
+      "first_sentence": "For a growing US company scaling past Gusto, the main alternatives depend on whether you need unified IT management, a PEO benefits bundle, multi-state or global scaling, or predictable flat-rate budg",
+      "citation_count": 4,
+      "domains": [
+        "business.com",
+        "workstream.us",
+        "netchex.com",
+        "reddit.com"
+      ],
+      "cost_usd": null,
+      "requests": 2,
+      "notes": {
+        "usedPageToken": true,
+        "aiOverviewError": null,
+        "searchStatus": "Success",
+        "cachedAt": null
+      },
+      "latency_ms": 29870
+    },
+    {
+      "slot": "alternatives",
+      "question": "What are the main alternatives to Gusto for a growing US company?",
+      "provider": "dataforseo",
+      "error": "DataForSEO task failed: Internal SE Server Error. (40101)",
+      "kind": "retryable"
+    },
+    {
+      "slot": "how_do_people",
+      "question": "How do operations managers at 50 to 500 person companies in the United States usually handle HR, payroll, and IT software as they grow?",
+      "provider": "serpapi",
+      "present": true,
+      "text": "Operations managers at US companies with 50 to 500 employees typically transition from fragmented, manual tools to unified HRIS (Human Resources Information System) platforms or PEO (Professional Employer Organization)\n\nservices to handle operational complexity.\n\nAs headcount scales past 50, basic small-business tools break down under multi-state tax rules, compliance demands, and growing IT device provisioning needs. Operations teams navigate this growth phase through specific strategic shifts.\n\nPhase 1: The 50–150 Employee Inflection Point\n\nAt this stage, a lean operations or generalist HR team is usually underwater tracking state-by-state compliance, onboarding paperwork, and hardware handoffs manually.\n\nConsolidating HR and Payroll: Companies move away from isolated payroll plugins to integrated platforms like Gusto,\n, or Rippling to sync employee data, time-off requests, and benefit elections automatically.\n\nAdopting IT-HR Convergence: Operations managers increasingly favor systems like Rippling that tie HR actions (e.g., marking a new hire active) directly to IT tasks (e.g., shipping a laptop, provisioning Google Workspace or Slack access).\n\nEvaluating PEO Outsource Options: Many organizations under 150 employees choose a PEO like Insperity or ADP TotalSource under a co-employment model. This outsources multi-state tax filing, workers' comp, and complex benefits administration to bypass hiring an internal HR compliance team\n.\n\nPhase 2: The 150–500 Employee Maturation\n\nBy 200+ employees, the ratio of HR staff to headcount tightens, and specialized mid-market needs emerge. Operations shift from survival mode to workflow governance.\n\nUpgrading Payroll & Workforce Management: Simple payroll engines struggle with shift differentials, union rules, or complex multi-state overtime. Operations transition to robust mid-market suites like\nPaylocity\n, UKG\n, or HiBob to automate localized pay rules.\n\nResisting Enterprise Bloat: Operations leaders actively avoid enterprise-heavy monoliths like full SAP or high-end Workday configurations because the implementation costs ($100k+) and heavy maintenance mismatch a 300-person budget.\n\nLayering Point Solutions: Instead of a single massive suite, operations teams often keep a flexible core HRIS and plug in specialized software for performance calibration, applicant tracking systems (ATS), and learning management (LMS).\n\nIf you are currently facing this growth transition, let me know:\n\nYour current headcount\nand number of hourly vs. salaried workers\n\nWhether you are operating in multiple US states or countries\n\nYour biggest operational bottleneck right now (\nonboarding, payroll complexity, or IT provisioning)\n\nI can help outline a recommended software stack or evaluation criteria for your exact situation.",
+      "first_sentence": "Operations managers at US companies with 50 to 500 employees typically transition from fragmented, manual tools to unified HRIS (Human Resources Information System) platforms or PEO (Professional Empl",
+      "citation_count": 27,
+      "domains": [
+        "workzoom.com",
+        "hr.software",
+        "outsail.co",
+        "mp1solution.com",
+        "gtm.com",
+        "sutisoft.com",
+        "frankcrum.com",
+        "alphaapexgroup.com",
+        "saasrat.com",
+        "employmenthero.com",
+        "netchex.com",
+        "hrcloud.com",
+        "besthrsoftwareforsmallbusiness.com",
+        "icomppayroll.com",
+        "workmotion.com",
+        "linkedin.com",
+        "dupple.com",
+        "workstream.us",
+        "pebb.io",
+        "rewordin.com",
+        "worldmetrics.org",
+        "makeyourway.in",
+        "go.helpside.com",
+        "empeon.com",
+        "snacknation.com"
+      ],
+      "cost_usd": null,
+      "requests": 2,
+      "notes": {
+        "usedPageToken": true,
+        "aiOverviewError": null,
+        "searchStatus": "Success",
+        "cachedAt": null
+      },
+      "latency_ms": 34130
+    },
+    {
+      "slot": "how_do_people",
+      "question": "How do operations managers at 50 to 500 person companies in the United States usually handle HR, payroll, and IT software as they grow?",
+      "provider": "dataforseo",
+      "present": true,
+      "text": "Operations managers at mid-sized companies (50–500 employees) usually shift from manual tasks and separate tools to unified, all-in-one platforms or tightly integrated \"best-of-breed\" software stacks. As headcount grows, they `automate workflows, delegate HR/IT tasks to new specialists, and rely on external partners for compliance`.[[1]](https://www.coursera.org/articles/human-resources-manager)[[2]](https://noloco.io/blog/how-to-scale-your-business-operations-with-workflow-automation)[[3]](https://humanskills.blog/how-to-build-a-high-performing-workforce/)[[4]](https://www.youtube.com/watch?v=AjGE_KY6ERo)The Growth Phases\n\n- **50–100 Employees (The Transition):** \n\t- Outgrow basic spreadsheets and simple tools.\n\t- Consolidate HR and payroll into single human resources information systems.\n\t- Adopt centralized identity management for IT security.[[1]](https://www.theaccessgroup.com/en-gb/blog/hcm-how-to-achieve-hr-efficiency-with-unified-hr-solutions/)\n- **100–300 Employees (The Specialization):** \n\t- Hire dedicated HR generalists and IT support staff.\n\t- Connect core systems using automated software integrations.\n\t- Implement formal procurement and software approval processes.[[1]](https://learn.g2.com/business-process-management)[[2]](https://www.youtube.com/watch?v=le9iCi59_Tw)\n- **300–500 Employees (The Optimization):** \n\t- Transition to enterprise-grade HR and financial suites.\n\t- Build internal IT asset management and security protocols.\n\t- Outsource complex payroll tax or global compliance to third-party experts.[[1]](https://accountally.com/blog/10-essential-steps-for-effective-payroll-management/)\n\nSoftware Categories Used\n\n- **HR & Payroll:** All-in-one platforms handle onboarding, benefits, and payroll processing together.\n- **IT & Security:** Cloud directory services manage employee access, device security, and app permissions.\n- **Operations & Finance:** Enterprise resource planning or spend management tools track company costs and inventory.[[1]](https://peoplemanagingpeople.com/tools/best-all-in-one-hr-software/)[[2]](https://gusto.com/resources/guides/best-scheduling-payroll-software)[[3]](https://getebm.com/what-is-hr-technology/)[[4]](https://www.guideflow.com/blog/workforce-management-software)[[5]](https://www.youtube.com/watch?v=nP20-QHWknk)\n\nIf you'd like, I can share:\n\n- **Specific software examples** for each company size\n- **Key signs** that it is time to upgrade your current tools\n- **How to budget** for these software transitions\n\nLet me know what you want to explore next.",
+      "first_sentence": "Operations managers at mid-sized companies (50–500 employees) usually shift from manual tasks and separate tools to unified, all-in-one platforms or tightly integrated \"best-of-breed\" software stacks.",
+      "citation_count": 13,
+      "domains": [
+        "coursera.org",
+        "noloco.io",
+        "humanskills.blog",
+        "youtube.com",
+        "theaccessgroup.com",
+        "learn.g2.com",
+        "accountally.com",
+        "peoplemanagingpeople.com",
+        "gusto.com",
+        "getebm.com",
+        "guideflow.com"
+      ],
+      "cost_usd": 0.004,
+      "requests": 1,
+      "notes": {
+        "asynchronous": true,
+        "itemTypes": [
+          "ai_overview",
+          "organic",
+          "people_also_ask"
+        ]
+      },
+      "latency_ms": 8965
+    },
+    {
+      "slot": "branded",
+      "question": "Is Rippling any good, and what do people say about it?",
+      "provider": "serpapi",
+      "present": true,
+      "text": "Rippling is a powerful, highly-rated all-in-one platform that combines HR, IT, and finance, but it works best for tech-forward, scaling businesses rather than tiny teams with basic needs.\n\nThe Good (Pros)\n\nAll-In-One Power: It merges payroll, benefits, expense management, and even computer device management into a single dashboard.\n\nAutomation: It features a no-code workflow builder that automates repetitive tasks across HR and IT (like automatically revoking app access when an employee leaves).\n\nUser-Friendly Interface: Once you learn the system, day-to-day navigation for employees and managers is clean, fast, and simple.\n\nAI Integration: Users praise the built-in AI assistant for quickly generating custom reports and fixing payroll discrepancies via text prompts.\n\nThe Bad (Cons)\n\nModular Pricing: While the base HR cost starts low, every extra feature (like IT device management or global payroll) is a separate add-on that can quickly inflate your bill.\n\nSteep Learning Curve: Because it connects HR, IT, and finance, the backend setup is dense and complex, often requiring dedicated help to configure properly.\n\nRestricted Support: Regular employees cannot contact customer support directly; every minor issue must go through a company admin first, which can burden internal HR teams.\n\nNot for Simple Needs: If you only need basic domestic payroll and simple HR, reviewers note that platforms like Gusto are much cheaper and easier.\n\nIf you want to narrow it down, tell me:\n\nWhat is the size of your company\n?\n\nDo you need international hiring or IT device management?\n\nI can help you decide if it fits your specific setup.",
+      "first_sentence": "Rippling is a powerful, highly-rated all-in-one platform that combines HR, IT, and finance, but it works best for tech-forward, scaling businesses rather than tiny teams with basic needs. The Good (Pr",
+      "citation_count": 6,
+      "domains": [
+        "reddit.com",
+        "rippling.com",
+        "forbes.com",
+        "g2.com",
+        "business.com",
+        "youtube.com"
+      ],
+      "cost_usd": null,
+      "requests": 2,
+      "notes": {
+        "usedPageToken": true,
+        "aiOverviewError": null,
+        "searchStatus": "Success",
+        "cachedAt": null
+      },
+      "latency_ms": 10125
+    },
+    {
+      "slot": "branded",
+      "question": "Is Rippling any good, and what do people say about it?",
+      "provider": "dataforseo",
+      "present": true,
+      "text": "Rippling is `widely considered an excellent, powerful platform that merges HR, IT, and finance management into a single dashboard` . Reviewers praise its deep automation, fast global payroll, and unique ability to ship and manage company computers alongside employee benefits. However, users note it has a steep learning curve and hidden modular costs.[](https://www.g2.com/products/rippling/reviews) [[1]](https://www.g2.com/products/rippling/reviews)[[2]](https://www.youtube.com/watch?v=x61gjQ3x0hg)[[3]](https://www.business.com/payroll/rippling-review/)[[4]](https://www.forbes.com/advisor/business/software/rippling-review/)What People Love (The Pros)\n\n- **All-In-One Power:** Combines payroll, benefits, app management, and hardware setup in one place.\n- **Deep Automation:** Lets you build no-code workflows to automate tedious HR and IT tasks.\n- **Great Interface:** Features a clean, modern user experience that is easy to navigate once set up.\n- **AI Integration:** Built-in AI tools make generating custom reports or finding missing time sheets fast.[](https://www.g2.com/products/rippling/reviews) [[1]](https://www.trustpilot.com/review/rippling.com?page=2)\n\nWhat People Dislike (The Cons)\n\n- **Complex Setup:** The backend is dense and requires significant upfront time and effort to configure correctly.\n- **Modular Pricing:** While the base price looks low, every extra feature (IT, global payroll, device shipping) costs extra and adds up fast.\n- **Gated Support:** Regular employees cannot contact support directly; they must route all issues through an internal company admin.\n- **Overkill for Small Teams:** It is too complicated for very small businesses with basic HR needs.[](https://www.g2.com/products/rippling/reviews) \n\nIf you're thinking about using it, tell me:\n\n- **How many employees** do you have?\n- Do you need **IT/device management** or just basic HR and payroll?\n\nI can help you decide if it fits your company or if a simpler tool is better.",
+      "first_sentence": "Rippling is `widely considered an excellent, powerful platform that merges HR, IT, and finance management into a single dashboard` . Reviewers praise its deep automation, fast global payroll, and uniq",
+      "citation_count": 6,
+      "domains": [
+        "reddit.com",
+        "forbes.com",
+        "g2.com",
+        "youtube.com",
+        "trustpilot.com",
+        "business.com"
+      ],
+      "cost_usd": 0.004,
+      "requests": 1,
+      "notes": {
+        "asynchronous": true,
+        "itemTypes": [
+          "ai_overview",
+          "organic",
+          "people_also_ask",
+          "video",
+          "related_searches"
+        ]
+      },
+      "latency_ms": 7591
+    }
+  ]
+}

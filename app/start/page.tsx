@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { isSupportedMarket } from '@/lib/geo';
+import { iso2 } from '@/lib/domain';
 import { getScan } from '@/lib/db';
 import { foundingStateOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
@@ -37,7 +39,12 @@ export default async function StartPage({
         brand_name: scan.brand_name ?? '',
         what_they_sell: scan.what_they_sell ?? '',
         buyer: scan.buyer ?? '',
-        country: scan.country ?? '',
+        // scans.country is a country NAME from the detector. Map it, and fall back to the
+        // default rather than prefilling a market we cannot build geo parameters for.
+        market_country: (() => {
+          const code = iso2(scan.country ?? null);
+          return code && isSupportedMarket(code) ? code : 'US';
+        })(),
         category_term: scan.category_term ?? '',
         website: scan.domain,
       };

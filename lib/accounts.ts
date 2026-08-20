@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Citation } from './types';
 import { db } from './db';
 import type { CaptureMethod, CompetitorSource, QuestionSlot, RunPeriod, Surface } from './scope';
 
@@ -72,9 +73,21 @@ export interface RunRow {
   id: string;
   scope_id: string;
   period: RunPeriod;
-  status: 'pending' | 'running' | 'complete' | 'failed';
+  status: 'pending' | 'running' | 'complete' | 'partial' | 'failed' | 'aborted';
   started_at: string | null;
   completed_at: string | null;
+  /** 0005. Which period, as opposed to which cadence. The idempotency key with scope_id. */
+  period_start: string;
+  captures_expected: number;
+  /** The surface set this run used. A change here is configuration, not market movement. */
+  surfaces: Surface[];
+  /** 0007. Samples per surface. Same warning as surfaces. */
+  samples: Record<string, number>;
+  cost_usd: number;
+  cost_ceiling_usd: number | null;
+  failure_reason: string | null;
+  alerted_at: string | null;
+  trigger_source: 'baseline' | 'scheduled' | 'manual';
 }
 
 export interface CaptureRow {
@@ -95,6 +108,23 @@ export interface CaptureRow {
   tokens: number | null;
   cost_usd: number | null;
   captured_at: string;
+  /** 0005-0007. Provenance: recorded, never assumed. */
+  raw_response: unknown;
+  citations: Citation[];
+  outcome: 'answered' | 'no_answer' | 'refused';
+  provider: string | null;
+  geo_sent: unknown;
+  vercel_region: string;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  latency_ms: number | null;
+  extracted_at: string | null;
+  extraction_version: number | null;
+  extractor_model: string | null;
+  search_calls: number | null;
+  grounded: boolean | null;
+  cost_source: 'reported' | 'computed' | null;
+  sample: number;
 }
 
 export interface CaptureJobRow {
@@ -109,6 +139,11 @@ export interface CaptureJobRow {
   error: string | null;
   claimed_at: string | null;
   completed_at: string | null;
+  /** 0005-0007. */
+  next_attempt_at: string;
+  max_attempts: number;
+  error_kind: 'retryable' | 'permanent' | null;
+  sample: number;
 }
 
 export async function getAccountByAuthUser(authUserId: string): Promise<AccountRow | null> {
