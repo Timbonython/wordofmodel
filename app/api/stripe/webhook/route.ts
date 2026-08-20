@@ -222,7 +222,6 @@ async function sendReceipt(input: {
       to: email,
       brandName: scope.brand_name,
       reportDay: row.report_day,
-      firstReportAt: row.current_period_end,
       priceKey: row.price_key,
     });
   } catch (err) {

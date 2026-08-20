@@ -54,7 +54,12 @@ export interface ConfirmationInput {
   to: string;
   brandName: string;
   reportDay: number;
-  firstReportAt: string | null;
+  /**
+   * REMOVED, deliberately: firstReportAt used to carry current_period_end, and the email
+   * promised the first report at the end of the first billing period. The Stripe webhook
+   * now opens a baseline run on the day of payment, so that date is a month too late.
+   * The recurring date still comes from reportDay.
+   */
   priceKey: PriceKey;
 }
 
@@ -63,8 +68,13 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
   html: string;
   text: string;
 } {
-  const date = formatReportDate(input.firstReportAt);
-  const when = date ? `on ${date}` : `on the ${ordinal(input.reportDay)} of next month`;
+  // WITHIN 24 HOURS, not at the end of the first billing period.
+  //
+  // This used to read current_period_end, which was right when the first report was a
+  // month away and became wrong in the opposite direction the moment the Stripe webhook
+  // started opening a baseline run on the day of payment. A subscriber was being told to
+  // wait a month for something arriving overnight.
+  const when = 'within 24 hours';
   const price = input.priceKey === 'founding_monthly' ? 'USD 149' : 'USD 249';
   const foundingLine =
     input.priceKey === 'founding_monthly'
@@ -74,11 +84,11 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
   const text = [
     `WORD OF MODEL`,
     ``,
-    `You're in. First report lands ${date ?? `on the ${ordinal(input.reportDay)}`}.`,
+    `You're in. Your first report lands within 24 hours.`,
     ``,
     `We'll run your five questions across ${monthlySurfaceList()}, and you'll have`,
     `the whole thing - numbers, competitors, verbatim answers, and three things to do -`,
-    `in your inbox ${when}. Same date every month after that.`,
+    `in your inbox ${when}. Then the ${ordinal(input.reportDay)} of every month after that.`,
     ``,
     `Four times a year we also read ${quarterlySurfaceList()} by hand, because neither`,
     `can be captured any other way without substituting a different system and calling`,
@@ -97,7 +107,7 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
 <html><body style="margin:0;padding:24px;background:${PALETTE.paper};font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${PALETTE.ink};">
   <div style="max-width:560px;margin:0 auto;background:${PALETTE.card};border:1px solid ${PALETTE.rule};padding:32px;">
     <p style="margin:0 0 24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${PALETTE.inkSoft};">Word of Model</p>
-    <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;">You're in. First report lands ${escapeHtml(date ?? `on the ${ordinal(input.reportDay)}`)}.</h1>
+    <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;">You're in. Your first report lands within 24 hours.</h1>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
       We'll run your five questions for ${escapeHtml(input.brandName)} across ${escapeHtml(monthlySurfaceList())}, and you'll have the whole thing, numbers, competitors, verbatim answers, and three things to do, in your inbox ${escapeHtml(when)}. Same date every month after that.
     </p>
@@ -115,7 +125,7 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
   </div>
 </body></html>`;
 
-  return { subject: `You're in. First report lands ${date ?? `on the ${ordinal(input.reportDay)}`}.`, html, text };
+  return { subject: `You're in. Your first report lands within 24 hours.`, html, text };
 }
 
 export async function sendConfirmationEmail(input: ConfirmationInput): Promise<void> {
@@ -187,7 +197,7 @@ export async function sendPaymentFailedAlert(input: {
   }
 }
 
-function ordinal(day: number): string {
+export function ordinal(day: number): string {
   const suffix =
     day % 10 === 1 && day !== 11
       ? 'st'

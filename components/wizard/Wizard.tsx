@@ -91,6 +91,7 @@ export default function Wizard({
   const [step, setStep] = useState<Step>('business');
   const [domain, setDomain] = useState(prefill?.website ?? '');
   const [unsupportedMarket, setUnsupportedMarket] = useState<string | null>(null);
+  const [marketGuessed, setMarketGuessed] = useState(false);
   const [detected, setDetected] = useState(Boolean(prefill));
   const [profile, setProfile] = useState<WizardProfileInput>(prefill ?? EMPTY);
   const [competitors, setCompetitors] = useState<string[]>([]);
@@ -149,6 +150,14 @@ export default function Wizard({
       const read = out.profile.country ?? null;
       const code = iso2(read);
       setUnsupportedMarket(read && (!code || !isSupportedMarket(code)) ? read : null);
+      // WE DID NOT READ A COUNTRY, so the selector below is showing a default and not a
+      // finding. Every other field on this screen is either something we read or visibly
+      // blank; the market alone arrives pre-filled and looks exactly as confident as the
+      // ones we actually detected. Zapme was walked through on 20 Aug 2026 with the
+      // default still selected, and its five questions all named the United States for a
+      // business whose market is Australia - a country nobody chose, invisible afterwards
+      // except in the questions.
+      setMarketGuessed(!read);
       setDetected(true);
     });
 
@@ -264,6 +273,12 @@ export default function Wizard({
                       </option>
                     ))}
                   </select>
+                  {marketGuessed && !unsupportedMarket && (
+                    <span className="h note-warn">
+                      We couldn&apos;t read a country off your site, so this is a guess.
+                      Check it: it decides which market every answer is measured in.
+                    </span>
+                  )}
                   {unsupportedMarket && (
                     <span className="h note-warn">
                       We read your market as {unsupportedMarket}, which we don&apos;t cover

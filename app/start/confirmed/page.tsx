@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { stripe, idOf } from '@/lib/stripe';
 import { getSubscriptionByStripeId } from '@/lib/billing';
 import { getScope } from '@/lib/onboarding';
-import { formatReportDate, monthlySurfaceList, quarterlySurfaceList } from '@/lib/billing-mail';
+import { monthlySurfaceList, ordinal, quarterlySurfaceList } from '@/lib/billing-mail';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +30,7 @@ export default async function ConfirmedPage({
 
   let paid = false;
   let brandName: string | null = null;
-  let reportDate: string | null = null;
+  let reportDay: number | null = null;
   let founding = false;
 
   if (sessionId) {
@@ -45,7 +45,7 @@ export default async function ConfirmedPage({
       if (subId) {
         const row = await getSubscriptionByStripeId(subId);
         if (row) {
-          reportDate = formatReportDate(row.current_period_end);
+          reportDay = row.report_day;
           founding = row.price_key === 'founding_monthly';
         }
       }
@@ -69,17 +69,13 @@ export default async function ConfirmedPage({
       <main className="wrap">
         <section className="wizard-step">
           <div className="eyebrow">You&apos;re in</div>
-          <h2>
-            {reportDate
-              ? `You're in. First report lands ${reportDate}.`
-              : "You're in. Your first report is scheduled."}
-          </h2>
+          <h2>You&apos;re in. Your first report lands within 24 hours.</h2>
           <p className="lede">
             We&apos;ll run {brandName ? `${brandName}'s` : 'your'} five questions across{' '}
             {monthlySurfaceList()}, and you&apos;ll have the whole thing, numbers, competitors,
             verbatim answers, and three things to do,{' '}
-            {reportDate ? `in your inbox on ${reportDate}` : 'in your inbox'}. Same date every month
-            after that.
+            in your inbox by this time tomorrow
+            {reportDay ? `. Then the ${ordinal(reportDay)} of every month after that` : ''}.
           </p>
           <p>
             Four times a year we also read {quarterlySurfaceList()} by hand, because neither can be

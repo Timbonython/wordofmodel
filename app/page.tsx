@@ -220,7 +220,7 @@ export default async function Page() {
             </li>
             <li>
               <p>
-                <strong>Your report lands in seven days.</strong> Then the same date, every month.
+                <strong>Your first report lands within 24 hours.</strong> Then the same date, every month.
               </p>
             </li>
             <li>

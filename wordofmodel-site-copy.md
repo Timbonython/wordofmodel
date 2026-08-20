@@ -124,7 +124,7 @@ Every month, on the same date.
 
 **4. We run them across five AI platforms.** ChatGPT, Gemini, Grok, Perplexity and Google's AI answers. The same five every month, so the number means something when you compare it to last month.
 
-**5. Your report lands in seven days.** Then the same date, every month.
+**5. Your first report lands within 24 hours.** Then the same date, every month.
 
 **6. Once a quarter, two more by hand.** Claude and Microsoft Copilot can't be asked automatically without substituting something else and calling it their answer. So we ask them ourselves, and put what they said in your quarterly review.
 
