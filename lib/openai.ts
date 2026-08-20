@@ -160,3 +160,40 @@ export async function askJsonSearched<T>(
   if (!text) throw new Error(`Empty ${schemaName} response`);
   return JSON.parse(text) as T;
 }
+
+/**
+ * A utility call pinned as reproducibly as this API allows: temperature 0, no reasoning.
+ *
+ * VERIFIED 20 Aug 2026, and the combination is not free choice. `temperature: 0` alone
+ * returns 200. `temperature: 0` WITH `reasoning: { effort }` returns 400, "Unsupported
+ * parameter: 'temperature' is not supported with this model." So the extractor gives up
+ * reasoning tokens to get temperature, which is the right trade for a reading task that
+ * has to give the same answer twice.
+ *
+ * TEMPERATURE 0 IS NOT DETERMINISM, and the code must not imply otherwise. Batching, MoE
+ * routing and hardware still move the output. It is as reproducible as the API allows,
+ * which is why every extracted row carries extraction_version and extractor_model: a
+ * re-parse is comparable to the one before it because we know what produced each.
+ *
+ * Deliberately separate from askJson rather than a flag on it. askJson serves the free
+ * scan, which is live and taking traffic.
+ */
+export async function askJsonExact<T>(
+  prompt: string,
+  schemaName: string,
+  schema: object,
+): Promise<{ value: T; model: string }> {
+  const j = await post(
+    {
+      model: MODELS.utility,
+      input: prompt,
+      temperature: 0,
+      text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
+    },
+    60_000,
+    schemaName,
+  );
+  const { text } = readEnvelope(j);
+  if (!text) throw new Error(`Empty ${schemaName} response`);
+  return { value: JSON.parse(text) as T, model: j.model || MODELS.utility };
+}
