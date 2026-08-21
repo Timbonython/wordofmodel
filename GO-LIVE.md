@@ -14,9 +14,10 @@ Checkout page, and everything before it can be walked on production without one 
 ## 1. Migrations 0009, 0010, 0011
 
 **You:** Supabase → SQL Editor → paste each file from `supabase/migrations/`, in order, if it
-has not already been run. 0009 and 0010 are applied. 0011 (`ops_alerts`) is not.
+has not already been run. All three are applied as of 21 Aug, so this step is done.
 
-**Worked when:** `select count(*) from ops_alerts;` returns 0 rather than an error.
+**Worked when:** `select count(*) from ops_alerts;` returns a number rather than an error.
+Verified applied 21 Aug.
 
 **Skip it and:** every ops alert still sends, and none is recorded, so "did anybody hear
 about that failure" stays unanswerable. The report pages break outright without 0009 and
@@ -107,8 +108,9 @@ Session 2 end-to-end used a locally set secret.
 **You:** deploy production. Vercel → Settings → Cron Jobs: `/api/cron/sweep` every five
 minutes and `/api/cron/schedule` daily at 06:00 UTC should both be listed.
 
-**Worked when:** both appear, and a manual run of the scheduler returns JSON with
-`delivered`, `held` and `failed` keys.
+**Worked when:** both appear, and a manual run of the scheduler returns JSON with `opened`,
+`baselines`, `stuck` and `failed` keys. Reports are delivered by the **sweep**, not the
+scheduler: the daily pass only alerts on anything complete and unsent for six hours.
 
 **Note:** crons only run on production deployments, and Vercel adds
 `Authorization: Bearer $CRON_SECRET` automatically because `CRON_SECRET` is set. Without that
@@ -125,8 +127,9 @@ USD 149 charge; refund and cancel it in Stripe afterwards.
 - the receipt email arrives within a minute (`confirmation_sent_at` set on the subscription);
 - a baseline run opens and completes, about eight minutes, 55 captures;
 - `npm run alerts` shows nothing failed;
-- the report email arrives, either at 06:00 UTC or immediately after you `POST
-  /api/report/send` with the run id;
+- the report email arrives on its own, about twenty minutes after payment: the run takes
+  roughly thirteen, the next sweep settles and extracts it, and the one after that delivers.
+  `POST /api/report/send` with the run id is the override if you do not want to wait;
 - the link in it opens the hosted report after a magic link sign-in;
 - `/account` shows the subscription and the portal opens.
 
@@ -160,8 +163,4 @@ banner on a page that will not take their card.
   Stripe the merchant of record, changes the fees and whose name is on the invoice, and needs
   `automatic_tax: { enabled: true }` plus deleting one line in `lib/checkout.ts`.
 - **GST at about fifteen subscribers.** The threshold is projected turnover, not actual.
-- **First report timing.** The scheduler delivers at 06:00 UTC, so a customer who pays at
-  07:00 UTC waits nearly a full day. Inside the promise, but if you want the first one within
-  minutes, either send it by hand after their baseline run completes or move delivery into
-  the five-minute sweep.
 - **Trademark search** on Word of Model, parked since 1 Aug. Worth clearing before ads run.

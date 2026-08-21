@@ -9,6 +9,9 @@
  *      on is invisible to everything except this.
  *   3. Asks the real question of every open run - are all its jobs terminal, and how many
  *      captures actually landed - and settles it.
+ *   4. Delivers the report for any complete run whose captures have all been read and whose
+ *      report has not been sent. Here rather than in the daily batch so a new subscriber
+ *      gets their first report about twenty minutes after paying.
  *
  * Point 3 is the one that matters. No tick settles a run. If the sweeper did not exist, a
  * run whose last chain died would sit "running" indefinitely and nobody would be told.
@@ -17,6 +20,8 @@
 import { authorised, unauthorised, kickChains, CHAINS } from '@/lib/cron';
 import { releaseStaleJobs, openJobCount, dueJobCount } from '@/lib/jobs';
 import { settleRun, alertOnRun } from '@/lib/run';
+import { deliverReport } from '@/lib/deliver';
+import { runsAwaitingReport } from '@/lib/reports';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import type { RunRow } from '@/lib/accounts';
@@ -93,11 +98,38 @@ async function handle(req: Request): Promise<Response> {
     await alertOnRun(finished);
   }
 
+  // DELIVERY LIVES HERE RATHER THAN IN THE 06:00 BATCH.
+  //
+  // A subscriber who pays at 07:00 UTC and waits until the next morning for something that
+  // finished in thirteen minutes is inside the "within 24 hours" promise and a poor first
+  // impression. On this path the run completes, the next sweep settles and extracts it, and
+  // the one after that delivers: about twenty minutes from payment, which is the difference
+  // between a promise kept and a founding subscriber telling somebody about it.
+  //
+  // Not a riskier path than the daily one was. Every rule is in deliverReport - a partial
+  // run is held and alerted, the send is claimed before the email goes out, a failure
+  // releases the claim - and runsAwaitingReport additionally refuses any run whose captures
+  // are still being read, which is the one hazard this frequency introduces.
+  //
+  // Bounded to five a pass. The sweep has other work and a 300 second budget, and a backlog
+  // simply drains over the next few cycles.
+  const delivered: Array<{ run: string; to: string }> = [];
+  for (const run of await runsAwaitingReport(45, 5)) {
+    try {
+      const outcome = await deliverReport(run);
+      if (outcome.sent) delivered.push({ run: run.id, to: outcome.to });
+    } catch (err) {
+      // One subscriber's report must never stop the sweep: it is also the only thing that
+      // settles runs and releases stale claims.
+      console.error(`sweep: could not deliver the report for run ${run.id}`, err);
+    }
+  }
+
   // One kick covers every run with work: the claim is global and takes whatever is next.
   const due = await dueJobCount();
   const kicked = due > 0 ? await kickChains(Math.min(CHAINS, due)) : 0;
 
-  return Response.json({ released, open: open.length, stillWorking, settled, due, kicked });
+  return Response.json({ released, open: open.length, stillWorking, settled, delivered, due, kicked });
 }
 
 export async function GET(req: Request): Promise<Response> {

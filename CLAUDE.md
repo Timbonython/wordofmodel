@@ -139,6 +139,32 @@ Sending domain `wordofmodel.ai` is **verified in Resend**. DKIM, SPF and DMARC a
 - Replying *as* the brand needs Gmail → Settings → Accounts → Send mail as, using Resend's SMTP
   credentials. Not needed until there are subscribers to reply to.
 
+## Rules that came out of defects (21 Aug 2026)
+
+**A guard that is not the last word is not a guard.** `upsertScope()` refused to touch a scope
+with runs, and the caller undid it one line later: `writeCompetitors()` and `writeQuestions()`
+ran against the returned scope anyway, and the question upsert rewrote a question's text while
+keeping its id. The check existed, was correct, was documented, and protected nothing, because
+the thing it protected was written by somebody else two lines down. The fix is to refuse the
+whole operation at the top rather than to defend one table in the middle. When a guard and the
+write it guards are in different functions, the guard is a comment.
+
+Same shape, twice more in the same session: `writeQuestions()` carried a comment asserting no
+captures could exist, which was true of the scope row and false of the function underneath it;
+and `sendOpsAlert()` swallowed its own failures correctly and recorded nothing, so a working
+alert and a dead one were indistinguishable. **State a guarantee only where the code enforces
+it, and record the outcome of anything allowed to fail quietly.**
+
+**Delivery lives in the five minute sweep, not the daily batch** (21 Aug 2026). A subscriber
+paying at 07:00 UTC should not wait until 06:00 the next morning for a report that finished in
+thirteen minutes. The sweep settles the run, fires extraction, and the next pass delivers:
+about twenty minutes from payment. `runsAwaitingReport()` refuses any run still being read -
+a report built mid-extraction is not incomplete, it is wrong, because unextracted captures are
+excluded from the score. The daily pass no longer delivers; it alerts on anything complete and
+unsent for six hours, which is the failure the speed would otherwise hide.
+
+---
+
 **Deliverability rule to hold:** wordofmodel.ai is the *transactional* domain — it delivers the product.
 When cold email starts (see the ad copy file), send it from a **separate subdomain or domain** so a spam
 complaint on outreach can never poison the address that delivers scan results.

@@ -261,15 +261,64 @@ export async function runsAwaitingReport(withinDays = 45, limit = 25): Promise<R
   const candidates = (runs ?? []) as RunRow[];
   if (!candidates.length) return [];
 
-  const { data: sent, error: repErr } = await db()
+  const unsent = await withoutSentReport(candidates);
+  if (!unsent.length) return [];
+
+  // AND ONLY ONCE EVERY CAPTURE HAS BEEN READ. The sweep settles a run and then fires the
+  // extraction pass without waiting for it, so for a minute or so a complete run holds
+  // captures with a null extracted_at. Those are excluded from the score everywhere, by
+  // design - which means a report built in that window is not incomplete, it is WRONG: a
+  // Share of Model over a smaller denominator, stored as the record and emailed. Waiting
+  // costs one sweep cycle. Extraction over 55 captures measured 29 seconds.
+  const { data: pending, error: capErr } = await db()
+    .from('captures')
+    .select('run_id')
+    .in('run_id', unsent.map((r) => r.id))
+    .is('extracted_at', null);
+  if (capErr) throw new Error(`Could not check extraction state: ${capErr.message}`);
+  const stillReading = new Set((pending ?? []).map((c) => (c as { run_id: string }).run_id));
+
+  return unsent.filter((r) => !stillReading.has(r.id)).slice(0, limit);
+}
+
+/**
+ * Complete runs whose report has been sitting undelivered for too long.
+ *
+ * THE NET UNDER THE SWEEP. Delivery lives in the five-minute sweep so a new subscriber has
+ * their first report about twenty minutes after paying, rather than at the next 06:00. The
+ * cost of that speed is a quiet failure mode: a run whose extraction never finishes is
+ * never ready, so it is never delivered, and nothing says so. Waiting for a report that
+ * will never come is exactly the silence this build keeps refusing.
+ *
+ * So the daily pass stops delivering and starts noticing. Anything complete, unsent and
+ * older than `hours` is something a person should look at.
+ */
+export async function runsStuckAwaitingReport(hours = 6): Promise<RunRow[]> {
+  const cutoff = new Date(Date.now() - hours * 3_600_000).toISOString();
+
+  const { data: runs, error } = await db()
+    .from('runs')
+    .select('*')
+    .eq('status', 'complete')
+    .lt('completed_at', cutoff)
+    .order('completed_at', { ascending: true })
+    .limit(50);
+  if (error) throw new Error(`Could not list complete runs: ${error.message}`);
+
+  const candidates = (runs ?? []) as RunRow[];
+  return candidates.length ? withoutSentReport(candidates) : [];
+}
+
+/** The runs among these whose report has not gone out. */
+async function withoutSentReport(candidates: RunRow[]): Promise<RunRow[]> {
+  const { data: sent, error } = await db()
     .from('reports')
-    .select('run_id, sent_at')
+    .select('run_id')
     .in('run_id', candidates.map((r) => r.id))
     .not('sent_at', 'is', null);
-  if (repErr) throw new Error(`Could not list sent reports: ${repErr.message}`);
+  if (error) throw new Error(`Could not list sent reports: ${error.message}`);
   const done = new Set((sent ?? []).map((r) => (r as { run_id: string }).run_id));
-
-  return candidates.filter((r) => !done.has(r.id)).slice(0, limit);
+  return candidates.filter((r) => !done.has(r.id));
 }
 
 /**

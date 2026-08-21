@@ -1,6 +1,11 @@
 /**
- * The daily scheduler. Opens the month's run for every subscriber due today, and sends the
- * reports for the runs that have finished since the last pass.
+ * The daily scheduler. Opens the month's run for every subscriber due today.
+ *
+ * It does NOT deliver reports: that moved to the five minute sweep, so a subscriber who
+ * pays at 07:00 does not wait until 06:00 the next morning for something that finished in
+ * thirteen minutes. What is left here is the net under that - anything complete and unsent
+ * for six hours gets an alert, because a delivery path that silently never fires is exactly
+ * the failure the sweep's speed would otherwise buy.
  *
  * report_day is 1 to 28 by check constraint (0003), capped from the billing anchor in
  * reportDayFrom(). That cap is load bearing here and easy to "fix" into a bug: because no
@@ -18,8 +23,8 @@
 import { authorised, unauthorised, kickChains, CHAINS } from '@/lib/cron';
 import { startRun, ensureBaselineRun, scopesAwaitingFirstRun } from '@/lib/run';
 import { dueJobCount } from '@/lib/jobs';
-import { deliverReport } from '@/lib/deliver';
-import { runsAwaitingReport } from '@/lib/reports';
+import { runsStuckAwaitingReport } from '@/lib/reports';
+import { sendOpsAlert } from '@/lib/billing-mail';
 import { LIVE_STATUSES } from '@/lib/billing';
 import { db } from '@/lib/db';
 
@@ -83,28 +88,30 @@ async function handle(req: Request): Promise<Response> {
     }
   }
 
-  // AND THEN SEND WHAT IS FINISHED. Opening runs and delivering reports are separate
-  // questions asked in the same pass: a run opened this morning is still capturing, so what
-  // goes out here is whatever finished since the last pass - usually yesterday's, and for a
-  // new subscriber the baseline run that completed minutes after they paid.
+  // DELIVERY MOVED TO THE FIVE MINUTE SWEEP, and what is left here is the net under it.
   //
-  // Asked of the data rather than of a flag, so a missed cron or a deploy mid-send is a row
-  // that still qualifies tomorrow rather than a report nobody ever sends. deliverReport
-  // holds the rules: a partial run is held and alerted, the send is claimed before the
-  // email, and a failure releases the claim so this pass retries it.
-  const delivered: Array<{ run: string; to: string }> = [];
-  const held: Array<{ run: string; status: string }> = [];
-  for (const run of await runsAwaitingReport()) {
-    try {
-      const outcome = await deliverReport(run);
-      if (outcome.sent) delivered.push({ run: run.id, to: outcome.to });
-      else if (outcome.reason === 'held') held.push({ run: run.id, status: outcome.status });
-      else if (outcome.reason === 'failed') failed.push({ scope: run.scope_id, reason: `send: ${outcome.error}` });
-    } catch (err) {
-      // One subscriber's report must not stop everybody else's, same as opening runs.
-      failed.push({ scope: run.scope_id, reason: `send: ${err instanceof Error ? err.message : String(err)}` });
-      console.error(`schedule: could not deliver the report for run ${run.id}`, err);
-    }
+  // The sweep sends a report a few minutes after the run finishes, which is what makes a
+  // first report arrive while the subscriber still remembers paying. The cost of that is a
+  // quiet failure mode: a run whose extraction never completes is never ready to deliver,
+  // so it is never delivered and nothing says so. A subscriber waiting for a report that
+  // will never arrive is the silence this build keeps refusing.
+  //
+  // So the daily pass notices instead of delivering. Complete, unsent, and older than six
+  // hours is not a timing quirk, it is stuck.
+  const stuck = await runsStuckAwaitingReport();
+  if (stuck.length) {
+    await sendOpsAlert({
+      subject: `${stuck.length} report${stuck.length === 1 ? '' : 's'} finished but never sent`,
+      lines: [
+        'These runs are complete, their reports have not gone out, and the five minute',
+        'sweep has had at least six hours to send them.',
+        '',
+        ...stuck.map((r) => `  run ${r.id} scope ${r.scope_id} period ${r.period_start}`),
+        '',
+        'Most likely the extraction pass never finished, which is what holds delivery back:',
+        'check for captures with a null extracted_at, then POST /api/run/extract.',
+      ],
+    });
   }
 
   const pending = await dueJobCount();
@@ -116,8 +123,7 @@ async function handle(req: Request): Promise<Response> {
     due: due.length,
     opened,
     baselines,
-    delivered,
-    held,
+    stuck: stuck.map((r) => r.id),
     failed,
     pending,
     kicked,
