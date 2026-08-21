@@ -242,6 +242,35 @@ We measure **surfaces, not models**. Copilot runs largely on OpenAI models and s
 differently to ChatGPT, because the index and the system prompt differ. Competitors selling
 "12 models covered" are measuring the wrong noun.
 
+**Session 6 change, decided 22 Aug 2026: Claude and Copilot are captured by hand in the FIRST
+report for every new subscriber, then quarterly thereafter.**
+
+Three reasons. A subscriber who churns at month two never receives them at all under a
+purely quarterly cadence, so the two surfaces that cost the most to produce are the two the
+least-committed subscriber never sees. The first report is what decides renewal. And a
+one-off manual capture per signup scales with new signups rather than with the subscriber
+base, which is the direction that stays affordable.
+
+**The rule does not move: never substitute an API call for claude.ai.** The Anthropic API is
+not claude.ai and Azure grounding is not Copilot. A caveated extra data point is worth less
+than the position that a surface is only ever recorded from itself, which is the whole
+methodology.
+
+**The wrinkle to design around, from delta.ts.** A first report with seven surfaces followed
+by a month two with five means `runs.surfaces` differs between them, so `surfaceObjection()`
+raises "We did not measure Claude this month" and the OVERALL change is suppressed - every
+subscriber's first delta, the one that has to earn month three, arrives with no headline
+number. Two ways out, and Session 6 has to pick one deliberately: make the delta
+cadence-aware so month to month is computed over the monthly five and the quarterly two are
+tracked separately, or keep the hand captures in their own run (`period` is already
+`quarterly` or `calibration`) and present them inside the first report without putting them
+in the monthly trend. The second keeps the monthly line clean and is closer to what the
+schema already expects.
+
+Also settled by the schema: `capture_method = 'browser'` requires an `operator` (0002), so a
+hand-read answer always carries a name, and ten hand captures per signup is what this costs
+at five questions across two surfaces.
+
 **Frozen because there are zero subscribers.** This is the only moment the set can change for free.
 Every change after the first reports ship resets the Share of Model baseline and destroys
 comparability. Not included, decided: DeepSeek.
