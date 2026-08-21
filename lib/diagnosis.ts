@@ -109,9 +109,36 @@ const knownPhrase = (recognised: number, asked: number) =>
  * the opposite advice.
  */
 export function diagnose(input: DiagnosisInput): DiagnosisResult {
+  return describe(classify(input), input);
+}
+
+/**
+ * Which of the five states these two numbers put a subscriber in, at TODAY's thresholds.
+ *
+ * Split out from the copy on purpose, and the split is what makes 0008's promise real. A
+ * report stores the kind it was issued under; rendering it again months later calls
+ * describe() with the stored kind rather than classify(), so a threshold revised at ten
+ * subscribers cannot reach back and re-label a report somebody has already read. The
+ * classification is versioned by THRESHOLD_VERSION; the sentences are not, because they
+ * say the same thing about the same state whenever they are read.
+ */
+export function classify(input: DiagnosisInput): Diagnosis {
+  const { presence, recognised, endorsed, askedDirectly } = input;
+  if (askedDirectly > 0 && recognised < RECOGNITION_LOW) return 'unknown';
+  if (presence === null) return endorsed >= ENDORSEMENT_HIGH ? 'endorsed_not_surfacing' : 'known_not_endorsed';
+  const high = presence >= PRESENCE_HIGH;
+  const backed = endorsed >= ENDORSEMENT_HIGH;
+  if (high && backed) return 'established';
+  if (high && !backed) return 'surfacing_not_endorsed';
+  if (!high && backed) return 'endorsed_not_surfacing';
+  return 'known_not_endorsed';
+}
+
+/** The label and the two sentences for one state. Pure copy, given the numbers. */
+export function describe(kind: Diagnosis, input: DiagnosisInput): DiagnosisResult {
   const { presence, recognised, endorsed, askedDirectly } = input;
 
-  if (askedDirectly > 0 && recognised < RECOGNITION_LOW) {
+  if (kind === 'unknown') {
     return {
       kind: 'unknown',
       label: 'Not yet known',
@@ -125,11 +152,13 @@ export function diagnose(input: DiagnosisInput): DiagnosisResult {
 
   // No unbranded question was answered by anything, so there is no presence to be high or
   // low. Falling through to a presence-based label would state a finding we do not have -
-  // the same class of error as scoring a no_answer as an absence.
+  // the same class of error as scoring a no_answer as an absence. Keyed off presence rather
+  // than off the kind, because both of the kinds it can produce have an ordinary meaning
+  // too and this is the sentence that has to win when there is no presence figure at all.
   if (presence === null) {
     return {
-      kind: endorsed >= ENDORSEMENT_HIGH ? 'endorsed_not_surfacing' : 'known_not_endorsed',
-      label: endorsed >= ENDORSEMENT_HIGH ? 'Recommended, but not coming up' : 'Known, not recommended',
+      kind,
+      label: kind === 'endorsed_not_surfacing' ? 'Recommended, but not coming up' : 'Known, not recommended',
       headline: `${knownPhrase(recognised, askedDirectly)}. ${endorsedClause(endorsed)}.`,
       meaning:
         'None of your unbranded questions were answered this month, so there is no ' +
@@ -138,10 +167,7 @@ export function diagnose(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
-  const high = presence >= PRESENCE_HIGH;
-  const backed = endorsed >= ENDORSEMENT_HIGH;
-
-  if (high && backed) {
+  if (kind === 'established') {
     return {
       kind: 'established',
       label: 'Established',
@@ -152,7 +178,7 @@ export function diagnose(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
-  if (high && !backed) {
+  if (kind === 'surfacing_not_endorsed') {
     return {
       kind: 'surfacing_not_endorsed',
       label: 'Coming up, not recommended',
@@ -164,7 +190,7 @@ export function diagnose(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
-  if (!high && backed) {
+  if (kind === 'endorsed_not_surfacing') {
     return {
       kind: 'endorsed_not_surfacing',
       label: 'Recommended, but not coming up',

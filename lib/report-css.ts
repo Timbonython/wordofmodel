@@ -237,6 +237,8 @@ export const REPORT_CSS = String.raw`
   .key span i{flex:none;margin-top:3px}
   .suppressed{border-left:3px solid var(--pen);padding:14px 0 14px 18px;margin:0 0 18px;
     font-size:15px;color:var(--ink-soft);max-width:66ch}
+  .cta{display:inline-block;background:var(--ink);color:var(--paper);text-decoration:none;
+    font-family:var(--mono);font-size:13px;letter-spacing:.06em;padding:13px 22px;margin-top:6px}
   .method{font-family:var(--mono);font-size:12.5px;line-height:1.8;color:var(--ink-soft);white-space:pre-wrap;max-width:80ch}
   @media (max-width:640px){
     .pair{grid-template-columns:1fr}
