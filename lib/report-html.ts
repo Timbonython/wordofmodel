@@ -33,6 +33,7 @@
 import 'server-only';
 import { REPORT_CSS } from './report-css';
 import { SLOT_LABEL } from './scope';
+import { countWord } from './actions';
 import type { GridState, ReportData } from './report';
 
 function esc(s: string): string {
@@ -181,13 +182,14 @@ ${items}
  * recommendation is exactly what this section exists instead of.
  */
 function sectionActions(r: ReportData): string {
-  if (!r.actions.length) return '';
-  const n = r.actions.length;
-  const items = r.actions
+  const { items, convergence } = r.actions;
+  if (!items.length) return '';
+  const n = items.length;
+  const rendered = items
     .map(
       (a) => `      <li>
         <div class="who">${esc(a.label)}</div>
-        <p class="quote">${esc(a.quote)}</p>
+        <p class="quote">${markSpan(a.quote, a.span)}</p>
         <p class="fix">${esc(a.whatWouldChangeIt)}</p>
       </li>`,
     )
@@ -196,16 +198,33 @@ function sectionActions(r: ReportData): string {
     <div class="eyebrow">What to do about it</div>
     <h2>${n === 1 ? 'One of them told you what is wrong' : `${countWord(n)} of them told you what is wrong`}</h2>
     <p class="lede">None of this is our advice. Each line below is the reason a surface gave, unprompted and in its own words, for naming you without putting you forward, quoted from the answers printed in full further down this report. The only part we have added is what would change it.</p>
+${convergence ? `    <p class="converge">${esc(convergence)}</p>` : ''}
     <ul class="said-list actions">
-${items}
+${rendered}
     </ul>
   </section>`;
 }
 
-/** Small counts read as words in a heading. Nine is where that stops being natural. */
-function countWord(n: number): string {
-  const words = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-  return words[n] ?? String(n);
+/**
+ * The reason clause, underlined inside the whole sentence.
+ *
+ * NOT TRIMMED TO THE CLAUSE, and the distinction is the product's. Grok gives its reason and
+ * then softens it with praise, which reads oddly under a heading about what is wrong - and
+ * the tempting fix is to quote the first half. Cutting a quote at the point where it stops
+ * agreeing with our heading is what everyone else in this category does, and a subscriber
+ * cannot tell from the page that it happened. So the sentence stays whole and gets a mark
+ * under the part that is the reason: the eye lands in the right place, and the words that
+ * soften it are still there for anyone reading properly.
+ *
+ * The span was checked against this exact string at extraction time. If it is not found -
+ * a re-extraction, an older row - the sentence renders unmarked rather than approximately
+ * marked.
+ */
+function markSpan(quote: string, span: string | null): string {
+  if (!span) return esc(quote);
+  const at = quote.indexOf(span);
+  if (at < 0) return esc(quote);
+  return `${esc(quote.slice(0, at))}<mark class="reason">${esc(span)}</mark>${esc(quote.slice(at + span.length))}`;
 }
 
 // 5 -------------------------------------------------------------- what changed

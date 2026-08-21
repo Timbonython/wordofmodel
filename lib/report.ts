@@ -20,7 +20,7 @@ import { diagnose, THRESHOLD_VERSION, THRESHOLD_NOTE, type DiagnosisResult } fro
 import { shareOfModel, aiOverviewStats, type ScoredCapture } from './share';
 import { computeDelta, type DeltaReport, type RunSnapshot } from './delta';
 import { aiOverviewCoverage, VARIANCE_NOTE, COMPARABILITY_NOTE, CITATION_CAVEAT, geoNote, samplingNote, AIO_PROVENANCE_NOTE } from './method';
-import { buildActions, isHedgeReason, type HedgeReason, type ReportAction } from './actions';
+import { buildActions, isHedgeReason, type HedgeReason, type ReportActions } from './actions';
 import { SURFACES, type QuestionSlot, type Surface } from './scope';
 import { EXTRACTION_VERSION } from './extract';
 import type { RunRow } from './accounts';
@@ -62,6 +62,7 @@ interface CaptureRecord extends ScoredCapture {
   target_position: number | null;
   hedge_quote: string | null;
   hedge_reason: string | null;
+  hedge_span: string | null;
 }
 
 export interface ReportData {
@@ -81,10 +82,11 @@ export interface ReportData {
   branded: Array<{ surface: string; label: string; recommended: boolean; excerpt: string | null }>;
 
   /**
-   * What to do about it, in the surfaces' own words. Sits directly after the branded
-   * section: problem, proof, what to do, then the supporting data.
+   * What to do about it, in the surfaces' own words, grouped by the cause behind them.
+   * Sits directly after the branded section: problem, proof, what to do, then the
+   * supporting data.
    */
-  actions: ReportAction[];
+  actions: ReportActions;
 
   questions: Array<{
     slot: QuestionSlot;
@@ -133,7 +135,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     .select(
       'id, engine, question_id, sample, outcome, extracted_at, target_mentioned, target_recommended, ' +
         'target_position, top_recommendation, brands_named, domains_cited, answer_text, citations, ' +
-        'model_used, provider, grounded, geo_sent, vercel_region, hedge_quote, hedge_reason, ' +
+        'model_used, provider, grounded, geo_sent, vercel_region, hedge_quote, hedge_reason, hedge_span, ' +
         'extraction_version',
     )
     .eq('run_id', run.id);
@@ -227,6 +229,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
         domains: topDomainsFor(captures, c.engine),
         branded: c.slot === 'branded',
         sample: c.sample,
+        span: c.hedge_span,
       })),
   );
 

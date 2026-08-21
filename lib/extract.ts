@@ -39,7 +39,7 @@ import type { Citation } from './types';
  * after the competitor set, the surface set and the sampling depth. Session 4 must compare
  * like with like or say what changed.
  */
-export const EXTRACTION_VERSION = 3;
+export const EXTRACTION_VERSION = 4;
 
 /**
  * v2, 21 Aug 2026. The judgment call now also returns the sentence in which the answer said
@@ -117,6 +117,7 @@ interface Judgment {
   other_brands: string[];
   hedge_quote: string | null;
   hedge_reason: string | null;
+  hedge_span: string | null;
 }
 
 const JUDGMENT_SCHEMA = {
@@ -129,6 +130,7 @@ const JUDGMENT_SCHEMA = {
     'other_brands',
     'hedge_quote',
     'hedge_reason',
+    'hedge_span',
   ],
   properties: {
     target_recommended: { type: 'boolean' },
@@ -137,6 +139,7 @@ const JUDGMENT_SCHEMA = {
     other_brands: { type: 'array', items: { type: 'string' } },
     hedge_quote: { type: ['string', 'null'] },
     hedge_reason: { type: ['string', 'null'], enum: [...HEDGE_REASONS, null] },
+    hedge_span: { type: ['string', 'null'] },
   },
 } as const;
 
@@ -176,6 +179,12 @@ sentences, do not fix its punctuation. If the answer states no such reason, or y
 have to write the sentence yourself, return null. Returning null is correct far more often
 than guessing, and a sentence that is not in the answer word for word will be thrown away.
 
+hedge_span: when only PART of hedge_quote states the reason, copy that clause, again
+EXACTLY as written and as a substring of hedge_quote. A sentence that gives a reason and
+then softens it - "It's not as established as X, but users often praise its value" - has a
+reason clause and a clause that is not one, and the first is the span. null when the whole
+sentence is the reason, which is the common case. Never rewrite the clause to stand alone.
+
 hedge_reason: which of these the quoted sentence is, or null when hedge_quote is null.
   evidence_thin     not enough independent feedback, reviews or third-party coverage
   rating_low        names a specific published score or star rating that is unflattering
@@ -214,6 +223,8 @@ export interface ExtractionResult {
   /** Verbatim, and null unless it was found in the answer. Never a paraphrase. */
   hedgeQuote: string | null;
   hedgeReason: HedgeReason | null;
+  /** The clause inside hedgeQuote that carries the reason, for marking. Null when it is all of it. */
+  hedgeSpan: string | null;
 }
 
 /**
@@ -238,6 +249,32 @@ function verbatimQuote(answer: string, quote: string | null): string | null {
   // it is a summary wearing a quotation mark.
   if (trimmed.length < 20 || trimmed.length > 600) return null;
   return normaliseForMatch(answer).includes(normaliseForMatch(trimmed)) ? trimmed : null;
+}
+
+/**
+ * The clause inside the quote that carries the reason, or null.
+ *
+ * Marked rather than cut. Grok's sentence gives its reason and then softens it, and storing
+ * only the first half would have us printing an edited quote under Grok's name in a report
+ * whose whole claim is that we hand back what the engines said. So the sentence stays whole
+ * and this says where to draw the line under it.
+ *
+ * A span that IS the whole quote is null: marking every word is the same as marking none,
+ * and it would put a rule under four sentences out of five for no reason.
+ */
+function verbatimSpan(quote: string, span: string | null): string | null {
+  if (!span) return null;
+  const trimmed = span.trim().replace(/[,;:.\s]+$/, '');
+  if (trimmed.length < 8) return null;
+
+  // Compared with trailing punctuation off BOTH sides. A model asked for the reason clause
+  // of a sentence that is entirely a reason returns the sentence without its full stop,
+  // which is not "part of" anything - marking it underlines every word, which is the same
+  // as underlining none and puts a red rule under four quotes in five.
+  const haystack = normaliseForMatch(quote).replace(/[,;:.\s]+$/, '');
+  const needle = normaliseForMatch(trimmed);
+  if (needle === haystack) return null;
+  return haystack.includes(needle) ? trimmed : null;
 }
 
 function normaliseForMatch(s: string): string {
@@ -274,6 +311,7 @@ export async function extractCapture(
       extractorModel: null,
       hedgeQuote: null,
       hedgeReason: null,
+      hedgeSpan: null,
     };
   }
 
@@ -291,6 +329,7 @@ export async function extractCapture(
     other_brands: [],
     hedge_quote: null,
     hedge_reason: null,
+    hedge_span: null,
   };
   let extractorModel: string | null = null;
 
@@ -324,6 +363,15 @@ export async function extractCapture(
     console.warn(`extract: discarded a hedge quote not found in the answer, capture ${capture.id}`);
   }
 
+  // The span is held to the same standard as the quote, one level in: it must be part of
+  // the sentence we are about to print, or it is dropped and the sentence prints unmarked.
+  // A mark placed over words the surface did not write in that order would be a quieter
+  // version of the misquote the whole guard exists to prevent.
+  const hedgeSpan = hedgeQuote ? verbatimSpan(hedgeQuote, judgment.hedge_span) : null;
+  if (hedgeQuote && judgment.hedge_span && !hedgeSpan) {
+    console.warn(`extract: discarded a hedge span not found in its quote, capture ${capture.id}`);
+  }
+
   const brandsNamed = dedupeBrands([
     ...(targetMentioned ? [scope.brand_name] : []),
     ...competitorsNamed,
@@ -341,6 +389,7 @@ export async function extractCapture(
     extractorModel,
     hedgeQuote: hedgeReason ? hedgeQuote : null,
     hedgeReason,
+    hedgeSpan: hedgeReason ? hedgeSpan : null,
   };
 }
 
@@ -370,6 +419,7 @@ export async function writeExtraction(r: ExtractionResult): Promise<void> {
       domains_cited: r.domainsCited,
       hedge_quote: r.hedgeQuote,
       hedge_reason: r.hedgeReason,
+      hedge_span: r.hedgeSpan,
       extracted_at: new Date().toISOString(),
       extraction_version: EXTRACTION_VERSION,
       extractor_model: r.extractorModel,

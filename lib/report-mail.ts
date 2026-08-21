@@ -60,6 +60,22 @@ export function reportSubject(r: ReportData): string {
   return `${r.scope.brandName}, ${period}: your Share of Model is ${pct(r.presence.shareOfModel)}`;
 }
 
+/** Hard wrapped at 78 columns, because a text part is read in a monospace window. */
+function wrap(s: string, width = 78): string {
+  const out: string[] = [];
+  let line = '';
+  for (const word of s.split(/\s+/)) {
+    if (line && line.length + word.length + 1 > width) {
+      out.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) out.push(line);
+  return out.join('\n');
+}
+
 /**
  * The plain text alternative, and it is not a throwaway.
  *
@@ -88,14 +104,18 @@ function plainText(r: ReportData, url: string): string {
     ``,
   ];
 
-  if (r.actions.length) {
+  if (r.actions.items.length) {
     lines.push(`WHAT TO DO ABOUT IT`, ``);
     lines.push(
       `None of this is our advice. Each line is the reason a surface gave, in its own words,`,
       `for naming you without putting you forward.`,
       ``,
     );
-    for (const a of r.actions) {
+    // The convergence sentence carries into the text alternative. It is the finding, not
+    // decoration: without it this is a to-do list, and the list has lost the fact that most
+    // of it is one problem.
+    if (r.actions.convergence) lines.push(wrap(r.actions.convergence), ``);
+    for (const a of r.actions.items) {
       lines.push(`${a.label}`, `  "${a.quote}"`, `  ${a.whatWouldChangeIt}`, ``);
     }
   }

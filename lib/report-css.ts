@@ -221,6 +221,14 @@ export const REPORT_CSS = String.raw`
      remedy is ours and is set in the body face, indented behind a rule, so a reader can see
      at a glance which sentences the report wrote and which it only carried. */
   .said-list.actions .quote{border-left:3px solid var(--mark-you);padding-left:16px}
+  /* Red pen under the clause that is the reason, inside a sentence printed whole. The design
+     system's annotation mark, doing exactly what a pen does on a printed page: pointing,
+     not editing. */
+  .said-list.actions .quote mark.reason{background:none;color:inherit;
+    border-bottom:2px solid var(--pen);padding-bottom:1px}
+  /* The convergence line is a finding, not furniture, so it is set like one. */
+  .converge{border-left:3px solid var(--ink);padding:14px 0 14px 18px;margin:0 0 6px;
+    font-size:16.5px;line-height:1.6;color:var(--ink);max-width:70ch}
   .said-list.actions .fix{margin:12px 0 0 19px;font-size:15px;color:var(--ink-soft);max-width:66ch}
 
   /* Grid marks. Four states, and the two that used to share a dash are the reason for the

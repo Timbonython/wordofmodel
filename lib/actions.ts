@@ -50,6 +50,47 @@ export function isHedgeReason(v: unknown): v is HedgeReason {
 }
 
 /**
+ * THE CAUSE BEHIND THE REASON, AND WHY THE REPORT NEEDS BOTH.
+ *
+ * A reason is what one surface said. A cause is what several of them are talking about, and
+ * it is a level up: ChatGPT could not find enough independent feedback, Perplexity called
+ * the evidence limited, Grok said they are not as established as the big names. Three
+ * different sentences, three different reason codes, one problem - there is not enough
+ * about this company on the open web to recommend from.
+ *
+ * Printed as four bullets that reads as a four-item to-do list, and a subscriber works down
+ * it. Grouped and said plainly it is a much stronger finding: three surfaces, asked
+ * separately, with no sight of each other's answers, named the same cause. Convergence
+ * between independent systems is evidence in a way that any one of them saying it is not,
+ * and it hands the subscriber their priority order for nothing - one specific fix, and one
+ * real piece of work that three engines are independently asking for.
+ *
+ * 'other' is deliberately NOT a cause anything can converge on. Two surfaces whose reasons
+ * we could not classify have not agreed about anything; treating them as agreement would be
+ * the report inventing a pattern out of its own missing vocabulary.
+ */
+export type Cause = 'thin_record' | 'unfavourable_record' | 'coverage' | 'price' | 'unclassified';
+
+const CAUSE: Record<HedgeReason, Cause> = {
+  evidence_thin: 'thin_record',
+  small_or_new: 'thin_record',
+  rating_low: 'unfavourable_record',
+  reputation_mixed: 'unfavourable_record',
+  coverage_gap: 'coverage',
+  price: 'price',
+  other: 'unclassified',
+};
+
+/** The cause in the subscriber's words, for the sentence that names the convergence. */
+const CAUSE_PHRASE: Record<Cause, string> = {
+  thin_record: 'there is not enough independent evidence about you for them to recommend from',
+  unfavourable_record: 'what is published about you is not good enough to put you forward on',
+  coverage: 'they believe there is something you do not do',
+  price: 'they cannot see what you cost',
+  unclassified: 'the same thing',
+};
+
+/**
  * Sharpest first, and the order is a rule rather than a judgment made per report.
  *
  * A specific published number leads, because it is checkable, it is public, and it is being
@@ -169,14 +210,29 @@ export interface HedgeCandidate {
   branded: boolean;
   /** Which reading this was. The tiebreak, and the reason the report is reproducible. */
   sample: number;
+  /** The clause inside the quote that carries the reason, when it is only part of it. */
+  span: string | null;
 }
 
 export interface ReportAction {
   surface: string;
   label: string;
   quote: string;
+  /** Marked inside the quote when present. Never cut out of it. */
+  span: string | null;
   reason: HedgeReason;
+  cause: Cause;
   whatWouldChangeIt: string;
+}
+
+export interface ReportActions {
+  items: ReportAction[];
+  /**
+   * The sentence that says several surfaces named the same cause, or null when they did
+   * not. Null is the ordinary case for a subscriber whose surfaces disagree, and an
+   * invented convergence would be worse than none.
+   */
+  convergence: string | null;
 }
 
 /**
@@ -193,7 +249,7 @@ export interface ReportAction {
  * re-rendering the same stored run could quietly change the report. Every input here is
  * already fixed on the capture, so the output has no business moving.
  */
-export function buildActions(candidates: HedgeCandidate[]): ReportAction[] {
+export function buildActions(candidates: HedgeCandidate[]): ReportActions {
   const bySurface = new Map<string, HedgeCandidate>();
   for (const c of candidates) {
     if (!c.quote.trim()) continue;
@@ -201,24 +257,92 @@ export function buildActions(candidates: HedgeCandidate[]): ReportAction[] {
     if (!held || beats(c, held)) bySurface.set(c.surface, c);
   }
 
-  const ordered = [...bySurface.values()].sort(
-    (a, b) => PRIORITY[a.reason] - PRIORITY[b.reason] || a.label.localeCompare(b.label),
-  );
+  // GROUPED BY CAUSE, LARGEST GROUP FIRST, and that is the ordering change convergence
+  // requires. Sorted by reason alone, two surfaces saying the same thing can be split by a
+  // third saying something unrelated, and the agreement between them disappears into a
+  // list. Within a group the sharpest reason still leads, and a subscriber whose surfaces
+  // all disagree gets groups of one, which sorts back to exactly the old order.
+  const groups = new Map<Cause, HedgeCandidate[]>();
+  for (const c of bySurface.values()) {
+    const cause = CAUSE[c.reason];
+    const held = groups.get(cause);
+    if (held) held.push(c);
+    else groups.set(cause, [c]);
+  }
+
+  const rank = (g: HedgeCandidate[]) => Math.min(...g.map((c) => PRIORITY[c.reason]));
+  const orderedGroups = [...groups.values()].sort((a, b) => b.length - a.length || rank(a) - rank(b));
+  for (const g of orderedGroups) {
+    g.sort((a, b) => PRIORITY[a.reason] - PRIORITY[b.reason] || a.label.localeCompare(b.label));
+  }
+  const ordered = orderedGroups.flat();
 
   const statedFirstBy = new Map<HedgeReason, string>();
-  return ordered.map((c) => {
+  const items = ordered.map((c) => {
     const first = statedFirstBy.get(c.reason);
     if (!first) statedFirstBy.set(c.reason, c.label);
     return {
       surface: c.surface,
       label: c.label,
       quote: c.quote.trim(),
+      span: c.span?.trim() || null,
       reason: c.reason,
+      cause: CAUSE[c.reason],
       whatWouldChangeIt: first
         ? alsoWouldChangeIt(c.reason, first, { domains: c.domains })
         : whatWouldChangeIt(c.reason, { domains: c.domains }),
     };
   });
+
+  return { items, convergence: convergenceLine(orderedGroups) };
+}
+
+/**
+ * The sentence that turns a list into a finding.
+ *
+ * Four surfaces each giving a reason is a to-do list. Three of them independently naming
+ * the same cause is evidence, and it is evidence of a kind this product is uniquely placed
+ * to produce: these systems were asked separately, they cannot see each other's answers,
+ * and they still agreed. Nobody gets that from asking ChatGPT once.
+ *
+ * Null unless it is true. No convergence, no sentence - and never for 'unclassified',
+ * where the only thing shared is our inability to name what they said.
+ */
+function convergenceLine(orderedGroups: HedgeCandidate[][]): string | null {
+  const total = orderedGroups.reduce((t, g) => t + g.length, 0);
+  const biggest = orderedGroups[0];
+  if (!biggest || biggest.length < 2) return null;
+
+  const cause = CAUSE[biggest[0]!.reason];
+  if (cause === 'unclassified') return null;
+
+  const n = biggest.length;
+  const labels = listOf(biggest.map((c) => c.label));
+  const others = orderedGroups.slice(1).flat();
+
+  const head =
+    `${countWord(n)} of the ${countWord(total).toLowerCase()} named the same cause: ` +
+    `${CAUSE_PHRASE[cause]}. ${labels} were asked separately and cannot see each other's ` +
+    `answers, so this is not one opinion repeated back to you. It is ${countWord(n).toLowerCase()} ` +
+    `systems reaching the same explanation independently, which is the strongest evidence ` +
+    `this report can carry.`;
+
+  if (!others.length) {
+    return `${head} It is also one piece of work rather than ${countWord(n).toLowerCase()} tasks.`;
+  }
+
+  const otherLabels = listOf(others.map((c) => c.label));
+  const specific = others.some((c) => c.reason === 'rating_low')
+    ? `${otherLabels} named one specific published number, which is the quickest thing here to change.`
+    : `${otherLabels} named something else, and ${others.length === 1 ? 'it is' : 'they are'} listed after them.`;
+
+  return `${head} It also sets the order below: those ${countWord(n).toLowerCase()} are one piece of work rather than ${countWord(n).toLowerCase()} tasks, and ${specific}`;
+}
+
+/** Small counts read as words in a sentence. Nine is where that stops being natural. */
+export function countWord(n: number): string {
+  const words = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  return words[n] ?? String(n);
 }
 
 /** Branded first, then the sharpest reason, then the earliest reading. Total, and stable. */
