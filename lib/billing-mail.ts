@@ -1,6 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { env } from './env';
+import { db } from './db';
 import type { PriceKey } from './stripe';
 import { MONTHLY_SURFACES, QUARTERLY_SURFACES, SURFACES } from './accounts';
 
@@ -227,6 +228,24 @@ function escapeHtml(s: string): string {
  * Never throws. An alert that takes down the handler it is reporting from turns
  * one silent failure into two loud ones. If Resend is the thing that is broken,
  * this fails too, and the console line is the last line of defence.
+ *
+ * SWALLOWING THE EXCEPTION IS RIGHT. SWALLOWING IT SILENTLY WAS NOT. Until 0011 this
+ * function left no trace of its own outcome, so an alert that reached nobody and an alert
+ * that arrived looked identical from every side: same return, same absence of an error, a
+ * console line in a serverless log nobody reads. Session 4 watched several of these fire
+ * and called them verified, which was only ever a claim about the code path.
+ *
+ * It is not hypothetical. hello@wordofmodel.ai - ALERT_EMAIL and the reply-to on every
+ * subscriber email - bounced 550 5.1.1 three times on 17 Aug 2026, rejected by Cloudflare's
+ * own MX because no routing rule existed for it. Had that still been true, every alert in
+ * this build would have gone into the ground quietly.
+ *
+ * So every attempt is written down, with Resend's message id when there is one. ACCEPTED IS
+ * NOT DELIVERED: `sent` means Resend took it, and the id is how you ask them afterwards
+ * whether it actually landed. scripts/alerts-check.mjs does that.
+ *
+ * The recording is inside its own try/catch. If the database is what is broken, the alert
+ * still goes out; failing to write the receipt must never cost the alert itself.
  */
 export async function sendOpsAlert(input: {
   subject: string;
@@ -237,19 +256,87 @@ export async function sendOpsAlert(input: {
 
   if (!env.alertEmail) {
     console.error('ALERT_EMAIL is not set, so that alert went nowhere but here.');
+    await recordAlert({ subject: input.subject, status: 'no_address', recipient: null, messageId: null, error: 'ALERT_EMAIL is not set' });
     return;
   }
 
   try {
     const resend = new Resend(env.resendKey);
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: env.resendFrom,
       to: env.alertEmail,
       subject: input.subject,
       text,
     });
     if (error) throw new Error(error.message);
+    await recordAlert({
+      subject: input.subject,
+      status: 'sent',
+      recipient: env.alertEmail,
+      messageId: data?.id ?? null,
+      error: null,
+    });
   } catch (err) {
-    console.error('The alert itself could not be sent:', err instanceof Error ? err.message : err);
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error('The alert itself could not be sent:', reason);
+    await recordAlert({
+      subject: input.subject,
+      status: 'failed',
+      recipient: env.alertEmail,
+      messageId: null,
+      error: reason,
+    });
   }
+}
+
+/** Writes the receipt. Never throws, for the same reason its caller never throws. */
+async function recordAlert(row: {
+  subject: string;
+  status: 'sent' | 'failed' | 'no_address';
+  recipient: string | null;
+  messageId: string | null;
+  error: string | null;
+}): Promise<void> {
+  try {
+    const { error } = await db().from('ops_alerts').insert({
+      subject: row.subject,
+      status: row.status,
+      recipient: row.recipient,
+      provider_message_id: row.messageId,
+      error: row.error,
+    });
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    console.error('Could not record the alert attempt:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * The last few alert attempts. "Did anybody hear about that" as a query.
+ *
+ * Still only what we attempted: a row saying `sent` means Resend accepted it. Take
+ * provider_message_id to scripts/alerts-check.mjs for the delivery event itself.
+ */
+export async function recentOpsAlerts(limit = 10): Promise<Array<{
+  subject: string;
+  status: string;
+  recipient: string | null;
+  provider_message_id: string | null;
+  error: string | null;
+  created_at: string;
+}>> {
+  const { data, error } = await db()
+    .from('ops_alerts')
+    .select('subject, status, recipient, provider_message_id, error, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Could not read the alert log: ${error.message}`);
+  return (data ?? []) as Array<{
+    subject: string;
+    status: string;
+    recipient: string | null;
+    provider_message_id: string | null;
+    error: string | null;
+    created_at: string;
+  }>;
 }

@@ -11,6 +11,17 @@ function required(name: string): string {
   return v;
 }
 
+/**
+ * Is this address on the same domain we send from? Compared on the domain alone, because
+ * that is the unit a mail routing fault takes out.
+ */
+function sharesDomainWithSender(address: string): boolean {
+  const domainOf = (s: string) => s.trim().toLowerCase().match(/@([^\s>]+)/)?.[1] ?? null;
+  const alert = domainOf(address);
+  const sender = domainOf(process.env.RESEND_FROM || 'results@wordofmodel.ai');
+  return Boolean(alert && sender && alert === sender);
+}
+
 export const env = {
   get openaiKey() {
     return required('OPENAI_API_KEY');
@@ -152,9 +163,30 @@ export const env = {
   get wizardLive(): boolean {
     return process.env.WIZARD_LIVE === 'true';
   },
-  /** Where failed payments and new subscriptions get reported. */
+  /**
+   * Where failed payments, held reports and every other ops alert get reported.
+   *
+   * IT MUST NOT BE ON THE SENDING DOMAIN, and that is not a style preference. It was
+   * hello@wordofmodel.ai until 21 Aug 2026, which is also the reply-to on every subscriber
+   * email and is routed by Cloudflare Email Routing. One misconfigured routing rule takes
+   * out the address a customer replies to AND the address that would have told us about it:
+   * the same fault, one cause, no signal. That address really did bounce 550 5.1.1 three
+   * times on 17 Aug, rejected by Cloudflare's own MX with no rule behind it.
+   *
+   * An alert channel that shares a failure mode with the thing it monitors is not a channel.
+   * So it points at a mailbox on different infrastructure, and the warning below fires if
+   * anybody ever points it back.
+   */
   get alertEmail(): string | null {
-    return process.env.ALERT_EMAIL || null;
+    const value = process.env.ALERT_EMAIL || null;
+    if (value && sharesDomainWithSender(value)) {
+      console.warn(
+        `ALERT_EMAIL (${value}) is on the same domain as RESEND_FROM. A mail routing fault ` +
+          `on that domain would take out the alert channel and the thing it is watching at ` +
+          `the same time. Point it at a mailbox somewhere else.`,
+      );
+    }
+    return value;
   },
   get resendFrom() {
     return process.env.RESEND_FROM || 'Word of Model <results@wordofmodel.ai>';

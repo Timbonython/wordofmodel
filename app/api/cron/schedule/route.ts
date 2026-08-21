@@ -1,5 +1,6 @@
 /**
- * The daily scheduler. Opens the month's run for every subscriber due today.
+ * The daily scheduler. Opens the month's run for every subscriber due today, and sends the
+ * reports for the runs that have finished since the last pass.
  *
  * report_day is 1 to 28 by check constraint (0003), capped from the billing anchor in
  * reportDayFrom(). That cap is load bearing here and easy to "fix" into a bug: because no
@@ -17,10 +18,12 @@
 import { authorised, unauthorised, kickChains, CHAINS } from '@/lib/cron';
 import { startRun, ensureBaselineRun, scopesAwaitingFirstRun } from '@/lib/run';
 import { dueJobCount } from '@/lib/jobs';
+import { deliverReport } from '@/lib/deliver';
+import { runsAwaitingReport } from '@/lib/reports';
 import { LIVE_STATUSES } from '@/lib/billing';
 import { db } from '@/lib/db';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 async function handle(req: Request): Promise<Response> {
@@ -80,10 +83,45 @@ async function handle(req: Request): Promise<Response> {
     }
   }
 
+  // AND THEN SEND WHAT IS FINISHED. Opening runs and delivering reports are separate
+  // questions asked in the same pass: a run opened this morning is still capturing, so what
+  // goes out here is whatever finished since the last pass - usually yesterday's, and for a
+  // new subscriber the baseline run that completed minutes after they paid.
+  //
+  // Asked of the data rather than of a flag, so a missed cron or a deploy mid-send is a row
+  // that still qualifies tomorrow rather than a report nobody ever sends. deliverReport
+  // holds the rules: a partial run is held and alerted, the send is claimed before the
+  // email, and a failure releases the claim so this pass retries it.
+  const delivered: Array<{ run: string; to: string }> = [];
+  const held: Array<{ run: string; status: string }> = [];
+  for (const run of await runsAwaitingReport()) {
+    try {
+      const outcome = await deliverReport(run);
+      if (outcome.sent) delivered.push({ run: run.id, to: outcome.to });
+      else if (outcome.reason === 'held') held.push({ run: run.id, status: outcome.status });
+      else if (outcome.reason === 'failed') failed.push({ scope: run.scope_id, reason: `send: ${outcome.error}` });
+    } catch (err) {
+      // One subscriber's report must not stop everybody else's, same as opening runs.
+      failed.push({ scope: run.scope_id, reason: `send: ${err instanceof Error ? err.message : String(err)}` });
+      console.error(`schedule: could not deliver the report for run ${run.id}`, err);
+    }
+  }
+
   const pending = await dueJobCount();
   const kicked = pending > 0 ? await kickChains(Math.min(CHAINS, pending)) : 0;
 
-  return Response.json({ date: today, day, due: due.length, opened, baselines, failed, pending, kicked });
+  return Response.json({
+    date: today,
+    day,
+    due: due.length,
+    opened,
+    baselines,
+    delivered,
+    held,
+    failed,
+    pending,
+    kicked,
+  });
 }
 
 export async function GET(req: Request): Promise<Response> {

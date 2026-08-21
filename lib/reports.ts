@@ -24,6 +24,7 @@ import 'server-only';
 import { db } from './db';
 import { describe, type Diagnosis } from './diagnosis';
 import { sendOpsAlert } from './billing-mail';
+import { LIVE_STATUSES } from './billing';
 import type { DeltaReport } from './delta';
 import type { ReportData } from './report';
 import type { RunRow } from './accounts';
@@ -221,6 +222,54 @@ function driftBetween(report: ReportData, row: ReportRow): string[] {
     out.push(`Read at version ${row.extraction_version}, captures now read at ${report.versions.extraction}.`);
   }
   return out;
+}
+
+/**
+ * Complete runs whose report has not gone out, newest first.
+ *
+ * THE SCHEDULER'S QUESTION, ASKED OF THE DATA RATHER THAN OF A FLAG. Same discipline as
+ * scopesAwaitingFirstRun: "is there a live subscriber holding a finished run nobody has
+ * been sent" is answerable from the tables, so nothing depends on a previous pass having
+ * set something. A missed cron, a deploy mid-run, a send that threw - all of them are just
+ * a row that still qualifies tomorrow.
+ *
+ * Bounded two ways. Only runs inside `withinDays`, so a run marked complete after months in
+ * a drawer does not surprise somebody with an ancient month. Only scopes with a live
+ * subscription, so a cancelled account stops receiving reports the way they expect it to.
+ */
+export async function runsAwaitingReport(withinDays = 45, limit = 25): Promise<RunRow[]> {
+  const since = new Date(Date.now() - withinDays * 86_400_000).toISOString().slice(0, 10);
+
+  const { data: subs, error: subErr } = await db()
+    .from('subscriptions')
+    .select('scope_id')
+    .in('status', LIVE_STATUSES);
+  if (subErr) throw new Error(`Could not list live subscriptions: ${subErr.message}`);
+  const live = new Set((subs ?? []).map((s) => (s as { scope_id: string }).scope_id));
+  if (!live.size) return [];
+
+  const { data: runs, error: runErr } = await db()
+    .from('runs')
+    .select('*')
+    .eq('status', 'complete')
+    .gte('period_start', since)
+    .in('scope_id', [...live])
+    .order('period_start', { ascending: false })
+    .limit(limit * 2);
+  if (runErr) throw new Error(`Could not list complete runs: ${runErr.message}`);
+
+  const candidates = (runs ?? []) as RunRow[];
+  if (!candidates.length) return [];
+
+  const { data: sent, error: repErr } = await db()
+    .from('reports')
+    .select('run_id, sent_at')
+    .in('run_id', candidates.map((r) => r.id))
+    .not('sent_at', 'is', null);
+  if (repErr) throw new Error(`Could not list sent reports: ${repErr.message}`);
+  const done = new Set((sent ?? []).map((r) => (r as { run_id: string }).run_id));
+
+  return candidates.filter((r) => !done.has(r.id)).slice(0, limit);
 }
 
 /**
