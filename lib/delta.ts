@@ -1,0 +1,255 @@
+/**
+ * What moved since last month, and what we refuse to claim moved.
+ *
+ * The offer sheet calls this the retention mechanism: "without it, month two has nothing to
+ * say". It is also the single easiest place in the product to publish a lie, because a
+ * delta is a subtraction and a subtraction does not know whether its two operands describe
+ * the same thing.
+ *
+ * FOUR WAYS THE TWO OPERANDS CAN DIFFER WITHOUT THE MARKET MOVING. Each is a configuration
+ * change already flagged in a migration, and delta is where they all come home:
+ *
+ *   the competitor set   0002. A competitor added in month three did not overtake anybody.
+ *   the surface set      0005. Four surfaces and five are different populations.
+ *   the sampling depth   0007. Three samples narrow the error bars on their own.
+ *   a lost capture       a partial run's Share of Model is computed over fewer pairs.
+ *
+ * And a fifth the migrations do not cover: a REWRITTEN QUESTION. 0002 makes changing a
+ * question mean a new row, so the question_id differs and the pair is simply not the same
+ * question. That is why comparability is checked per question id rather than per slot.
+ *
+ * THE RULE. A surface is compared only when everything about how it was measured is
+ * identical in both months. The overall figure is compared only when every surface is. When
+ * the overall is suppressed the per-surface figures that DO hold are still shown, because a
+ * subscriber should not lose their entire delta over one lost capture - and the suppression
+ * is named, with its reason, rather than the number quietly going missing.
+ */
+
+import 'server-only';
+import { brandKey } from './score';
+import type { ScoredCapture } from './share';
+
+/** Everything about one run that delta needs to decide comparability. */
+export interface RunSnapshot {
+  runId: string;
+  periodStart: string;
+  status: string;
+  surfaces: string[];
+  samples: Record<string, number>;
+  captures: ScoredCapture[];
+  competitors: string[];
+}
+
+export interface SurfaceDelta {
+  surface: string;
+  comparable: boolean;
+  /** Plain language, shown to the subscriber where the number would have been. */
+  reason?: string;
+  /** Fractional numerator out of pairs, this month and last. Only when comparable. */
+  now?: number;
+  before?: number;
+  pairs?: number;
+  change?: number;
+}
+
+export interface DeltaReport {
+  previousPeriod: string;
+  /** null when every surface is comparable: nothing to explain. */
+  configurationChanges: string[];
+  overall: { comparable: boolean; reason?: string; now?: number; before?: number; change?: number };
+  bySurface: SurfaceDelta[];
+  endorsement: { comparable: boolean; reason?: string; now?: number; before?: number; asked?: number };
+  competitors: Array<{ name: string; now: number; before: number; change: number }>;
+  competitorsSuppressed: string[];
+}
+
+const UNBRANDED = new Set(['category', 'situation', 'alternatives', 'how_do_people']);
+
+/** Pairs a surface actually delivered a usable answer for, keyed by question. */
+function usablePairs(caps: ScoredCapture[], surface: string, branded: boolean): Map<string, ScoredCapture[]> {
+  const out = new Map<string, ScoredCapture[]>();
+  for (const c of caps) {
+    if (c.engine !== surface) continue;
+    if (branded ? c.slot !== 'branded' : !UNBRANDED.has(c.slot)) continue;
+    const existing = out.get(c.question_id);
+    if (existing) existing.push(c);
+    else out.set(c.question_id, [c]);
+  }
+  return out;
+}
+
+/** The fractional contribution of one surface: sum over pairs of (hits / usable samples). */
+function numeratorFor(
+  pairs: Map<string, ScoredCapture[]>,
+  hit: (c: ScoredCapture) => boolean,
+): { numerator: number; pairs: number } {
+  let numerator = 0;
+  let n = 0;
+  for (const samples of pairs.values()) {
+    const usable = samples.filter((s) => s.outcome === 'answered' && s.extracted_at);
+    if (!usable.length) continue;
+    n += 1;
+    numerator += usable.filter(hit).length / usable.length;
+  }
+  return { numerator: round(numerator), pairs: n };
+}
+
+const round = (n: number) => Math.round(n * 10000) / 10000;
+
+/**
+ * Why this surface cannot be compared, or null if it can.
+ *
+ * Every check is about HOW it was measured, never about what it found. A surface that
+ * simply scored differently is comparable - that is the whole point.
+ */
+function surfaceObjection(now: RunSnapshot, before: RunSnapshot, surface: string): string | null {
+  if (!before.surfaces.includes(surface)) {
+    return `not measured last month, so there is nothing to compare against`;
+  }
+  if (!now.surfaces.includes(surface)) {
+    return `not measured this month`;
+  }
+  if (now.samples[surface] !== before.samples[surface]) {
+    const times = (n: number | undefined) => (n === 1 ? 'once' : `${n} times`);
+    return (
+      `asked ${times(now.samples[surface])} this month against ` +
+      `${times(before.samples[surface])} last month, so the two figures are not the same measurement`
+    );
+  }
+
+  const nowQs = usablePairs(now.captures, surface, false);
+  const beforeQs = usablePairs(before.captures, surface, false);
+  const nowKeys = [...nowQs.keys()].sort().join(',');
+  const beforeKeys = [...beforeQs.keys()].sort().join(',');
+  if (!nowKeys || !beforeKeys) {
+    return `no usable answers in one of the two months`;
+  }
+  if (nowKeys !== beforeKeys) {
+    // Either a question was rewritten - 0002 makes that a new row and a new id - or a
+    // capture was lost, which is what a partial run means. Both change the base.
+    return (
+      `answered a different set of your questions in the two months, so the two figures ` +
+      `are over different bases`
+    );
+  }
+  return null;
+}
+
+export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport {
+  const configurationChanges: string[] = [];
+
+  const surfaces = [...new Set([...now.surfaces, ...before.surfaces])].sort();
+  const bySurface: SurfaceDelta[] = surfaces.map((surface) => {
+    const objection = surfaceObjection(now, before, surface);
+    if (objection) {
+      configurationChanges.push(`${surface}: ${objection}.`);
+      return { surface, comparable: false, reason: objection };
+    }
+    const n = numeratorFor(usablePairs(now.captures, surface, false), (c) => c.target_mentioned === true);
+    const b = numeratorFor(usablePairs(before.captures, surface, false), (c) => c.target_mentioned === true);
+    return {
+      surface,
+      comparable: true,
+      now: n.numerator,
+      before: b.numerator,
+      pairs: n.pairs,
+      change: round(n.numerator - b.numerator),
+    };
+  });
+
+  // THE OVERALL FIGURE NEEDS EVERY SURFACE, because it is a sum over all of them. One
+  // suppressed surface makes the total a comparison between a five-surface month and a
+  // four-surface month, which is the surface-set trap in a different costume.
+  const suppressed = bySurface.filter((s) => !s.comparable);
+  const overall = suppressed.length
+    ? {
+        comparable: false,
+        reason:
+          `Your overall figure is not compared this month because ` +
+          `${suppressed.map((s) => s.surface).join(' and ')} could not be. ` +
+          `The surfaces that could be are shown below.`,
+      }
+    : (() => {
+        const sum = (r: RunSnapshot) =>
+          surfaces.reduce(
+            (t, s) => t + numeratorFor(usablePairs(r.captures, s, false), (c) => c.target_mentioned === true).numerator,
+            0,
+          );
+        const n = round(sum(now));
+        const b = round(sum(before));
+        return { comparable: true, now: n, before: b, change: round(n - b) };
+      })();
+
+  // Endorsement is a COUNT of surfaces, so it is comparable only when the same surfaces
+  // answered the branded question in both months. A count over four is not a count over
+  // five, and expressing either as a percentage is what this metric exists to avoid.
+  const endorsement = (() => {
+    const answered = (r: RunSnapshot) =>
+      surfaces.filter((s) => {
+        const pairs = usablePairs(r.captures, s, true);
+        return [...pairs.values()].some((v) => v.some((c) => c.outcome === 'answered' && c.extracted_at));
+      });
+    const nowAnswered = answered(now).sort();
+    const beforeAnswered = answered(before).sort();
+    if (nowAnswered.join(',') !== beforeAnswered.join(',')) {
+      return {
+        comparable: false,
+        reason: 'a different set of surfaces answered your branded question in the two months',
+      };
+    }
+    const count = (r: RunSnapshot) =>
+      nowAnswered.filter((s) =>
+        [...usablePairs(r.captures, s, true).values()].some((v) =>
+          v.some((c) => c.outcome === 'answered' && c.extracted_at && c.target_recommended === true),
+        ),
+      ).length;
+    return { comparable: true, now: count(now), before: count(before), asked: nowAnswered.length };
+  })();
+
+  // 0002's rule, applied. A competitor added or removed between runs did not overtake or
+  // retreat, it was configured. Only the ones live in both months are compared, and only
+  // when the overall base is comparable, because their denominator is the same as ours.
+  const nowSet = new Set(now.competitors.map(brandKey));
+  const beforeSet = new Set(before.competitors.map(brandKey));
+  const competitorsSuppressed: string[] = [];
+  const competitors: DeltaReport['competitors'] = [];
+
+  for (const name of now.competitors) {
+    if (!beforeSet.has(brandKey(name))) {
+      competitorsSuppressed.push(`${name} was added since last month, so it has not gained ground - it was configured in.`);
+      continue;
+    }
+    if (!overall.comparable) continue;
+    const named = (r: RunSnapshot) =>
+      round(
+        surfaces.reduce(
+          (t, s) =>
+            t +
+            numeratorFor(usablePairs(r.captures, s, false), (c) =>
+              (c.brands_named ?? []).some((b) => brandKey(b) === brandKey(name)),
+            ).numerator,
+          0,
+        ),
+      );
+    const n = named(now);
+    const b = named(before);
+    competitors.push({ name, now: n, before: b, change: round(n - b) });
+  }
+  for (const name of before.competitors) {
+    if (!nowSet.has(brandKey(name))) {
+      competitorsSuppressed.push(`${name} was removed since last month, so its absence is not a retreat.`);
+    }
+  }
+
+  competitors.sort((a, b) => b.now - a.now);
+
+  return {
+    previousPeriod: before.periodStart,
+    configurationChanges,
+    overall,
+    bySurface,
+    endorsement,
+    competitors,
+    competitorsSuppressed,
+  };
+}
