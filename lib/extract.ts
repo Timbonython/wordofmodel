@@ -39,7 +39,7 @@ import type { Citation } from './types';
  * after the competitor set, the surface set and the sampling depth. Session 4 must compare
  * like with like or say what changed.
  */
-export const EXTRACTION_VERSION = 4;
+export const EXTRACTION_VERSION = 5;
 
 /**
  * v2, 21 Aug 2026. The judgment call now also returns the sentence in which the answer said
@@ -55,6 +55,25 @@ export const EXTRACTION_VERSION = 4;
  * a statement about the category is not a reason about the brand. The report also stopped
  * accepting unbranded hedges - see lib/report.ts - so this is belt and braces, and the belt
  * is the one that keeps the stored data honest for whatever reads it next.
+ *
+ * v5, and this one was caught by re-rendering from stored data rather than by reading the
+ * code. v4's hedge instructions changed an answer the previous two versions read correctly:
+ * ChatGPT's branded answer for Zapme says "promising, not proven", "may be worth trying if
+ * you specifically want...", and "I'd compare it against Airalo, Nomad, Ubigi... first".
+ * v2 and v3 both read that as not recommending. v4 read it as recommending, five times out
+ * of five - not variance, a systematic shift - and endorsement went from 1 of 5 to 2 of 5,
+ * which is the headline number of the whole report.
+ *
+ * The mechanism is priming. Asking for the sentence that explains a hesitation invites the
+ * model to file the hesitation separately and read the rest as an endorsement, so a hedged
+ * conditional becomes "a recommendation with a caveat". v5 says a conditional or
+ * comparative verdict is not a recommendation, gives the exact shapes, and says outright
+ * that finding a hedge sentence does not make the answer a recommendation.
+ *
+ * THE LESSON IS ABOUT THE PIPELINE, NOT THE PROMPT. A field added for a report section
+ * moved the metric the product is sold on, silently, in a pass that costs nothing to run.
+ * See scripts/extract-check.mjs: judgments the report depends on now have fixtures, and a
+ * version bump is checked against them before it goes near a subscriber's numbers.
  *
  * The bump is mechanical and stays that way. The prompt changed, so the version changed;
  * the alternative is deciding case by case whether a prompt change "really" matters, which
@@ -156,6 +175,32 @@ target_recommended: true only if the answer puts ${input.brand} forward as a cho
 buyer should make. Being listed, compared, or mentioned in passing is NOT recommended.
 The difference between named and recommended is the whole point of this task, so do not
 soften it.
+
+THE TEST IS WHERE THE VERDICT LEAVES THE BUYER: with ${input.brand}, or comparing.
+
+Not a recommendation. The verdict sends them elsewhere, or withholds judgment until better
+evidence exists:
+  "promising, not proven"
+  "there isn't enough independent feedback for me to say it's one of the best"
+  "worth a look, but I'd compare it against A, B and C first"
+  "treat it as a convenient option rather than a proven replacement"
+
+Still a recommendation. The verdict puts them forward FOR SOMETHING, and does not then
+point the buyer at rivals:
+  "highly useful, especially if you need X"
+  "the best choice for travellers who want Y"
+  "worth it if you value X"
+
+A qualifier that narrows WHO it suits is not a hedge. A qualifier that defers to the
+alternatives, or to evidence that does not exist yet, is. Tone is not the test: a warm
+sentence ending in "but check the others first" is false, and a flat "use it for X" is
+true.
+
+FINDING A REASON TO HESITATE DOES NOT MAKE THIS TRUE. hedge_quote below asks you to find
+the sentence where the answer explains a hesitation. An answer that has one is not "a
+recommendation with a caveat": in almost every case an answer carrying such a sentence in
+its verdict is NOT recommending. Decide target_recommended on its own, before you look for
+that sentence.
 
 target_position: where ${input.brand} ranks among the companies being recommended, 1 for
 first. null if it is not ranked or not recommended.

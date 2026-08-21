@@ -12,7 +12,8 @@
     "check": "npm run typecheck && npm run copycheck",
     "smoke": "node --env-file=.env.local scripts/smoke.mjs",
     "stripe:setup": "node --env-file=.env.local scripts/stripe-setup.mjs",
-    "bakeoff": "node --env-file=.env.local scripts/serp-bakeoff.mjs"
+    "bakeoff": "node --env-file=.env.local scripts/serp-bakeoff.mjs",
+    "extract:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/extract-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
