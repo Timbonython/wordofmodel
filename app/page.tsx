@@ -419,6 +419,9 @@ export default async function Page() {
             <strong>Share of Model</strong> is how often you get named. <strong>Word of Model</strong> is what's
             actually being said.
           </span>
+          <span className="footer-links">
+            <Link href="/privacy">Privacy</Link> &middot; <Link href="/terms">Terms</Link>
+          </span>
         </div>
       </footer>
     </>

@@ -1135,3 +1135,16 @@ footer .wrap {
   margin-top: 4px;
   max-width: 52ch;
 }
+
+/* ---------- legal pages ---------- */
+/* Narrower than the marketing page: these are read in paragraphs, not scanned. */
+.legal section { margin-bottom: 48px; }
+.legal h1 { max-width: 20ch; }
+.legal h2 { font-size: clamp(22px, 3vw, 28px); margin-top: 8px; }
+.legal h3 { margin-top: 22px; }
+.legal p { max-width: 68ch; }
+.legal ul.plain { list-style: none; padding: 0; margin: 0 0 16px; max-width: 68ch; }
+.legal ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--rule); line-height: 1.65; }
+.legal ul.plain li:last-child { border-bottom: 0; }
+.legal a { color: inherit; }
+.footer-links a { color: inherit; }
