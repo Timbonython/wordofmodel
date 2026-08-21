@@ -438,6 +438,13 @@ Wall clock: **~8 min normal, ~30 min with retries, ~71 min pathological**, hard-
 - **SerpApi committed** on zero silent misses and zero failures to deliver. Its one silent
   failure mode (1 in 15 returning an overview with no references) is now a loud retryable
   error.
+- **A suppressed overall delta is not replaced by a like-for-like subtotal** (21 Aug 2026).
+  When one surface breaks comparability the overall change is suppressed and named, and that
+  is the end of it. Totalling only the comparable surfaces was considered and rejected: the
+  report already prints this month's Share of Model over every surface, so a change computed
+  over four would put two figures of the same name and different bases on one page. The
+  subscriber cannot reconcile them, and that costs more than the lost information. The
+  per-surface changes that do hold are still shown.
 - **`vercel.json` pins `iad1` and it must never change.** Grok and Gemini accept no
   location parameter, so the network origin IS their geography. See
   `vercel.json.README.md`.
