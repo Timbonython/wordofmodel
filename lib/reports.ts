@@ -108,21 +108,75 @@ export async function saveReport(report: ReportData, run: RunRow): Promise<Repor
  */
 export async function asIssued(report: ReportData, row: ReportRow): Promise<ReportData> {
   const drift = driftBetween(report, row);
-  if (drift.length) {
-    await sendOpsAlert({
-      subject: `Report ${row.id.slice(0, 8)} no longer rebuilds to what was sent`,
-      lines: [
-        `Run ${row.run_id}, scope ${row.scope_id}.`,
-        `Issued ${row.generated_at}${row.sent_at ? `, sent ${row.sent_at}` : ', never sent'}.`,
-        '',
-        ...drift,
-        '',
-        'The subscriber is being shown the stored figures, which is what they were sent.',
-        'A re-extraction explains this; anything else is a bug worth finding.',
-      ],
-    });
+  if (!drift.length) return renderFrom(report, row);
+
+  // AN UNSENT REPORT IS PROVISIONAL, AND RE-ISSUING IT IS NOT A BREACH OF 0008.
+  //
+  // The promise is that a report somebody has READ keeps saying what it said. A row with a
+  // null sent_at has been read by nobody: it is a draft this code wrote on its way past,
+  // usually because a page render or a held partial run beat the send. Defending it would
+  // pin a subscriber's first report to figures produced before a re-extraction, and it
+  // would alert Tim on every page view for the rest of that run's life, which is how a real
+  // alert gets muted. So it is rewritten quietly, and the alert is saved for the case it
+  // exists for.
+  //
+  // The update is conditional on sent_at still being null, so a send claimed a millisecond
+  // ago wins and the figures that went out are the ones that stand.
+  if (!row.sent_at) {
+    const reissued = await reissue(report, row);
+    if (reissued) return renderFrom(report, reissued);
   }
 
+  await sendOpsAlert({
+    subject: `Report ${row.id.slice(0, 8)} no longer rebuilds to what was sent`,
+    lines: [
+      `Run ${row.run_id}, scope ${row.scope_id}.`,
+      `Issued ${row.generated_at}${row.sent_at ? `, sent ${row.sent_at}` : ', never sent'}.`,
+      '',
+      ...drift,
+      '',
+      'The subscriber is being shown the stored figures, which is what they were sent.',
+      'A re-extraction explains this; anything else is a bug worth finding.',
+    ],
+  });
+  return renderFrom(report, row);
+}
+
+/**
+ * Rewrite an unsent row to today's rebuild. Returns null when somebody claimed the send in
+ * between, in which case what they sent is the record and this must not touch it.
+ */
+async function reissue(report: ReportData, row: ReportRow): Promise<ReportRow | null> {
+  const { data, error } = await db()
+    .from('reports')
+    .update({
+      threshold_version: report.versions.threshold,
+      extraction_version: report.versions.extraction,
+      presence: report.presence.shareOfModel,
+      presence_pairs: report.presence.pairs,
+      recognised: report.endorsement.recognised,
+      endorsed: report.endorsement.endorsed,
+      asked_directly: report.endorsement.askedDirectly,
+      diagnosis: report.diagnosis.kind,
+      delta: report.delta,
+      generated_at: new Date().toISOString(),
+    })
+    .eq('id', row.id)
+    .is('sent_at', null)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`Could not re-issue the unsent report ${row.id}: ${error.message}`);
+  return data ? asRow(data as Record<string, unknown>) : null;
+}
+
+/**
+ * The report as the record has it: stored figures, stored label, stored delta.
+ *
+ * Everything else on the page - the quotes, the grid, the evidence, the method note - comes
+ * from captures, which do not move. What comes back from the record is exactly what a
+ * threshold could otherwise change underneath a subscriber.
+ */
+function renderFrom(report: ReportData, row: ReportRow): ReportData {
   return {
     ...report,
     versions: { threshold: row.threshold_version, extraction: row.extraction_version },

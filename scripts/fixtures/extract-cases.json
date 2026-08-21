@@ -1,0 +1,361 @@
+{
+  "brand": "Zapme",
+  "competitors": [
+    "Airalo",
+    "Holafly",
+    "Nomad",
+    "GlobaleSIM"
+  ],
+  "cases": [
+    {
+      "id": "chatgpt-branded-s1",
+      "why": "A hedged conditional: \"promising, not proven\", and it sends the buyer to compare five rivals first. v4 read this as a recommendation five times out of five and moved endorsement from 1 of 5 to 2 of 5.",
+      "engine": "chatgpt",
+      "slot": "branded",
+      "question": "Is Zapme any good, and what do people say about it?",
+      "answer_text": "Assuming you mean **Zapme: eSIM & Global Numbers**: **it looks legitimate, but I’d treat it as “promising, not proven.”** I wouldn’t call it a scam from what I found, but there isn’t enough independent feedback for me to confidently say it’s one of the best eSIM options.\n\n**What people say:**\n\n- **iPhone users are very positive, but the sample is tiny.** The AU App Store shows **4.8/5 from only 17 ratings**. Reviews praise cheaper roaming, convenience, global numbers, and having eSIM + calling/text/video features in one app. ([apps.apple.com](https://apps.apple.com/au/app/zapme-esim-global-numbers/id6471850240))  \n- **Android feedback is much more mixed.** Google Play shows about **3.2/5 from ~130 reviews** and **50K+ downloads**; positive reviews mention ease of use, decent pricing, and useful 30‑day/global-number features. ([play.google.com](https://play.google.com/store/apps/details?hl=en-US&id=com.zapme.zapme_mobile.prod1&utm_source=openai))  \n- **Complaints/concerns I’d take seriously:** a third-party review summary flags issues like unclear pricing before proceeding, trouble deleting accounts, some country-number display issues, international calling limitations, and isolated privacy concerns. ([chrome-stats.com](https://chrome-stats.com/d/com.zapme.zapme_mobile.prod1/reviews?utm_source=openai))  \n- **Travel-forum chatter is cautious rather than enthusiastic.** On Australian Frequent Flyer, someone asked about Zapme and the reply was basically: it appears to focus on global roaming / long-duration plans, which can be convenient across multiple countries but often costs more than country- or region-specific eSIMs. ([australianfrequentflyer.com.au](https://www.australianfrequentflyer.com.au/community/threads/esims-what-is-your-experience.104542/page-55))  \n- **One odd red flag:** Zapme’s own Australia/NZ page had “What People Are Saying” testimonials showing “John Doe” and lorem-ipsum placeholder text, which doesn’t inspire confidence in their marketing polish. ([zapme.co](https://zapme.co/esim-australia-new-zealand/))  \n- **Privacy-wise, read the permissions carefully.** Apple’s App Store privacy section says location may be used for tracking, and Google Play says the app may share personal info and collect personal/financial data and other data types. ([apps.apple.com](https://apps.apple.com/au/app/zapme-esim-global-numbers/id6471850240))  \n\n**My verdict:**  \nZapme may be worth trying **if you specifically want one app for eSIM data + virtual/global numbers + long-duration/monthly use**, especially for multi-country travel. But if you just need cheap travel data for one country or region, I’d compare it against Airalo, Nomad, Ubigi, Eskimo, Trip.com eSIMs, or a local prepaid eSIM first—Zapme doesn’t yet have the volume of trusted, independent reviews that bigger eSIM providers do.\n\n**If you do use it:** buy the smallest one-month plan first, test activation before departure, check refund/support terms, confirm your phone is unlocked and eSIM-compatible, and don’t rely on it as your only connectivity option for a critical trip.",
+      "citations": [
+        {
+          "url": "https://apps.apple.com/au/app/zapme-esim-global-numbers/id6471850240",
+          "title": "‎Zapme: eSIM & Global Numbers App - App Store",
+          "domain": "apps.apple.com"
+        },
+        {
+          "url": "https://play.google.com/store/apps/details?hl=en-US&id=com.zapme.zapme_mobile.prod1",
+          "title": "Zapme: eSIM & Global Numbers - Apps on Google Play",
+          "domain": "play.google.com"
+        },
+        {
+          "url": "https://chrome-stats.com/d/com.zapme.zapme_mobile.prod1/reviews",
+          "title": "Zapme: eSIM & Global Numbers | User reviews and ratings",
+          "domain": "chrome-stats.com"
+        },
+        {
+          "url": "https://www.australianfrequentflyer.com.au/community/threads/esims-what-is-your-experience.104542/page-55",
+          "title": "eSims, what is your experience. | Page 55 | Australian Frequent Flyer",
+          "domain": "australianfrequentflyer.com.au"
+        },
+        {
+          "url": "https://zapme.co/esim-australia-new-zealand/",
+          "title": "eSIM Australia & New Zealand | Elevated Connectivity | Zapme",
+          "domain": "zapme.co"
+        }
+      ],
+      "expect": {
+        "mentioned": true,
+        "recommended": false,
+        "hedge": true
+      }
+    },
+    {
+      "id": "gemini-branded-s1",
+      "why": "A real recommendation with a use-case qualifier. The guard against over-correcting the case above: narrowing WHO it suits is not a hedge.",
+      "engine": "gemini",
+      "slot": "branded",
+      "question": "Is Zapme any good, and what do people say about it?",
+      "answer_text": "**Zapme** is an app-based \"communications superapp\" designed for global travelers, digital nomads, and remote workers. Unlike traditional eSIM apps that only provide local data, Zapme offers a unified platform where you can purchase **both eSIM data plans and virtual global phone numbers** (mobile, landline, and toll-free) that you can manage on a single device. \n\nOverall, **Zapme is considered a highly useful, niche tool—especially if you need to receive SMS verification codes while abroad**. However, it is still a relatively young service, and users have reported some minor technical and customer support complaints. \n\n---\n\n### What Makes Zapme Good? (The Pros)\n\n* **All-in-One eSIM & Phone Numbers:** Most eSIM apps are data-only, meaning you have to rely on WhatsApp or FaceTime for calls. Zapme lets you buy real virtual numbers from different countries and manage them through one eSIM profile.\n* **Crucial for 2FA and OTPs:** One of Zapme’s standout features is its ability to **receive international SMS**. This is incredibly valuable for travelers and remote workers who need to receive One-Time Passwords (OTPs) to log into banking, government, or social media accounts while abroad.\n* **Persistent Identity:** You can buy a number and keep it long-term. This gives you a consistent caller ID and a reliable way for clients or banks to reach you, no matter where you travel.\n* **Flexible, No-Contract Plans:** Zapme operates on a prepaid, month-to-month subscription model (with packages like *Just GO*, *Sweet SPOT*, and *The MOON*). There are no lock-in contracts, and you can cancel at any time.\n* **Reasonable Pricing:** Plans and numbers are quite affordable, often starting around $4.50 to $4.95, with robust monthly packages around £14.99 ($19). \n\n---\n\n### What Do People Critique? (The Cons)\n\n* **Mixed App Ratings Between Stores:** While Zapme has a high rating on the Apple App Store (around 4.8/5, though based on fewer reviews), its ratings on Google Play are more average (around 3.2 to 3.6/5). Android users have reported more frequent bugs and occasional UI glitches.\n* **Account Deletion Issues:** Some users have expressed frustration over the app's lack of a straightforward way to delete user accounts directly in the settings.\n* **Limited Number Availability:** Depending on when you check, virtual numbers for certain countries (such as Germany) may be listed as \"coming soon\" or unavailable.\n* **Web3/ICO Components Can Feel Unnecessary:** Zapme’s founders have positioned the app as a bridge between Web2 and Web3, incorporating features like decentralized messaging and rewards tokens. For everyday travelers who just want a working phone number, these crypto/Web3 elements can feel confusing or unnecessary.\n* **Network Performance Fluctuations:** As with any eSIM provider, Zapme relies on local roaming partners. Depending on the country you land in, your speeds (4G vs. 5G) and coverage can vary.\n\n---\n\n### The Verdict: Is Zapme Right For You?\n\n* **You should get Zapme if:** You travel frequently, work remotely, or run an international business and **need to maintain a virtual phone number to receive texts, 2FA codes, or business calls**. Consolidating your eSIM data and multiple international numbers into one app is highly convenient and far cheaper than traditional carrier roaming.\n* **You should skip Zapme if:** You only want cheap, simple, data-only eSIMs for short vacation trips (in which case dedicated data-only providers like Airalo or Saily might offer a simpler, more streamlined user experience).",
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFKYFuUK2eMPR2LByPpQHy8NllzvrNJlIZJimr_be6gofbvOzuOFa_jfzeQ18m_9v8GyCIKdkP9X2hwbLJNAiP_lyPVWFWpnKu78Av-mvsoKVfeweBENNJVGu_gdDrQ7Q9AmGK3CKL0kQ8Oy8Qmx80agEKnEznyRsvNS8XXTYXw4Vjsh7ePS1b9",
+          "title": "google.com",
+          "domain": "google.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGpkDuDadrClCcSDU9rCKE-kmFTjyF7Xs9FoHH8iGPSjqK239IAklzxsCsDIPCFB5Ht4BNSoQUA_OYZ7GjJo8GD6ryJb2aY5Cc9p1Q_NtNN99xEAVQGjANUl5IXGeNgyHtikbE7bpU88tPTq4a4TpiT4k4tGDJUhjLXbRad0R8BdArJnIuAZU69QwOBl0cpTUQIshCPTjzI0sY2k4Dju6Z7Un1BFf5oIWw_wFA=",
+          "title": "streetinsider.com",
+          "domain": "streetinsider.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHgcvECAuhnM5POeZ0coMPRO8K1U5SSo3L8-yfve63TlMR1iXl4M_aIS5R2kh5TKVVhPcqXh37b6_3K_7AifpyI0X1JdAykDVqBrP068gEwU2nJcQ==",
+          "title": "tenereteam.com",
+          "domain": "tenereteam.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFCuQOjMJ1fgaWiXybVVLLecPga3odKiPSngQDW8GE8VWyeEPoYXMWniZ872SjU_HqplTblEtnJbNZ6sBG6LrI-on_oIxYTAXAskFY6_9iufIDVJODvZAM335_mfjsmTNEx",
+          "title": "youtube.com",
+          "domain": "youtube.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEGoJzgNIPt79AETO3PN0wK1BeAjViLepi_TuYX06srMcthw6WiS8lKl1kBR2fqiuxMc8x_DaZhFpqVUr8YRpzGeNAJDjy5MzmQwBnFQxghuVWh6FS_5w==",
+          "title": "myprosandcons.com",
+          "domain": "myprosandcons.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEgEPZRS7oSCWFByew0fTrzO_aUbpSSbxNaCfdz8MmxwUhl8vIcWvlPrOKA5La83gkR9z57ImbdmlIdALTWgkNQr6fa9lH_j_pFgyzSsiByVw==",
+          "title": "zapme.co",
+          "domain": "zapme.co"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFTF61-nMeI4lRuPsvgeRbuEt-FuwcZUNldP2raS3kU-ViUzlCoARLTdmBozPNQujowucoqC_R_03lqmTwEL66z6rEOciXvooTq92MJN2S1YTYVHA==",
+          "title": "zapme.co",
+          "domain": "zapme.co"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGVeTCiVAS-j_eB44h4D3KwYSLCEyjw96atlIfGWG4OmpCqCsqZxK9SuqmfjqnDP6LvBPOIrH2U6LveDyB3yHnumr7iQ3yW",
+          "title": "zapme.co",
+          "domain": "zapme.co"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF2THcwMiaG3z_BWyQOz7QmJ7E-Sz8hvTC7YJM5e1MB7s88gny0C7hW9GPf7dVc8rCEZd6NXPKbfN8pqoUT4DwrGejSZq5HBUV27zZpt3OJqVa1iZJcrj6mbknM1OGEB07H",
+          "title": "esimchart.com",
+          "domain": "esimchart.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE4POzzNIn9zmcNw4WA-QvFd_bNXvj0i0qvDLSEQNw5v8ViLXWj1dnGQsFqmS0RrDYnsiD1cEzebl6mzyXppp5qWkEnihvFEA4-jBvJ1kgJ7WEmOzejsEfjWbi9T4ZdzhjPN6w-lSfF5uU9t_4J_keCqDyjYF_YaDXh",
+          "title": "apple.com",
+          "domain": "apple.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHrtYUWzfQa_padAJmT9C2vrsd7UDGTGmsaqHVLjX6XzjyI4MgklxSCnOsR_qz7RKwaIpaUqLccP5ZX38_YEHxEU9QvJj2413g6LrgQoYaFJhT-",
+          "title": "tenereteam.com",
+          "domain": "tenereteam.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFykplr6V5NU_iDITwYC0wwxnluiHmpopTMWbL_PVMt15c0319McFkPdwS9O30FLr6-tUZ1vSay-GnR5Fvzg7tcadsRoQBCkk4mEGb-ravlV8z3EXHbWsgg30wFC6umgzMDkIaNgAJxU42sHa-C",
+          "title": "chrome-stats.com",
+          "domain": "chrome-stats.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFihAYE3smBxx1DhQ3eZzYR42RWAXLyrr0cniYn0XqOAR3yCVL4Em5_IAlP9dqYV9xxgD6DdgUJ19AtNb4P6kICnJH_7O3eVfWdyub8RnZN2Hyn5-tLzTmzOVvIWScXJtkKWOFJW05unYd8VSo=",
+          "title": "chrome-stats.com",
+          "domain": "chrome-stats.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEFh5BXVtv7jxW5Wgr4ygWJfE8l7nufC3LjxH2pNmVQUi3Hpxxy8l2ZakmDal6YKeceScDDJeiqCXzHXdFohhi-NMUR5kq-nF3_D-KDv4AR8zyl9SVHHRjDEtY=",
+          "title": "icohotlist.com",
+          "domain": "icohotlist.com"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGdSYfrcrHewrnV45WdIEikzEecxA02DoufQ5_eVYaRLFs_VmgkBm93HV0aA2SZ5Q2vphJD5gMUb_yRxPhFb1xKxd5C_O_FO6-vztgjq1Q2Il2hAj7QTmEJ65T1T6o1ShiQV632-vtRYGK4G_0Yag==",
+          "title": "scamadviser.com",
+          "domain": "scamadviser.com"
+        }
+      ],
+      "expect": {
+        "mentioned": true,
+        "recommended": true,
+        "hedge": null
+      }
+    },
+    {
+      "id": "perplexity-branded-s1",
+      "why": "Explicit evidence hedge: a convenient option rather than a proven replacement.",
+      "engine": "perplexity",
+      "slot": "branded",
+      "question": "Is Zapme any good, and what do people say about it?",
+      "answer_text": "Assuming you mean **Zapme, the travel eSIM/global-number app**:\n\n**Short version:** It looks promising, but the public track record is still fairly small, so I’d treat it as a convenient travel-connectivity option rather than a thoroughly proven replacement for major eSIM providers.\n\n### What people seem to like\n- The Australian App Store listing shows **4.7/5 from 15 ratings**—positive, but based on a small sample.\n- Its main appeal is convenience: one app for **travel data, multiple international numbers, calls/texts, and SMS/OTP reception**.\n- It advertises coverage in **200+ countries**, instant activation, and hotspot support.\n- An Australian startup profile describes users calling and texting from overseas, suggesting the product is an operating service rather than just a concept.\n\n### Reservations\n- There aren’t many substantial independent reviews yet. Most search results are Zapme’s own website or promotional material.\n- The rating is too lightly reviewed to say much about reliability across countries, refunds, speeds, or customer support.\n- App-store reviews can’t establish whether a particular country’s eSIM works well; performance depends on the local network and plan.\n- Be careful to distinguish **zapme.co/the official app** from similarly named domains. Some unrelated “Zapme” websites have little or no review history and shouldn’t automatically be treated as the same company.\n\n### My verdict\n**Worth considering for a short trip**, especially if you value a global number and messaging features in addition to data. For an important trip, I’d reduce risk by:\n1. Checking coverage and the underlying network for your destination.\n2. Buying the smallest plan first.\n3. Confirming whether calls/SMS are included or billed separately.\n4. Installing and testing it before departure.\n5. Keeping a backup roaming option or local SIM if connectivity is critical.\n\nCompared with larger, better-established travel eSIM brands, Zapme appears **less independently validated**, but there’s no clear evidence from the available results that it is inherently fraudulent.",
+      "citations": [
+        {
+          "url": "https://apps.apple.com/au/app/zapme-esim-global-numbers/id6471850240",
+          "title": "Zapme: eSIM & Global Numbers - App Store",
+          "domain": "apps.apple.com"
+        },
+        {
+          "url": "https://www.esimchart.com/en/anbieter/zapme",
+          "title": "Zapme eSIM Review 2026 — Plans, Prices, Coverage",
+          "domain": "esimchart.com"
+        },
+        {
+          "url": "https://www.scamadviser.com/check-website/token.zapme.co",
+          "title": "token.zapme.co Reviews | check if site is scam or legit",
+          "domain": "scamadviser.com"
+        },
+        {
+          "url": "https://stellio.com.au/about",
+          "title": "Build Bold. Launch Smarter - Stellio Creative Labs",
+          "domain": "stellio.com.au"
+        },
+        {
+          "url": "https://apps.apple.com/au/app/zapp-super-app/id6746508067",
+          "title": "Zapp Super App - App Store",
+          "domain": "apps.apple.com"
+        },
+        {
+          "url": "https://www.trustpilot.com/review/zapmed.co.za",
+          "title": "Read Customer Service Reviews of zapmed.co.za",
+          "domain": "trustpilot.com"
+        },
+        {
+          "url": "https://www.scamadviser.com/zh/check-website/zapme.online",
+          "title": "zapme.online Reviews | check if site is scam or legit | Scamadviser",
+          "domain": "scamadviser.com"
+        },
+        {
+          "url": "https://www.scamadviser.com/check-website/app.zapme.xyz",
+          "title": "app.zapme.xyz Reviews | check if site is scam or legit| Scamadviser",
+          "domain": "scamadviser.com"
+        },
+        {
+          "url": "https://www.trustpilot.com/review/zapmed.co.za?page=2",
+          "title": "Read Customer Service Reviews of zapmed.co.za | 2 of 18 - Trustpilot",
+          "domain": "trustpilot.com"
+        },
+        {
+          "url": "https://www.stoneandchalk.com.au/articles/how-startup-zapme-helps-travellers-call-home-from-anywhere",
+          "title": "How startup Zapme helps travellers call home from anywhere",
+          "domain": "stoneandchalk.com.au"
+        },
+        {
+          "url": "https://zapme.co/",
+          "title": "Zapme | Decentralised Social & Global eSIM Connectivity",
+          "domain": "zapme.co"
+        },
+        {
+          "url": "https://apps.apple.com/nz/app/zapme-more-than-just-an-esim/id6471850240",
+          "title": "Zapme: More than just an eSIM",
+          "domain": "apps.apple.com"
+        },
+        {
+          "url": "https://zapme.co/esim-australia/",
+          "title": "eSIM Australia | Unlock Connectivity Down Under - Zapme",
+          "domain": "zapme.co"
+        },
+        {
+          "url": "https://medium.com/@zapme/zapme-vs-the-competition-how-our-all-in-one-platform-outperforms-roaming-sims-and-messenger-apps-a0e08a613805",
+          "title": "Zapme vs. The Competition: How Our All-in-One Platform Outperforms Roaming SIMs and Messenger Apps",
+          "domain": "medium.com"
+        },
+        {
+          "url": "https://www.trustpilot.com/review/zapmed.co.za?page=8",
+          "title": "Read Customer Service Reviews of zapmed.co.za | 8 of 19",
+          "domain": "trustpilot.com"
+        }
+      ],
+      "expect": {
+        "mentioned": true,
+        "recommended": false,
+        "hedge": true
+      }
+    },
+    {
+      "id": "google_aio-branded-s1",
+      "why": "Names a specific published rating. The sharpest reason kind, and the one the report leads the outlier on.",
+      "engine": "google_aio",
+      "slot": "branded",
+      "question": "Is Zapme any good, and what do people say about it?",
+      "answer_text": "Zapme is a global communication app combining eSIM data, virtual international phone numbers, and messaging into a single platform. Public feedback is mixed; it holds a moderate 3.2-star rating on the Google Play Store. Users praise its ease of use, cost savings, and convenience for travel, while some note that advanced features are still evolving.\n\nWhat People Say (The Pros)\n\nConvenience: Reviewers like having data instantly upon landing abroad without needing physical SIM cards.\n\nValue:\nMany point out that it offers great pricing compared to traditional daily roaming fees.\n\nMultiple Numbers: Users appreciate managing virtual numbers from various countries to handle banking, 2FA, and text verification on one device.\n\nCommon Criticisms & Limitations\n\nMixed Ratings: A 3.2-star average indicates that performance or stability can occasionally be inconsistent for some users.\n\nCompatibility:\nIt requires an eSIM-compatible, unlocked phone.\n\nFeature Rollout: Certain Web3 or advanced integration features are still rolling out or maturing, which can lead to a learning curve.\n\nIf you're planning a trip or need a virtual number, tell me which country you are traveling to or what specific features you need so I can help you decide if it fits your use case.",
+      "citations": [
+        {
+          "url": "https://hashlock.com",
+          "title": "Zapme - Hashlock",
+          "domain": "hashlock.com"
+        },
+        {
+          "url": "https://play.google.com/store/apps/details?id=com.zapme.zapme_mobile.prod1&hl=en_AU",
+          "title": "Zapme: eSIM \\u0026 Global Numbers – Apps on Google Play",
+          "domain": "play.google.com"
+        },
+        {
+          "url": "https://zapme.myprosandcons.com",
+          "title": "Zapme Reviews 2026 → (4.0/5) Global Connectivity Made ...",
+          "domain": "zapme.myprosandcons.com"
+        },
+        {
+          "url": "https://apps.apple.com",
+          "title": "Zapme: eSIM \\u0026 Global Numbers - App Store",
+          "domain": "apps.apple.com"
+        },
+        {
+          "url": "https://zapme.co",
+          "title": "Zapme FAQ: Your Ultimate Guide to eSIM Solutions",
+          "domain": "zapme.co"
+        }
+      ],
+      "expect": {
+        "mentioned": true,
+        "recommended": false,
+        "hedge": true
+      }
+    },
+    {
+      "id": "perplexity-category-s2",
+      "why": "An unbranded answer that does not name them. v2 stored category caveats here as reasons THEY were not recommended; nothing should be extracted.",
+      "engine": "perplexity",
+      "slot": "category",
+      "question": "Who is best in Australia for global eSIM data and phone numbers?",
+      "answer_text": "For an Australian traveller wanting **global data plus a usable phone number**, my shortlist would be:\n\n### Best overall: **eSIM Australia / Telsim International**\n- Australian-focused provider\n- Offers local, regional and global travel eSIMs\n- Better choice if you specifically want **voice/SMS capability**, not merely data\n- Check the individual plan carefully: some global plans may still be data-only, and phone-number availability can vary by destination\n\n### Best for cheap, reliable global data: **Airalo**\n- Broad country and regional coverage\n- Easy app-based activation and top-ups\n- Usually data-only; phone calls and SMS are generally through WhatsApp, FaceTime, Signal, etc.\n- Best if you can keep your Australian SIM active for your existing number\n\n### Best app/banking convenience: **Revolut eSIM**\n- Global and regional data plans covering 100+ countries\n- Convenient if you already use Revolut\n- Generally **data-only**, with no conventional mobile number\n- Good for maps, messaging and occasional travel\n\n### Best Australian number with overseas use: **amaysim**\n- Lets you retain or use an Australian mobile number\n- Offers international roaming packs covering 90+ countries\n- More suitable if you need actual calls/SMS to your Australian number\n- Usually less cost-effective than a dedicated travel eSIM for heavy global data\n\n### Best for simple global data from an Australian retailer: **Simify**\n- Australian-facing travel-SIM provider\n- Offers international eSIMs across many destinations\n- Phone-number support depends on the specific plan, so verify before buying\n\n## My practical recommendation\n\nUse **two eSIMs**:\n\n1. **A travel eSIM**—Airalo, Revolut or Telsim—for cheap overseas data.\n2. **Your Australian SIM/eSIM**—amaysim, Telstra, Optus, etc.—kept active for calls, SMS and two-factor authentication.\n\nSet the travel eSIM as the **mobile-data line**, and disable data roaming on your Australian line. This usually gives the best combination of price, coverage and access to your Australian number.\n\nIf you need a **genuine international phone number included with the global eSIM**, not just data, focus first on **Telsim/eSIM Australia or a specific voice-and-SMS plan**. Many products advertised as “global eSIMs” are data-only.",
+      "citations": [
+        {
+          "url": "https://www.esim.com.au/esim-global",
+          "title": "Global eSIM, from $16.9 AUD | Prepaid Data Plan",
+          "domain": "esim.com.au"
+        },
+        {
+          "url": "https://www.flightcentre.com.au/p/esims-for-travel",
+          "title": "Flight Centre's Travel eSIM",
+          "domain": "flightcentre.com.au"
+        },
+        {
+          "url": "https://wise.com/au/blog/telstra-esims",
+          "title": "Wise",
+          "domain": "wise.com"
+        },
+        {
+          "url": "https://wise.com/au/blog/amaysim-esims",
+          "title": "Esim Related Questions...",
+          "domain": "wise.com"
+        },
+        {
+          "url": "https://www.telsim.com.au/esim-international/",
+          "title": "eSIM International - Telsim Australia",
+          "domain": "telsim.com.au"
+        },
+        {
+          "url": "https://simify.com/en-au",
+          "title": "Travel SIMs & International eSIMs | Buy Unlimited Data in ...",
+          "domain": "simify.com"
+        },
+        {
+          "url": "https://esimdb.com/australia",
+          "title": "Compare Travel eSIMs for Australia | Search 190+ Providers",
+          "domain": "esimdb.com"
+        },
+        {
+          "url": "https://www.travelex.com.au/sim-cards/simify",
+          "title": "International Travel SIM Cards & eSIMs",
+          "domain": "travelex.com.au"
+        },
+        {
+          "url": "https://www.amaysim.com.au/sim-plans/esim",
+          "title": "eSIM Plans",
+          "domain": "amaysim.com.au"
+        },
+        {
+          "url": "https://au.trip.com/guide/phone/esim.html",
+          "title": "eSIM Handbook for Global Travelers: A Complete Guide ...",
+          "domain": "au.trip.com"
+        },
+        {
+          "url": "https://zensim.com.au/travel-esims/global/",
+          "title": "Global Travel eSIM | One eSIM, 119 countries countries, plans from ...",
+          "domain": "zensim.com.au"
+        },
+        {
+          "url": "https://www.revolut.com/en-AU/esim/",
+          "title": "International eSIM | Revolut Australia",
+          "domain": "revolut.com"
+        },
+        {
+          "url": "https://www.canstar.com.au/mobile-phone/travel-sims/",
+          "title": "Best Travel SIM And Travel Plan Providers - Canstar",
+          "domain": "canstar.com.au"
+        },
+        {
+          "url": "https://www.esims.ai/country/au",
+          "title": "eSIM Data Plans for Australia | esims.AI",
+          "domain": "esims.ai"
+        },
+        {
+          "url": "https://www.whistleout.com.au/MobilePhones/Guides/phone-plans-with-international-roaming",
+          "title": "Australia's best phone plans for international roaming",
+          "domain": "whistleout.com.au"
+        }
+      ],
+      "expect": {
+        "mentioned": false,
+        "recommended": false,
+        "hedge": null
+      }
+    }
+  ]
+}
