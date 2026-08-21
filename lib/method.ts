@@ -195,6 +195,21 @@ export const AIO_PROVENANCE_NOTE =
  * sells them as "who owns the answer". Saying so is better than a subscriber acting on a
  * domain list that would have looked different ten minutes later.
  */
+/**
+ * The fifth contamination path, and the only one no migration warns about.
+ *
+ * 0002 makes changing a question a NEW ROW rather than an edit, so a rewritten question has
+ * a different id even though it occupies the same slot. Comparing month to month by slot
+ * would silently compare two different questions and call the difference movement. So
+ * comparability is checked per question id.
+ */
+export const COMPARABILITY_NOTE =
+  'We only compare a surface month to month when nothing about how we measured it changed: ' +
+  'the same questions, asked the same number of times, answered the same number of times. ' +
+  'We match your questions by identity rather than by position, so rewriting one starts its ' +
+  'history again rather than quietly comparing it to the question it replaced. Where a ' +
+  'comparison does not hold we say so and leave the number out.';
+
 export const CITATION_CAVEAT =
   'Cited sources vary much more between answers than the companies named do. Treat the ' +
   'source list as the kind of place these answers come from, not as a fixed list.';

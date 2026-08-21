@@ -27,7 +27,11 @@
 
 import 'server-only';
 import { brandKey } from './score';
+import { SURFACES, type Surface } from './scope';
 import type { ScoredCapture } from './share';
+
+/** "Grok", not "grok". The subscriber never sees an internal key. */
+const label = (surface: string) => SURFACES[surface as Surface]?.label ?? surface;
 
 /** Everything about one run that delta needs to decide comparability. */
 export interface RunSnapshot {
@@ -104,16 +108,17 @@ const round = (n: number) => Math.round(n * 10000) / 10000;
  */
 function surfaceObjection(now: RunSnapshot, before: RunSnapshot, surface: string): string | null {
   if (!before.surfaces.includes(surface)) {
-    return `not measured last month, so there is nothing to compare against`;
+    return `We started measuring ${label(surface)} this month, so there is nothing to compare it against yet.`;
   }
   if (!now.surfaces.includes(surface)) {
-    return `not measured this month`;
+    return `We did not measure ${label(surface)} this month.`;
   }
   if (now.samples[surface] !== before.samples[surface]) {
     const times = (n: number | undefined) => (n === 1 ? 'once' : `${n} times`);
     return (
-      `asked ${times(now.samples[surface])} this month against ` +
-      `${times(before.samples[surface])} last month, so the two figures are not the same measurement`
+      `We asked ${label(surface)} ${times(now.samples[surface])} this month and ` +
+      `${times(before.samples[surface])} last month. Those are not the same measurement, so we ` +
+      `are not putting a change against it.`
     );
   }
 
@@ -122,14 +127,14 @@ function surfaceObjection(now: RunSnapshot, before: RunSnapshot, surface: string
   const nowKeys = [...nowQs.keys()].sort().join(',');
   const beforeKeys = [...beforeQs.keys()].sort().join(',');
   if (!nowKeys || !beforeKeys) {
-    return `no usable answers in one of the two months`;
+    return `${label(surface)} gave us nothing usable in one of the two months, so there is no change to report.`;
   }
   if (nowKeys !== beforeKeys) {
     // Either a question was rewritten - 0002 makes that a new row and a new id - or a
     // capture was lost, which is what a partial run means. Both change the base.
     return (
-      `answered a different set of your questions in the two months, so the two figures ` +
-      `are over different bases`
+      `${label(surface)} answered a different set of your questions in the two months, so ` +
+      `its two figures would be counting different things.`
     );
   }
   return null;
@@ -142,7 +147,7 @@ export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport
   const bySurface: SurfaceDelta[] = surfaces.map((surface) => {
     const objection = surfaceObjection(now, before, surface);
     if (objection) {
-      configurationChanges.push(`${surface}: ${objection}.`);
+      configurationChanges.push(objection);
       return { surface, comparable: false, reason: objection };
     }
     const n = numeratorFor(usablePairs(now.captures, surface, false), (c) => c.target_mentioned === true);
@@ -164,10 +169,15 @@ export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport
   const overall = suppressed.length
     ? {
         comparable: false,
+        // COPY, not a log line. The subscriber reads this where a number should have been,
+        // and a sentence that reads like a stack trace tells them the number is missing
+        // without telling them we know why.
         reason:
-          `Your overall figure is not compared this month because ` +
-          `${suppressed.map((s) => s.surface).join(' and ')} could not be. ` +
-          `The surfaces that could be are shown below.`,
+          `We are not putting a single number on this month's change. ` +
+          `${suppressed.map((s) => label(s.surface)).join(' and ')} ` +
+          `${suppressed.length === 1 ? 'was not measured' : 'were not measured'} the same way ` +
+          `in both months, and a total that mixes the two would move for a reason that is not ` +
+          `your market. The surfaces we can compare are below, and they are compared properly.`,
       }
     : (() => {
         const sum = (r: RunSnapshot) =>
@@ -194,7 +204,9 @@ export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport
     if (nowAnswered.join(',') !== beforeAnswered.join(',')) {
       return {
         comparable: false,
-        reason: 'a different set of surfaces answered your branded question in the two months',
+        reason:
+          'A different set of surfaces answered the question about you by name in the two ' +
+          'months, so the count is not comparable. A count out of four is not a count out of five.',
       };
     }
     const count = (r: RunSnapshot) =>
@@ -216,7 +228,10 @@ export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport
 
   for (const name of now.competitors) {
     if (!beforeSet.has(brandKey(name))) {
-      competitorsSuppressed.push(`${name} was added since last month, so it has not gained ground - it was configured in.`);
+      competitorsSuppressed.push(
+        `${name} was added to your competitor set this month. It has not gained ground on you; ` +
+          `it was not being measured before.`,
+      );
       continue;
     }
     if (!overall.comparable) continue;
@@ -237,7 +252,9 @@ export function computeDelta(now: RunSnapshot, before: RunSnapshot): DeltaReport
   }
   for (const name of before.competitors) {
     if (!nowSet.has(brandKey(name))) {
-      competitorsSuppressed.push(`${name} was removed since last month, so its absence is not a retreat.`);
+      competitorsSuppressed.push(
+        `${name} was removed from your competitor set this month. Its absence below is not a retreat.`,
+      );
     }
   }
 
