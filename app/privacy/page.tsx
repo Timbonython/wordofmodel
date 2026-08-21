@@ -10,14 +10,19 @@ export const metadata: Metadata = {
 /**
  * The privacy policy, written from what the code actually does rather than from a template.
  *
- * Every claim on this page is checkable against the build. No analytics, no tracking pixels
- * and no advertising cookies is true because there is no analytics package in the
- * dependencies and nothing in the app sets a cookie except Supabase auth. IP addresses are
- * hashed with a salt before storage because that is what lib/ratelimit.ts does. The
- * sub-processor list is the set of services the code actually calls.
+ * Every claim on this page is checkable against the build. No analytics and no advertising
+ * trackers is true because there is no analytics package in the dependencies and nothing in
+ * the app sets a cookie except Supabase auth. IP addresses are hashed with a salt before
+ * storage because that is what lib/ratelimit.ts does. The sub-processor list is the set of
+ * services the code actually calls.
  *
- * If any of that changes, this page changes in the same commit. A privacy policy that
- * drifts from the code is worse than none, because it is a statement somebody relied on.
+ * THE TRACKING CLAIM IS DATED, AND THAT IS NOT HEDGING. The ad plan includes retargeting,
+ * which needs a pixel, so the day somebody adds a Meta or LinkedIn tag this page becomes
+ * false: not vague, false, in a way a subscriber could have relied on. Dating it makes the
+ * pixel a deliberate edit here rather than a silent contradiction, and the "if we advertise"
+ * section says in advance what that edit will look like.
+ *
+ * If any of this changes, this page changes in the same commit.
  */
 export default function PrivacyPage() {
   return (
@@ -88,10 +93,11 @@ export default function PrivacyPage() {
         <section>
           <h2>What we do not do</h2>
           <ul className="plain">
-            <li>No analytics, no tracking pixels, no advertising cookies. None of it, anywhere.</li>
             <li>
-              The only cookie this site sets is the one that keeps you signed in after a magic
-              link. There is no password to store, so we do not store one.
+              <strong>As of {LAST_UPDATED}, no analytics and no advertising trackers.</strong> No
+              Google Analytics, no Meta pixel, no LinkedIn tag, nothing that follows you off this
+              site. The only cookie set here is the one that keeps you signed in after a magic
+              link, and there is no password to store, so we do not store one.
             </li>
             <li>We do not sell your information, and we do not share it for anyone else&apos;s marketing.</li>
             <li>
@@ -99,6 +105,22 @@ export default function PrivacyPage() {
               questions we ask are about your market and your category.
             </li>
           </ul>
+        </section>
+
+        <section>
+          <h2>If we advertise</h2>
+          <p>
+            We may run ads to find customers. If that ever means adding an advertising tracker to
+            this site, or sending a hashed version of your email address to an ad platform so it
+            can tell whether its ad worked, we will say so on this page and date the change before
+            it starts, not after. If you are in the United Kingdom or the European Economic Area
+            you will be asked first, because that is what consent means there.
+          </p>
+          <p>
+            Our preference, and the reason the list above currently reads the way it does, is to
+            measure advertising by which link somebody arrived through rather than by following
+            them around. That is less precise for us and considerably less invasive for you.
+          </p>
         </section>
 
         <section>

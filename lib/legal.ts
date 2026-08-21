@@ -4,16 +4,17 @@
  * Here rather than typed into two pages because an entity name that disagrees with itself
  * across two legal documents is the kind of detail that undermines both.
  *
- * ABN IS A PLACEHOLDER AND MUST BE FILLED BEFORE WIZARD_LIVE. A subscription contract that
- * does not name the entity behind it is not much of a contract, and the number is printed
- * on both pages. Same for the trading address if one is ever added: it must not be Frame's,
- * because Word of Model is deliberately outside Frame.
+ * NO STREET ADDRESS IS PUBLISHED, DELIBERATELY. Nothing in Australian law requires one on a
+ * website, ABN Lookup discloses only the state and postcode, and the only address available
+ * today is a home address. When cold email starts, US anti-spam law does require a physical
+ * postal address in the message itself: that goes in the email footer rather than on the
+ * site, and it should be a business address the owner is happy to publish. Whatever is used
+ * must not be Frame's, because Word of Model is deliberately outside Frame.
  */
 
 export const ENTITY = 'Timothy Pearce, trading as Word of Model';
 
-/** TODO before go-live: the real ABN. */
-export const ABN = 'ABN pending';
+export const ABN = 'ABN 99 301 966 719';
 
 export const CONTACT_EMAIL = 'hello@wordofmodel.ai';
 
