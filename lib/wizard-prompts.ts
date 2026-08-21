@@ -17,6 +17,19 @@
 
 import type { QuestionSlot } from './scope';
 
+/**
+ * AMENDED 21 Aug 2026. The original asked only for "the four companies most likely to be
+ * recommended INSTEAD of [brand]" and nothing in it required the answers to be companies.
+ * The first real subscriber got "GlobaleSIM" - their own category with the spaces removed -
+ * sitting in the leaderboard next to Airalo and Holafly looking like a peer.
+ *
+ * Two changes. The exclusions are explicit, because a model reaching for a plausible fourth
+ * name will invent a category unless told not to. And a DOMAIN is now required alongside
+ * every name: a model that has to produce airalo.com cannot produce globalesim.com without
+ * noticing it is inventing one, and the domain is then checkable against the real web.
+ *
+ * competitors.domain has existed unused since 0002. This is what it was for.
+ */
 export function competitorPrompt(input: {
   brand_name: string;
   what_they_sell: string;
@@ -29,7 +42,17 @@ Prefer companies that actually appear in AI answers and review sites for
 this category. Do not include ${input.brand_name}. Do not include companies that only
 serve a different market or a different size of customer.
 
-Return ONLY: {"competitors": ["", "", "", ""], "reasoning": "one sentence"}`;
+Every entry must be a REAL, NAMED COMPANY with its own website. Do not return:
+- a product category or a description of what is being sold
+- a generic phrase such as "global providers" or "budget options"
+- a marketplace, directory, comparison site or review publication
+- a company you cannot give a working domain for
+
+Give the domain a buyer would actually land on, with no protocol and no path,
+for example "airalo.com". If you are not confident of the domain, leave it empty
+rather than guessing: an invented domain is worse than a missing one.
+
+Return ONLY: {"competitors": [{"name": "", "domain": ""}], "reasoning": "one sentence"}`;
 }
 
 export function questionsPrompt(input: {

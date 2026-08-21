@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SLOT_LABEL, QUESTION_SLOTS, type QuestionSlot } from '@/lib/scope';
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
+import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
 
 /**
@@ -46,6 +47,20 @@ function resolveMarket(name: string | null): string {
 interface Question {
   slot: QuestionSlot;
   text: string;
+}
+
+/**
+ * A competitor carries its domain, and whatever we think is wrong with it.
+ *
+ * The domain is not decoration: it is what makes a proposed competitor checkable against
+ * the real web instead of a string somebody produced. The first subscriber's set contained
+ * "GlobaleSIM" - their own category with the spaces removed - sitting next to Airalo
+ * looking like a peer.
+ */
+interface CompetitorRow {
+  name: string;
+  domain: string | null;
+  concern: CompetitorConcern | null;
 }
 
 type Step = 'business' | 'competitors' | 'questions' | 'pay';
@@ -92,9 +107,34 @@ export default function Wizard({
   const [domain, setDomain] = useState(prefill?.website ?? '');
   const [unsupportedMarket, setUnsupportedMarket] = useState<string | null>(null);
   const [marketGuessed, setMarketGuessed] = useState(false);
+
+  /** Named competitors only, with whatever domain we have for each. */
+  const liveCompetitors = () =>
+    competitors.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), domain: c.domain }));
+
+  /**
+   * Re-check as they type. A competitor the subscriber replaces by hand gets the same
+   * category warning a proposed one gets - the check is deterministic and needs no call,
+   * so there is no reason to only apply it to our own suggestions.
+   */
+  const setCompetitorName = (i: number, value: string) =>
+    setCompetitors((rows) =>
+      rows.map((row, j) =>
+        j === i
+          ? {
+              name: value,
+              // Their own text, so our proposed domain no longer describes it.
+              domain: value.trim() === row.name.trim() ? row.domain : null,
+              concern: value.trim()
+                ? categoryConcern(value, profile.category_term, profile.what_they_sell)
+                : null,
+            }
+          : row,
+      ),
+    );
   const [detected, setDetected] = useState(Boolean(prefill));
   const [profile, setProfile] = useState<WizardProfileInput>(prefill ?? EMPTY);
-  const [competitors, setCompetitors] = useState<string[]>([]);
+  const [competitors, setCompetitors] = useState<CompetitorRow[]>([]);
   const [reasoning, setReasoning] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [email, setEmail] = useState(prefillEmail ?? '');
@@ -163,11 +203,15 @@ export default function Wizard({
 
   const toCompetitors = () =>
     run('Working out who you are up against', async () => {
-      const out = await post<{ competitors: string[]; reasoning: string }>(
+      const out = await post<{ competitors: CompetitorRow[]; reasoning: string }>(
         '/api/wizard/competitors',
         { profile },
       );
-      setCompetitors(out.competitors.length ? out.competitors : ['', '', '', '']);
+      setCompetitors(
+        out.competitors.length
+          ? out.competitors
+          : Array.from({ length: 4 }, () => ({ name: '', domain: null, concern: null })),
+      );
       setReasoning(out.reasoning || null);
       setStep('competitors');
     });
@@ -176,7 +220,7 @@ export default function Wizard({
     run('Writing your five questions', async () => {
       const out = await post<{ questions: Question[] }>('/api/wizard/questions', {
         profile,
-        competitors: competitors.filter(Boolean),
+        competitors: liveCompetitors(),
       });
       setQuestions(out.questions);
       setStep('questions');
@@ -187,7 +231,7 @@ export default function Wizard({
       const out = await post<{ slot: QuestionSlot; text: string }>('/api/wizard/rewrite', {
         slot,
         profile,
-        competitors: competitors.filter(Boolean),
+        competitors: liveCompetitors(),
         questions,
       });
       setQuestions((qs) => qs.map((q) => (q.slot === slot ? { ...q, text: out.text } : q)));
@@ -198,7 +242,7 @@ export default function Wizard({
       const out = await post<{ url: string }>('/api/wizard/checkout', {
         email,
         profile,
-        competitors: competitors.filter(Boolean),
+        competitors: liveCompetitors(),
         questions,
       });
       window.location.href = out.url;
@@ -324,25 +368,30 @@ export default function Wizard({
           {reasoning && <p className="note">{reasoning}</p>}
 
           <ul className="competitor-list">
-            {competitors.map((name, i) => (
+            {competitors.map((row, i) => (
               <li key={i}>
                 <input
                   className="field"
                   type="text"
-                  value={name}
+                  value={row.name}
                   placeholder="Company name"
-                  onChange={(e) =>
-                    setCompetitors((c) => c.map((v, j) => (j === i ? e.target.value : v)))
-                  }
+                  onChange={(e) => setCompetitorName(i, e.target.value)}
                 />
                 <button
                   className="button ghost small"
                   onClick={() => setCompetitors((c) => c.filter((_, j) => j !== i))}
-                  disabled={competitors.filter(Boolean).length <= 3}
-                  aria-label={`Remove ${name || 'this competitor'}`}
+                  disabled={liveCompetitors().length <= 3}
+                  aria-label={`Remove ${row.name || 'this competitor'}`}
                 >
                   Remove
                 </button>
+                {row.domain && !row.concern && <span className="competitor-domain">{row.domain}</span>}
+                {/*
+                  Shown, never acted on. A competitor we quietly removed is one the
+                  subscriber never got to disagree about, and they know their market better
+                  than we do - which is the whole reason this screen is editable.
+                */}
+                {row.concern && <span className="competitor-concern">{row.concern.message}</span>}
               </li>
             ))}
           </ul>
@@ -355,7 +404,7 @@ export default function Wizard({
           <div className="wizard-actions">
             <button
               className="button ghost"
-              onClick={() => setCompetitors((c) => [...c, ''])}
+              onClick={() => setCompetitors((c) => [...c, { name: '', domain: null, concern: null }])}
               disabled={competitors.length >= 6}
             >
               Add another
@@ -363,7 +412,7 @@ export default function Wizard({
             <button
               className="button"
               onClick={toQuestions}
-              disabled={Boolean(busy) || competitors.filter(Boolean).length < 3}
+              disabled={Boolean(busy) || liveCompetitors().length < 3}
             >
               {busy ?? 'Next: your five questions'}
             </button>

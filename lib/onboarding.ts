@@ -1,4 +1,5 @@
 import 'server-only';
+import { checkCompetitors, type ProposedCompetitor } from './competitors';
 import { db } from './db';
 import { askJsonSearched, askJson, askText } from './openai';
 import { iso2 } from './domain';
@@ -49,10 +50,24 @@ const COMPETITOR_SCHEMA = {
   additionalProperties: false,
   required: ['competitors', 'reasoning'],
   properties: {
-    competitors: { type: 'array', items: { type: 'string' } },
+    competitors: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'domain'],
+        properties: { name: { type: 'string' }, domain: { type: 'string' } },
+      },
+    },
     reasoning: { type: 'string' },
   },
 } as const;
+
+/** What the wizard sends back: a name, and the domain that makes it checkable. */
+export interface CompetitorInput {
+  name: string;
+  domain: string | null;
+}
 
 export const MIN_COMPETITORS = 3;
 export const MAX_COMPETITORS = 6;
@@ -64,9 +79,9 @@ export const MAX_COMPETITORS = 6;
  */
 export async function proposeCompetitors(
   profile: WizardProfile,
-): Promise<{ competitors: string[]; reasoning: string }> {
+): Promise<{ competitors: ProposedCompetitor[]; reasoning: string }> {
   const { competitors, reasoning } = await askJsonSearched<{
-    competitors: string[];
+    competitors: Array<{ name: string; domain: string }>;
     reasoning: string;
   }>(
     competitorPrompt({
@@ -79,7 +94,15 @@ export async function proposeCompetitors(
     iso2(profile.country),
   );
 
-  return { competitors: cleanCompetitors(competitors, profile.brand_name), reasoning };
+  // Three layers, in order of cost. Dedupe and drop the subscriber's own brand; then the
+  // deterministic category test, which needs no network call; then ask the web whether the
+  // domains resolve. Nothing is dropped for a concern - the subscriber is shown and decides.
+  const cleaned = cleanCompetitors(competitors, profile.brand_name);
+  const checked = await checkCompetitors(cleaned, {
+    category_term: profile.category_term,
+    what_they_sell: profile.what_they_sell,
+  });
+  return { competitors: checked, reasoning };
 }
 
 /**
@@ -87,17 +110,20 @@ export async function proposeCompetitors(
  * customer reading themselves in their own competitor list stops trusting the
  * screen, and the alternatives question would then be built against them.
  */
-export function cleanCompetitors(names: string[], brandName: string): string[] {
+export function cleanCompetitors(
+  proposed: Array<{ name?: string; domain?: string | null }>,
+  brandName: string,
+): Array<{ name: string; domain: string | null }> {
   const brand = brandName.trim().toLowerCase();
   const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of names) {
-    const name = (raw ?? '').trim().replace(/\s+/g, ' ');
+  const out: Array<{ name: string; domain: string | null }> = [];
+  for (const raw of proposed) {
+    const name = (raw?.name ?? '').trim().replace(/\s+/g, ' ');
     if (!name || name.length > 80) continue;
     const key = name.toLowerCase();
     if (key === brand || seen.has(key)) continue;
     seen.add(key);
-    out.push(name);
+    out.push({ name, domain: (raw?.domain ?? '').trim() || null });
     if (out.length >= MAX_COMPETITORS) break;
   }
   return out;
@@ -138,9 +164,9 @@ const SLOT_BY_NUMBER: Record<number, QuestionSlot> = {
 
 export async function proposeQuestions(
   profile: WizardProfile,
-  competitors: string[],
+  competitors: CompetitorInput[],
 ): Promise<ProposedQuestion[]> {
-  const largest = competitors[0];
+  const largest = competitors[0]?.name;
   if (!largest) throw new Error('Confirm the competitors before writing the questions.');
 
   const { questions } = await askJson<{ questions: Array<{ slot: number; text: string }> }>(
@@ -177,14 +203,14 @@ export async function rewriteQuestion(input: {
   current: string;
   others: ProposedQuestion[];
   profile: WizardProfile;
-  competitors: string[];
+  competitors: CompetitorInput[];
 }): Promise<string> {
   const vars: Record<string, string> = {
     category_term: input.profile.category_term,
     country: input.profile.country,
     buyer: input.profile.buyer,
     brand_name: input.profile.brand_name,
-    largest_competitor: input.competitors[0] ?? input.profile.category_term,
+    largest_competitor: input.competitors[0]?.name ?? input.profile.category_term,
   };
 
   const text = await askText(
@@ -238,7 +264,7 @@ export interface ApprovedOnboarding {
 export async function approveOnboarding(input: {
   email: string;
   profile: WizardProfile;
-  competitors: string[];
+  competitors: CompetitorInput[];
   questions: ProposedQuestion[];
 }): Promise<ApprovedOnboarding> {
   const email = input.email.trim().toLowerCase();
@@ -321,9 +347,11 @@ async function upsertScope(accountId: string, profile: WizardProfile): Promise<S
  * a configuration change from a market change. During onboarding there is no
  * history yet, so the live set is simply replaced.
  */
-async function writeCompetitors(scopeId: string, names: string[]): Promise<void> {
+async function writeCompetitors(scopeId: string, input: CompetitorInput[]): Promise<void> {
   const now = new Date().toISOString();
-  const wanted = names.map((n) => n.trim()).filter(Boolean);
+  const wanted = input
+    .map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null }))
+    .filter((c) => c.name);
 
   const { data: current, error } = await db()
     .from('competitors')
@@ -333,7 +361,7 @@ async function writeCompetitors(scopeId: string, names: string[]): Promise<void>
   if (error) throw new Error(`Could not read the competitors: ${error.message}`);
 
   const live = (current ?? []) as Array<{ id: string; name: string }>;
-  const wantedKeys = new Set(wanted.map((n) => n.toLowerCase()));
+  const wantedKeys = new Set(wanted.map((c) => c.name.toLowerCase()));
   const liveKeys = new Set(live.map((c) => c.name.toLowerCase()));
 
   const goneIds = live.filter((c) => !wantedKeys.has(c.name.toLowerCase())).map((c) => c.id);
@@ -345,11 +373,15 @@ async function writeCompetitors(scopeId: string, names: string[]): Promise<void>
     if (removeError) throw new Error(`Could not save the competitors: ${removeError.message}`);
   }
 
-  const added = wanted.filter((n) => !liveKeys.has(n.toLowerCase()));
+  const added = wanted.filter((c) => !liveKeys.has(c.name.toLowerCase()));
   if (added.length) {
     const { error: addError } = await db()
       .from('competitors')
-      .insert(added.map((name) => ({ scope_id: scopeId, name, source: 'proposed' })));
+      // domain has existed unused since 0002. It is what makes a competitor checkable
+      // against the real web rather than a string somebody typed.
+      .insert(
+        added.map((c) => ({ scope_id: scopeId, name: c.name, domain: c.domain, source: 'proposed' })),
+      );
     if (addError) throw new Error(`Could not save the competitors: ${addError.message}`);
   }
 }

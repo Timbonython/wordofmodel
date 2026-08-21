@@ -1,10 +1,12 @@
 import 'server-only';
 import { QUESTION_SLOTS, type QuestionSlot } from './accounts';
 import { isSupportedMarket, marketName } from './geo';
+import { normaliseDomain } from './domain';
 import {
   MAX_COMPETITORS,
   MIN_COMPETITORS,
   tidyQuestion,
+  type CompetitorInput,
   type ProposedQuestion,
   type WizardProfile,
 } from './onboarding';
@@ -68,17 +70,22 @@ export function parseProfile(input: unknown): WizardProfile {
  * in, and it matters: the first one is the largest competitor and is what the
  * alternatives question gets written against.
  */
-export function parseCompetitors(input: unknown): string[] {
+export function parseCompetitors(input: unknown): CompetitorInput[] {
   const raw = Array.isArray(input) ? input : [];
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: CompetitorInput[] = [];
   for (const item of raw) {
-    const name = typeof item === 'string' ? item.trim().replace(/\s+/g, ' ') : '';
+    // Accepts a bare string as well as { name, domain }: a competitor the subscriber typed
+    // in themselves has no domain, and a missing domain is a concern to show rather than a
+    // reason to refuse the whole set.
+    const obj = typeof item === 'string' ? { name: item } : ((item ?? {}) as Record<string, unknown>);
+    const name = typeof obj.name === 'string' ? obj.name.trim().replace(/\s+/g, ' ') : '';
     if (!name || name.length > 80) continue;
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(name);
+    const domain = typeof obj.domain === 'string' ? normaliseDomain(obj.domain) : null;
+    out.push({ name, domain });
   }
   if (out.length < MIN_COMPETITORS) {
     throw new InputError(`Name at least ${MIN_COMPETITORS} competitors.`);
