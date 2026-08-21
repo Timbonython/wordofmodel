@@ -143,6 +143,39 @@ Sending domain `wordofmodel.ai` is **verified in Resend**. DKIM, SPF and DMARC a
 When cold email starts (see the ad copy file), send it from a **separate subdomain or domain** so a spam
 complaint on outreach can never poison the address that delivers scan results.
 
+**THE ALERT CHANNEL NEVER LIVES ON THE DOMAIN IT MONITORS. Settled 21 Aug 2026, permanent.**
+
+`ALERT_EMAIL` is `therealtimpearce@gmail.com`. Not `hello@wordofmodel.ai`, which is what it was until
+that date, and not a Frame address either.
+
+On 17 Aug 2026 `hello@wordofmodel.ai` bounced `550 5.1.1 Address does not exist` three times, rejected
+by Cloudflare's own MX (`route3.mx.cloudflare.net`) because Email Routing had no rule behind it yet —
+the zone had gone live at 07:47 UTC and the tests ran at 09:19. `info@` bounced the same way. That
+address is simultaneously the reply-to on every subscriber email **and** where every operational alert
+was going, so one routing fault would have taken out the address a customer replies to and the means of
+finding out about it, from a single cause. Every alert this build watched fire during Session 4 would
+have looked identical from inside the code if the address had still been dead: Resend accepts, the 550
+arrives later, and `sendOpsAlert` swallows failures by design.
+
+It is not a stopgap until the routing is healthy. Moving it back afterwards rebuilds the same single
+point of failure. Gmail is chosen over a Frame address on purpose as well: Word of Model is being kept
+outside Frame, so its operational mail should not be entangled with Frame's, and Gmail already supplies
+what a Frame address would — another provider, another domain, another failure mode.
+
+Enforced in three places: `lib/env.ts` warns whenever `ALERT_EMAIL` shares a domain with `RESEND_FROM`,
+`.env.example` carries the reasoning, and this paragraph.
+
+**And accepted is not delivered.** `ops_alerts` (0011) records every alert attempt with Resend's message
+id; `npm run alerts` takes each id back to Resend and prints the real delivery event. A row saying `sent`
+next to an event saying `bounced` is exactly the pair that was invisible in August.
+
+**Email Routing state, probed 21 Aug 2026.** Cloudflare now answers `250` at RCPT for `hello@`, `info@`
+and invented addresses alike, so a catch-all is in place and nothing bounces. **Acceptance is not
+forwarding**: a catch-all whose action is *Drop* accepts mail and silently discards it, which for a
+reply-to is worse than a bounce, because the customer believes they were heard and nothing tells anyone
+otherwise. Confirm in the dashboard that `hello@` has an explicit rule to a **verified** destination and
+that the catch-all forwards rather than drops.
+
 Redirect-only domains (.com, .com.au, .io) send no mail: give each `v=spf1 -all` plus a DMARC record so
 they can't be spoofed.
 

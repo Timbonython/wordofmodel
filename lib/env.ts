@@ -175,7 +175,14 @@ export const env = {
    *
    * An alert channel that shares a failure mode with the thing it monitors is not a channel.
    * So it points at a mailbox on different infrastructure, and the warning below fires if
-   * anybody ever points it back.
+   * anybody ever points it back. This is permanent, not a stopgap until hello@ is healthy:
+   * moving it back once the routing is fixed rebuilds the same single point of failure,
+   * where the fault takes out the thing that broke and the means of hearing about it.
+   *
+   * A personal Gmail rather than a Frame address, deliberately. Word of Model is being kept
+   * outside Frame, so its operational mail is not entangled with Frame's either, and Gmail
+   * already provides what a Frame address would: another provider, another domain, another
+   * failure mode.
    */
   get alertEmail(): string | null {
     const value = process.env.ALERT_EMAIL || null;
