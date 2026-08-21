@@ -12,6 +12,7 @@
  */
 
 import 'server-only';
+import { article } from './geo';
 import type { GeoSent } from './geo';
 
 /**
@@ -84,7 +85,7 @@ export function geoNote(surfaceLabel: string, geo: GeoSent, marketLabel: string,
   return (
     `${surfaceLabel}: ${geo.reason}. Your question names ${marketLabel}, so the answer is ` +
     `still about your market, but it is not additionally located the way the other surfaces ` +
-    `are. Asked from a ${region} network origin, held constant every month so a change in ` +
+    `are. Asked from ${article(region)} ${region} network origin, held constant every month so a change in ` +
     `your number is never caused by a change in where we asked from.`
   );
 }

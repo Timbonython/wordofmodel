@@ -229,6 +229,19 @@ export function geoFor(surface: Surface, country: string, provider?: string): Ge
 }
 
 /**
+ * "an iad1 network origin", not "a iad1".
+ *
+ * Deliberately small. The only values that reach it are Vercel region codes, which a reader
+ * sounds out letter by letter, plus the 'US' fallback for a run that recorded no region -
+ * and "a US network origin" is correct there, because the U is read "you". A general a/an
+ * function is a much larger problem than this sentence has.
+ */
+export function article(word: string): 'a' | 'an' {
+  if (/^U[A-Z]/.test(word)) return 'a';
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
+/**
  * The method note line for one surface, generated from what was actually sent rather
  * than from what we intended to send. captures.geo_sent is the input, so a surface
  * whose parameters change mid-life tells the truth about each month separately.
@@ -237,5 +250,5 @@ export function methodNoteFor(surfaceLabel: string, geo: GeoSent, marketLabel: s
   if (geo.supported) {
     return `${surfaceLabel}: asked as a buyer in ${marketLabel}.`;
   }
-  return `${surfaceLabel}: ${geo.reason}, so the answer is location-neutral. Asked from a ${region} network origin, held constant every month.`;
+  return `${surfaceLabel}: ${geo.reason}, so the answer is location-neutral. Asked from ${article(region)} ${region} network origin, held constant every month.`;
 }

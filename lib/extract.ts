@@ -28,6 +28,7 @@ import 'server-only';
 import { db } from './db';
 import { askJsonExact } from './openai';
 import { brandKey } from './score';
+import { isHedgeReason, HEDGE_REASONS, type HedgeReason } from './actions';
 import type { Citation } from './types';
 
 /**
@@ -38,7 +39,19 @@ import type { Citation } from './types';
  * after the competitor set, the surface set and the sampling depth. Session 4 must compare
  * like with like or say what changed.
  */
-export const EXTRACTION_VERSION = 1;
+export const EXTRACTION_VERSION = 2;
+
+/**
+ * v2, 21 Aug 2026. The judgment call now also returns the sentence in which the answer said
+ * WHY it stopped short of recommending the target, and a closed-set reason for it. Same
+ * call, same temperature, two more fields - nothing about how mentions or recommendations
+ * are decided changed.
+ *
+ * The bump is still correct: the prompt changed, and a prompt change can move any output.
+ * Every capture in the database was re-read at v2 when this shipped, so no trend line
+ * currently spans the two versions. The first run that mixes them is the one to watch -
+ * delta.ts checks how a surface was measured but does not yet check which version read it.
+ */
 
 // ------------------------------------------------------------- deterministic half
 
@@ -91,17 +104,28 @@ interface Judgment {
   target_position: number | null;
   top_recommendation: string | null;
   other_brands: string[];
+  hedge_quote: string | null;
+  hedge_reason: string | null;
 }
 
 const JUDGMENT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['target_recommended', 'target_position', 'top_recommendation', 'other_brands'],
+  required: [
+    'target_recommended',
+    'target_position',
+    'top_recommendation',
+    'other_brands',
+    'hedge_quote',
+    'hedge_reason',
+  ],
   properties: {
     target_recommended: { type: 'boolean' },
     target_position: { type: ['integer', 'null'] },
     top_recommendation: { type: ['string', 'null'] },
     other_brands: { type: 'array', items: { type: 'string' } },
+    hedge_quote: { type: ['string', 'null'] },
+    hedge_reason: { type: ['string', 'null'], enum: [...HEDGE_REASONS, null] },
   },
 } as const;
 
@@ -129,6 +153,23 @@ other_brands: companies named in the answer that are NOT already in this list:
 ${input.knownBrands.join(', ') || '(none)'}
 Company names only. Do not include publications, review sites or the buyer.
 
+hedge_quote: if the answer gives a REASON for not putting ${input.brand} forward without
+reservation - thin independent evidence, a low published rating, mixed reports, being small
+or new, something they do not do, price - copy the ONE sentence that states it, EXACTLY as
+written, character for character. Do not paraphrase, do not summarise, do not join two
+sentences, do not fix its punctuation. If the answer states no such reason, or you would
+have to write the sentence yourself, return null. Returning null is correct far more often
+than guessing, and a sentence that is not in the answer word for word will be thrown away.
+
+hedge_reason: which of these the quoted sentence is, or null when hedge_quote is null.
+  evidence_thin     not enough independent feedback, reviews or third-party coverage
+  rating_low        names a specific published score or star rating that is unflattering
+  reputation_mixed  reports of mixed or negative experience dealing with them
+  small_or_new      too small, too new or too low profile to put forward
+  coverage_gap      names something they do not do, or a limitation in what they cover
+  price             price, fees or value for money
+  other             a stated reason that is none of the above
+
 QUESTION: ${input.question}
 
 ANSWER:
@@ -155,6 +196,44 @@ export interface ExtractionResult {
   brandsNamed: string[];
   domainsCited: string[];
   extractorModel: string | null;
+  /** Verbatim, and null unless it was found in the answer. Never a paraphrase. */
+  hedgeQuote: string | null;
+  hedgeReason: HedgeReason | null;
+}
+
+/**
+ * THE GUARD THAT MAKES THIS EXTRACTION RATHER THAN GENERATION.
+ *
+ * A model asked for a quote will, often enough to matter, produce a sentence that is what
+ * the answer meant rather than what it said. Stored, that sentence would appear in the
+ * report inside quotation marks with a surface's name against it - the report attributing
+ * words to ChatGPT that ChatGPT never wrote. There is no version of this product that
+ * survives doing that once.
+ *
+ * So the quote is looked for in the answer, and dropped when it is not there. Comparison is
+ * on a normalised copy - case, curly quotes, dashes, markdown emphasis and whitespace all
+ * differ between what a model echoes and what the provider sent - but nothing that changes
+ * a word is normalised away. The stored string is the model's, unedited, so the subscriber
+ * can find it in the verbatim answer printed further down the same report.
+ */
+function verbatimQuote(answer: string, quote: string | null): string | null {
+  if (!quote) return null;
+  const trimmed = quote.trim();
+  // Matches the length constraint in 0009: below 20 characters it is a fragment, above 600
+  // it is a summary wearing a quotation mark.
+  if (trimmed.length < 20 || trimmed.length > 600) return null;
+  return normaliseForMatch(answer).includes(normaliseForMatch(trimmed)) ? trimmed : null;
+}
+
+function normaliseForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[‘’ʼ]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[‐-―−]/g, '-')
+    .replace(/[*_`#]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export async function extractCapture(
@@ -178,6 +257,8 @@ export async function extractCapture(
       brandsNamed: [],
       domainsCited,
       extractorModel: null,
+      hedgeQuote: null,
+      hedgeReason: null,
     };
   }
 
@@ -193,6 +274,8 @@ export async function extractCapture(
     target_position: null,
     top_recommendation: null,
     other_brands: [],
+    hedge_quote: null,
+    hedge_reason: null,
   };
   let extractorModel: string | null = null;
 
@@ -216,6 +299,16 @@ export async function extractCapture(
   // whether it was named, so it also caps this.
   const targetRecommended = judgment.target_recommended && targetMentioned;
 
+  // The quote and its reason travel together, matching 0009: a reason with no surviving
+  // quote would put the report's own words where a surface's should be. A quote the model
+  // invented is logged rather than swallowed - it is the signal that the guard is earning
+  // its place, and a rate that climbs is a prompt regression.
+  const hedgeQuote = verbatimQuote(text, judgment.hedge_quote);
+  const hedgeReason = hedgeQuote && isHedgeReason(judgment.hedge_reason) ? judgment.hedge_reason : null;
+  if (judgment.hedge_quote && !hedgeQuote) {
+    console.warn(`extract: discarded a hedge quote not found in the answer, capture ${capture.id}`);
+  }
+
   const brandsNamed = dedupeBrands([
     ...(targetMentioned ? [scope.brand_name] : []),
     ...competitorsNamed,
@@ -231,6 +324,8 @@ export async function extractCapture(
     brandsNamed,
     domainsCited,
     extractorModel,
+    hedgeQuote: hedgeReason ? hedgeQuote : null,
+    hedgeReason,
   };
 }
 
@@ -258,6 +353,8 @@ export async function writeExtraction(r: ExtractionResult): Promise<void> {
       top_recommendation: r.topRecommendation,
       brands_named: r.brandsNamed,
       domains_cited: r.domainsCited,
+      hedge_quote: r.hedgeQuote,
+      hedge_reason: r.hedgeReason,
       extracted_at: new Date().toISOString(),
       extraction_version: EXTRACTION_VERSION,
       extractor_model: r.extractorModel,

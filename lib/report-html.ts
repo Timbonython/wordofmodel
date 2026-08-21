@@ -10,12 +10,19 @@
  *   1  the diagnosis          what is true, then what it means
  *   2  presence and endorsement, side by side, neither blended into the other
  *   3  what they said when asked about you by name
- *   4  what changed          omitted in month one rather than apologised for
- *   5  the leaderboard
- *   6  question by question
- *   7  where the answers came from
- *   8  the evidence, verbatim
- *   9  how this was measured
+ *   4  what to do about it    their stated reasons, quoted, with what would change them
+ *   5  what changed           omitted in month one rather than apologised for
+ *   6  the leaderboard
+ *   7  question by question
+ *   8  where the answers came from
+ *   9  the evidence, verbatim
+ *  10  how this was measured
+ *
+ * FOUR SITS WHERE IT DOES BECAUSE THE READER IS READY FOR IT THERE: problem, proof, what to
+ * do, then the supporting data. The branded section is where a subscriber learns that four
+ * surfaces stopped short of recommending them, and the next thing they want is why. Putting
+ * the actions after the leaderboard would make them read as a footnote to a chart; putting
+ * them before the proof would make them read as advice.
  *
  * Everything is inline: one self-contained document that renders the same in an email
  * client, a browser and a PDF, and keeps working when the subscriber forwards it to
@@ -26,7 +33,7 @@
 import 'server-only';
 import { REPORT_CSS } from './report-css';
 import { SLOT_LABEL } from './scope';
-import type { ReportData } from './report';
+import type { GridState, ReportData } from './report';
 
 function esc(s: string): string {
   return s
@@ -66,6 +73,7 @@ export function renderReport(r: ReportData): string {
 ${sectionDiagnosis(r)}
 ${sectionPair(r)}
 ${sectionBranded(r)}
+${sectionActions(r)}
 ${sectionDelta(r)}
 ${sectionLeaderboard(r)}
 ${sectionGrid(r)}
@@ -102,7 +110,7 @@ function sectionPair(r: ReportData): string {
       <div class="half">
         <div class="k">Presence &middot; Share of Model</div>
         <div class="v">${pct(p.shareOfModel)}</div>
-        <div class="sub">named in ${num(p.numerator)} of ${p.pairs} answers, across your four unbranded questions</div>
+        <div class="sub">named in ${num(p.numerator)} of ${p.pairs} readings. A reading is one surface answering one of your four unbranded questions; where we ask three times, it counts as the share of those that named you, which is why this can be a fraction.</div>
       </div>
       <div class="half">
         <div class="k">Endorsement</div>
@@ -136,7 +144,47 @@ ${items}
   </section>`;
 }
 
-// 4 -------------------------------------------------------------- what changed
+// 4 ------------------------------------------------------------ what to do about it
+/**
+ * The actions, and the reason this section can be trusted is that we did not write it.
+ *
+ * Every heading names a surface, every quote is that surface's own sentence - verbatim,
+ * checked against the answer at extraction time, and printed again in full in the evidence
+ * section so the subscriber can go and read it in context. Only the line after "What would
+ * change it" is ours, and it is fixed copy per reason rather than anything a model wrote.
+ *
+ * Empty when no surface stated a reason: no heading, no apology, nothing. A generated
+ * recommendation is exactly what this section exists instead of.
+ */
+function sectionActions(r: ReportData): string {
+  if (!r.actions.length) return '';
+  const n = r.actions.length;
+  const items = r.actions
+    .map(
+      (a) => `      <li>
+        <div class="who">${esc(a.label)}</div>
+        <p class="quote">${esc(a.quote)}</p>
+        <p class="fix">${esc(a.whatWouldChangeIt)}</p>
+      </li>`,
+    )
+    .join('\n');
+  return `  <section>
+    <div class="eyebrow">What to do about it</div>
+    <h2>${n === 1 ? 'One of them told you what is wrong' : `${countWord(n)} of them told you what is wrong`}</h2>
+    <p class="lede">None of this is our advice. Each line below is the reason a surface gave, unprompted and in its own words, for naming you without putting you forward, quoted from the answers printed in full further down this report. The only part we have added is what would change it.</p>
+    <ul class="said-list actions">
+${items}
+    </ul>
+  </section>`;
+}
+
+/** Small counts read as words in a heading. Nine is where that stops being natural. */
+function countWord(n: number): string {
+  const words = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  return words[n] ?? String(n);
+}
+
+// 5 -------------------------------------------------------------- what changed
 function sectionDelta(r: ReportData): string {
   const d = r.delta;
   // Month one. No section at all rather than a heading explaining an absence: a first
@@ -145,7 +193,7 @@ function sectionDelta(r: ReportData): string {
 
   const suppressed = d.overall.comparable ? '' : `    <p class="suppressed">${esc(d.overall.reason ?? '')}</p>`;
   const headline = d.overall.comparable
-    ? `<h2>${d.overall.change! >= 0 ? 'Up' : 'Down'} ${num(Math.abs(d.overall.change!))} answers since ${esc(monthName(d.previousPeriod))}</h2>`
+    ? `<h2>${d.overall.change! >= 0 ? 'Up' : 'Down'} ${num(Math.abs(d.overall.change!))} readings since ${esc(monthName(d.previousPeriod))}</h2>`
     : `<h2>What we can compare since ${esc(monthName(d.previousPeriod))}</h2>`;
 
   const rows = d.bySurface
@@ -169,7 +217,7 @@ function sectionDelta(r: ReportData): string {
     ${headline}
 ${suppressed}
     <table class="board">
-      <thead><tr><th>Surface</th><th class="num">Answers naming you</th><th class="num">Change</th></tr></thead>
+      <thead><tr><th>Surface</th><th class="num">Readings naming you</th><th class="num">Change</th></tr></thead>
       <tbody>
 ${rows}
       </tbody>
@@ -179,7 +227,7 @@ ${config}
   </section>`;
 }
 
-// 5 --------------------------------------------------------------- leaderboard
+// 6 --------------------------------------------------------------- leaderboard
 function sectionLeaderboard(r: ReportData): string {
   const max = Math.max(r.presence.shareOfModel ?? 0, ...r.competitors.map((c) => c.shareOfModel ?? 0), 0.01);
   const bar = (v: number | null) => `<span class="bar" style="width:${Math.round(((v ?? 0) / max) * 100)}%"></span>`;
@@ -204,7 +252,35 @@ ${rows}
   </section>`;
 }
 
-// 6 ----------------------------------------------------------- question by question
+// 7 ----------------------------------------------------------- question by question
+/**
+ * FOUR MARKS, NOT THREE, AND THE FOURTH IS THE ONE THAT MATTERS.
+ *
+ * The first render of this grid printed one dash for two opposite things. Google AI
+ * Overviews on the category row: Google generated no overview at all, which is a real
+ * measurement and a finding about the subscriber's category - their buyers are still
+ * reading ranked links there. Grok on the situation row: we lost the capture. One says
+ * something about their market, the other says something about our run, and a subscriber
+ * reading the same grey dash in both cells has no way to tell which they are looking at.
+ *
+ * So a surface that showed nothing gets a filled mark - it answered the question we can
+ * answer, with a no - and a reading we failed to take gets the red pen, dashed and hollow,
+ * which is the design system's mark for an absence and is ours rather than theirs. Both are
+ * named in the legend, in those terms.
+ */
+const MARK: Record<GridState, { cls: string; title: string }> = {
+  named: { cls: 'named', title: 'named you' },
+  absent: { cls: 'miss', title: 'answered, and did not name you' },
+  no_answer: {
+    cls: 'silent',
+    title: 'this surface produced no answer to this question - a finding about your category',
+  },
+  not_measured: {
+    cls: 'gap',
+    title: 'we did not get a reading here. Not counted anywhere in this report',
+  },
+};
+
 function sectionGrid(r: ReportData): string {
   const surfaces = r.run.surfaces;
   const head = surfaces.map((s) => `<th>${esc(r.bySurface.find((b) => b.surface === s)?.label ?? s)}</th>`).join('');
@@ -212,9 +288,8 @@ function sectionGrid(r: ReportData): string {
     .map((q) => {
       const cells = q.surfaces
         .map((s) => {
-          const cls = s.state === 'named' ? 'cell named' : s.state === 'absent' ? 'cell miss' : 'cell miss';
-          const title = s.state === 'no_answer' ? 'no answer from this surface' : `named you in ${s.samples}`;
-          return `<td><span class="${cls}" title="${esc(title)}"></span><div class="note">${esc(s.state === 'no_answer' ? '-' : s.samples)}</div></td>`;
+          const m = MARK[s.state];
+          return `<td><span class="cell ${m.cls}" title="${esc(m.title)}"></span><div class="note">${esc(s.samples)}</div></td>`;
         })
         .join('');
       return `        <tr><td class="q"><strong>${esc(SLOT_LABEL[q.slot])}</strong><br>${esc(q.text)}</td>${cells}</tr>`;
@@ -232,14 +307,16 @@ ${rows}
       </table>
     </div>
     <div class="key">
-      <span><i style="background:var(--mark-you)"></i>named you</span>
-      <span><i style="border-color:var(--rule)"></i>did not name you</span>
+      <span><i class="k-named"></i>named you</span>
+      <span><i class="k-miss"></i>answered, did not name you</span>
+      <span><i class="k-silent"></i>no answer: the surface showed nothing here. A finding about your category, not a gap in ours</span>
+      <span><i class="k-gap"></i>not measured: we did not get a reading. Counted nowhere in this report</span>
       <span>counts are readings that named you, out of readings we got</span>
     </div>
   </section>`;
 }
 
-// 7 ------------------------------------------------------- where the answers came from
+// 8 ------------------------------------------------------- where the answers came from
 function sectionSources(r: ReportData): string {
   const own = r.scope.website?.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] ?? '';
   const items = r.domains
@@ -263,7 +340,7 @@ ${aio}
   </section>`;
 }
 
-// 8 -------------------------------------------------------------- the evidence
+// 9 -------------------------------------------------------------- the evidence
 function sectionEvidence(r: ReportData): string {
   const total = r.evidence.reduce((t, e) => t + e.answers.length, 0);
   const blocks = r.evidence
@@ -292,7 +369,7 @@ ${blocks}
   </section>`;
 }
 
-// 9 ----------------------------------------------------------- how this was measured
+// 10 ---------------------------------------------------------- how this was measured
 function sectionMethod(r: ReportData): string {
   return `  <section>
     <div class="eyebrow">How this was measured</div>

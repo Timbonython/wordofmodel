@@ -20,6 +20,7 @@ import { diagnose, THRESHOLD_VERSION, THRESHOLD_NOTE, type DiagnosisResult } fro
 import { shareOfModel, aiOverviewStats, type ScoredCapture } from './share';
 import { computeDelta, type DeltaReport, type RunSnapshot } from './delta';
 import { aiOverviewCoverage, VARIANCE_NOTE, COMPARABILITY_NOTE, CITATION_CAVEAT, geoNote, samplingNote, AIO_PROVENANCE_NOTE } from './method';
+import { buildActions, isHedgeReason, type HedgeReason, type ReportAction } from './actions';
 import { SURFACES, type QuestionSlot, type Surface } from './scope';
 import { EXTRACTION_VERSION } from './extract';
 import type { RunRow } from './accounts';
@@ -30,6 +31,22 @@ export const surfaceLabel = (s: string) => SURFACES[s as Surface]?.label ?? s;
 
 /** Report order for the five slots. `branded` is last here because it has its own section. */
 const SLOT_ORDER: QuestionSlot[] = ['category', 'situation', 'alternatives', 'how_do_people', 'branded'];
+
+/**
+ * THE FOUR STATES A GRID CELL CAN BE IN, AND WHY TWO OF THEM WERE ONE STATE TOO FEW.
+ *
+ * The first real run printed the same dash in two cells that mean opposite things. Google
+ * AI Overviews sat on the category row with a dash because Google generated no overview for
+ * that question at all - which is a finding about the subscriber's category, and one the
+ * method note treats as intelligence rather than as a hole. Grok sat on the situation row
+ * with the same dash because we lost the capture: one of 55, the run went `partial`, and
+ * that dash is our failure, not their market's.
+ *
+ * Absence-as-a-value, in the UI this time. `no_answer` is a measurement; `not_measured` is
+ * the absence of one, and a report that cannot tell a subscriber which of the two they are
+ * looking at is asking them to trust a mark it has not explained.
+ */
+export type GridState = 'named' | 'absent' | 'no_answer' | 'not_measured';
 
 interface CaptureRecord extends ScoredCapture {
   id: string;
@@ -43,6 +60,8 @@ interface CaptureRecord extends ScoredCapture {
   vercel_region: string;
   top_recommendation: string | null;
   target_position: number | null;
+  hedge_quote: string | null;
+  hedge_reason: string | null;
 }
 
 export interface ReportData {
@@ -61,10 +80,16 @@ export interface ReportData {
   /** What each surface said when asked about them by name. The second section, not the last. */
   branded: Array<{ surface: string; label: string; recommended: boolean; excerpt: string | null }>;
 
+  /**
+   * What to do about it, in the surfaces' own words. Sits directly after the branded
+   * section: problem, proof, what to do, then the supporting data.
+   */
+  actions: ReportAction[];
+
   questions: Array<{
     slot: QuestionSlot;
     text: string;
-    surfaces: Array<{ surface: string; label: string; state: 'named' | 'absent' | 'no_answer'; samples: string }>;
+    surfaces: Array<{ surface: string; label: string; state: GridState; samples: string }>;
   }>;
 
   domains: Array<{ domain: string; count: number }>;
@@ -108,7 +133,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     .select(
       'id, engine, question_id, sample, outcome, extracted_at, target_mentioned, target_recommended, ' +
         'target_position, top_recommendation, brands_named, domains_cited, answer_text, citations, ' +
-        'model_used, provider, grounded, geo_sent, vercel_region',
+        'model_used, provider, grounded, geo_sent, vercel_region, hedge_quote, hedge_reason',
     )
     .eq('run_id', run.id);
   if (capErr) throw new Error(`Capture lookup failed: ${capErr.message}`);
@@ -152,6 +177,36 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     .map(([domain, count]) => ({ domain, count }))
     .sort((a, b) => b.count - a.count || a.domain.localeCompare(b.domain))
     .slice(0, 12);
+
+  // WHAT TO DO ABOUT IT, and every word of the diagnosis in it belongs to a surface.
+  //
+  // A hedge is a capture that NAMED them and stopped short of recommending them, carrying a
+  // sentence the extraction pass found verbatim in the answer. Nothing is written here and
+  // nothing is re-read: an answer with no stated reason produces no action, which is the
+  // honest outcome and is why this section can be empty.
+  const actions = buildActions(
+    captures
+      .filter(
+        (c) =>
+          c.outcome === 'answered' &&
+          c.extracted_at &&
+          c.target_mentioned === true &&
+          c.target_recommended !== true &&
+          c.hedge_quote &&
+          isHedgeReason(c.hedge_reason),
+      )
+      .map((c) => ({
+        surface: c.engine,
+        label: surfaceLabel(c.engine),
+        quote: c.hedge_quote!,
+        reason: c.hedge_reason as HedgeReason,
+        // What this surface cited across the whole month, most-cited first. The only place
+        // a remedy gets specific, and it is specific about evidence we hold.
+        domains: topDomainsFor(captures, c.engine),
+        branded: c.slot === 'branded',
+        sample: c.sample,
+      })),
+  );
 
   const aio = aiOverviewStats(captures);
   const orderedQuestions = questions
@@ -208,6 +263,8 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
       })
       .sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.label.localeCompare(b.label)),
 
+    actions,
+
     questions: orderedQuestions.map((q) => ({
       slot: q.slot,
       text: q.text,
@@ -215,12 +272,28 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
         const samples = captures.filter((c) => c.question_id === q.id && c.engine === surface);
         const usable = samples.filter((s) => s.outcome === 'answered' && s.extracted_at);
         const hits = usable.filter((s) => s.target_mentioned).length;
+
+        // The surface was asked and showed nothing: every reading we hold says so. A single
+        // answered sample is enough to make this a reading rather than a silence, which is
+        // why it is `every` and not `some` - Google answering one of three questions is
+        // measured, not silent.
+        const showedNothing =
+          samples.length > 0 && samples.every((s) => s.outcome === 'no_answer' || s.outcome === 'refused');
+
+        const state: GridState = usable.length
+          ? hits
+            ? 'named'
+            : 'absent'
+          : showedNothing
+            ? 'no_answer'
+            : 'not_measured';
+
         return {
           surface,
           label: surfaceLabel(surface),
-          state: !usable.length ? ('no_answer' as const) : hits ? ('named' as const) : ('absent' as const),
+          state,
           // Shown as a count, never a percentage: three observations cannot carry one.
-          samples: usable.length ? `${hits} of ${usable.length}` : 'no answer',
+          samples: usable.length ? `${hits} of ${usable.length}` : state === 'no_answer' ? 'no answer' : 'not measured',
         };
       }),
     })),
@@ -287,6 +360,19 @@ function methodLines(captures: CaptureRecord[], run: RunRow, market: string): st
 
   lines.push('', AIO_PROVENANCE_NOTE, '', CITATION_CAVEAT);
   return lines;
+}
+
+/** What one surface cited most across the month, for the specific clause in a remedy. */
+function topDomainsFor(captures: CaptureRecord[], surface: string): string[] {
+  const counts = new Map<string, number>();
+  for (const c of captures) {
+    if (c.engine !== surface) continue;
+    for (const d of new Set(c.domains_cited ?? [])) counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3)
+    .map(([d]) => d);
 }
 
 /** A short excerpt for the branded section. The full answer is in the evidence. */

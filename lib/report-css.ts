@@ -216,6 +216,25 @@ export const REPORT_CSS = String.raw`
   .said-list .who .yes{color:var(--good)}
   .said-list .who .no{color:var(--pen)}
   .said-list .quote{margin:8px 0 0;font-family:var(--mono);font-size:14px;line-height:1.75;max-width:none}
+
+  /* The actions. The quote is theirs and is set like every other quote in the report; the
+     remedy is ours and is set in the body face, indented behind a rule, so a reader can see
+     at a glance which sentences the report wrote and which it only carried. */
+  .said-list.actions .quote{border-left:3px solid var(--mark-you);padding-left:16px}
+  .said-list.actions .fix{margin:12px 0 0 19px;font-size:15px;color:var(--ink-soft);max-width:66ch}
+
+  /* Grid marks. Four states, and the two that used to share a dash are the reason for the
+     comment in report-html.ts: a surface that showed nothing is a reading we took, and a
+     capture we lost is not. The lost one gets the red pen, which is this design system's
+     mark for an absence and is ours rather than theirs. */
+  .cell.silent{background:var(--rule);border-color:var(--ink-faint)}
+  .cell.gap{background:transparent;border-color:var(--pen);border-style:dashed}
+  .key i.k-named{background:var(--mark-you);border-color:var(--ink)}
+  .key i.k-miss{border-color:var(--rule)}
+  .key i.k-silent{background:var(--rule);border-color:var(--ink-faint)}
+  .key i.k-gap{border-color:var(--pen);border-style:dashed}
+  .key span{display:flex;align-items:flex-start;max-width:34ch;line-height:1.5}
+  .key span i{flex:none;margin-top:3px}
   .suppressed{border-left:3px solid var(--pen);padding:14px 0 14px 18px;margin:0 0 18px;
     font-size:15px;color:var(--ink-soft);max-width:66ch}
   .method{font-family:var(--mono);font-size:12.5px;line-height:1.8;color:var(--ink-soft);white-space:pre-wrap;max-width:80ch}
