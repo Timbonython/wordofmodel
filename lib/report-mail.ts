@@ -28,6 +28,16 @@ const monthName = (iso: string): string =>
 
 const pct = (v: number | null): string => (v === null ? 'not measured this month' : `${(v * 100).toFixed(1)}%`);
 
+/**
+ * Same rule as the HTML: a whole number where it is one, one decimal where it is not.
+ *
+ * The plain text printed 1.6667 while the page printed 1.7, which is the same figure
+ * arriving twice in the same email in two different states of undress. A fraction here is
+ * deliberate - it is a sampled surface contributing a share of its readings - and four
+ * decimal places make it look like a leak from a spreadsheet instead.
+ */
+const num = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
 /** The hosted report for one run. The only link in the email, and it needs a login. */
 export function reportUrl(runId: string): string {
   return `${env.siteUrl}/report/${runId}`;
@@ -69,7 +79,9 @@ function plainText(r: ReportData, url: string): string {
     r.diagnosis.meaning,
     ``,
     `PRESENCE / SHARE OF MODEL: ${pct(r.presence.shareOfModel)}`,
-    `Named in ${r.presence.numerator} of ${r.presence.pairs} readings across your four unbranded questions.`,
+    `Named in ${num(r.presence.numerator)} of ${r.presence.pairs} readings across your four unbranded questions.`,
+    `A reading is one surface answering one question; where we ask three times it counts as`,
+    `the share of those that named you, which is why this can be a fraction.`,
     ``,
     `ENDORSEMENT: ${r.endorsement.endorsed} of ${r.endorsement.askedDirectly} surfaces recommend you when asked about you by name.`,
     `${r.endorsement.recognised} of ${r.endorsement.askedDirectly} could describe you.`,
