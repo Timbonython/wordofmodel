@@ -59,8 +59,17 @@ token hash URL:
 {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email
 ```
 
+**And set custom SMTP**, Authentication → Emails → SMTP Settings, using Resend's SMTP
+credentials and a from address on the verified domain. Supabase's built-in sender is
+development-grade and rate limited to a handful of messages an hour: it is fine for you
+testing and it will silently start refusing subscriber logins, at which point somebody who
+paid cannot get in and nothing in this build ever hears about it. Auth email does not go
+through `lib/mail.ts`, so none of the alerting covers it.
+
 **Worked when:** you request a link on production, open it on your phone, and land signed in
-on `/account`.
+on `/account`. The URL in the email should read
+`https://wordofmodel.ai/auth/callback?token_hash=...&type=email`. A `?code=` instead means the
+template was not changed.
 
 **Skip it and:** a subscriber who pays cannot open their own report. The token hash template
 matters specifically because PKCE only works in the browser that asked, and people request
