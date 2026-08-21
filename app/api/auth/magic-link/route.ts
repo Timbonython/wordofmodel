@@ -1,4 +1,4 @@
-import { authClient, safeNext } from '@/lib/auth';
+import { otpClient, safeNext } from '@/lib/auth';
 import { env } from '@/lib/env';
 import { validEmail } from '@/lib/email';
 import { checkRateLimit, clientIp, hashIp, recordAttempt } from '@/lib/ratelimit';
@@ -9,7 +9,9 @@ export const runtime = 'nodejs';
  * Sends the magic link. No passwords anywhere in this product.
  *
  * shouldCreateUser stays on: an account is created on first successful login,
- * and the auth user is what the on_auth_user_created trigger hangs it off.
+ * and the auth user is what the on_auth_user_created trigger hangs it off. It also decides
+ * WHICH email template fires - Confirm signup for a new address, Magic Link for a returning
+ * one - so both templates have to carry the token hash form or half of them dead-end.
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { email?: string; next?: string };
@@ -26,7 +28,10 @@ export async function POST(request: Request) {
   await recordAttempt(ipHash, 'login');
 
   const next = safeNext(body.next ?? null);
-  const supabase = await authClient();
+
+  // otpClient, not authClient: the SSR client forces PKCE, which mints a pkce_ token whose
+  // verifier only exists on the device that asked. See lib/auth.ts.
+  const supabase = otpClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
