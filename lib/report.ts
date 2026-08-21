@@ -184,10 +184,31 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
   // sentence the extraction pass found verbatim in the answer. Nothing is written here and
   // nothing is re-read: an answer with no stated reason produces no action, which is the
   // honest outcome and is why this section can be empty.
+  //
+  // TWO FILTERS THAT LOOK LIKE BELT AND BRACES AND ARE NOT.
+  //
+  // THE BRANDED QUESTION ONLY. On an unbranded question a surface writing about the whole
+  // category produces sentences that are true, verbatim, and not about the subscriber:
+  // "Most global travel eSIMs are data-only" is a fact about eSIMs, and printed under a
+  // surface's name in a section about why that surface stopped short of recommending them,
+  // it becomes a reason it never was. The branded question is the one asked directly about
+  // them, so a reason given there is a reason about them. v3 of the extraction prompt says
+  // the same thing to the model; this is the half that does not depend on it complying.
+  //
+  // NEVER CONTRADICT THE BRANDED VERDICT. Endorsement is decided across a surface's samples
+  // - one sample recommending is enough for "recommends you" - while a hedge lives on a
+  // single capture. Gemini recommended Zapme in two readings of three, and the third
+  // carried a reason. Without this filter the same report said Gemini recommends you at the
+  // top and printed Gemini explaining why it did not, four inches below.
+  const endorsingSurfaces = new Set(
+    brandedUsable.filter((b) => b.usable.some((c) => c.target_recommended)).map((b) => b.surface),
+  );
   const actions = buildActions(
     captures
       .filter(
         (c) =>
+          c.slot === 'branded' &&
+          !endorsingSurfaces.has(c.engine) &&
           c.outcome === 'answered' &&
           c.extracted_at &&
           c.target_mentioned === true &&

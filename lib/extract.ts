@@ -39,7 +39,7 @@ import type { Citation } from './types';
  * after the competitor set, the surface set and the sampling depth. Session 4 must compare
  * like with like or say what changed.
  */
-export const EXTRACTION_VERSION = 2;
+export const EXTRACTION_VERSION = 3;
 
 /**
  * v2, 21 Aug 2026. The judgment call now also returns the sentence in which the answer said
@@ -47,10 +47,21 @@ export const EXTRACTION_VERSION = 2;
  * call, same temperature, two more fields - nothing about how mentions or recommendations
  * are decided changed.
  *
- * The bump is still correct: the prompt changed, and a prompt change can move any output.
- * Every capture in the database was re-read at v2 when this shipped, so no trend line
- * currently spans the two versions. The first run that mixes them is the one to watch -
- * delta.ts checks how a surface was measured but does not yet check which version read it.
+ * v3, same day, after reading what v2 actually stored across all 54 captures of the first
+ * run. On the four unbranded questions it was returning true sentences that are not about
+ * the subscriber at all: "Most global travel eSIMs are data-only", "Go with Roamless". Both
+ * verbatim, both useless as a reason THEY were not recommended, and quoted under a
+ * surface's name in a section about them they would read as a reason. v3 says outright that
+ * a statement about the category is not a reason about the brand. The report also stopped
+ * accepting unbranded hedges - see lib/report.ts - so this is belt and braces, and the belt
+ * is the one that keeps the stored data honest for whatever reads it next.
+ *
+ * The bump is mechanical and stays that way. The prompt changed, so the version changed;
+ * the alternative is deciding case by case whether a prompt change "really" matters, which
+ * is how a step in a trend line gets argued into existence. Every capture in the database
+ * was re-read at v3, so nothing currently spans versions. The first run that mixes them is
+ * the one to watch - delta.ts checks how a surface was measured but not which version read
+ * it.
  */
 
 // ------------------------------------------------------------- deterministic half
@@ -156,7 +167,11 @@ Company names only. Do not include publications, review sites or the buyer.
 hedge_quote: if the answer gives a REASON for not putting ${input.brand} forward without
 reservation - thin independent evidence, a low published rating, mixed reports, being small
 or new, something they do not do, price - copy the ONE sentence that states it, EXACTLY as
-written, character for character. Do not paraphrase, do not summarise, do not join two
+written, character for character.
+
+The sentence must be ABOUT ${input.brand}. A general statement about the category, a caveat
+about what products like theirs typically do, or a reason to prefer some other company is
+NOT a reason about ${input.brand}, however true it is: return null for all of those. Do not paraphrase, do not summarise, do not join two
 sentences, do not fix its punctuation. If the answer states no such reason, or you would
 have to write the sentence yourself, return null. Returning null is correct far more often
 than guessing, and a sentence that is not in the answer word for word will be thrown away.
