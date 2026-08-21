@@ -291,8 +291,23 @@ because PKCE only works when the link is opened in the browser that asked for it
 on a laptop and read mail on a phone:
 
 ```
-{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email
+{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=signup
 ```
+
+for **Confirm signup**, and the same with `type=magiclink` for **Magic Link**. Both templates,
+not one: `shouldCreateUser` is on, so a brand new subscriber gets the signup email and a
+returning one gets the magic link, and half the subscribers dead-end if only one is changed.
+
+`{{ .RedirectTo }}` rather than `{{ .SiteURL }}/auth/callback`, and that is the correction.
+The route sets `emailRedirectTo` to `/auth/callback?next=%2Faccount`, and `.SiteURL` throws it
+away: the link still signs them in, then lands them on the homepage instead of their account.
+`.RedirectTo` is that URL with the `next` still on it, which is why the token hash is appended
+with `&` rather than `?`. Any future caller of `signInWithOtp` must therefore pass an
+`emailRedirectTo` that carries a query string, or the `&` has nothing to attach to.
+
+`type` is passed straight to `verifyOtp` by `app/auth/callback/route.ts` with no whitelist and
+`email` as the default, so `signup`, `magiclink` and the generic `email` all verify. The
+specific ones are used here because they cannot be wrong for their template.
 
 **RLS.** On every new table. Read only, `to authenticated` only, own account only, routed through
 `public.current_account_id()` so team seats later are a change to one function rather than to eight

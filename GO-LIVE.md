@@ -56,8 +56,23 @@ redirect allowlist to `https://wordofmodel.ai/auth/callback` plus a preview wild
 token hash URL:
 
 ```
-{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email
+{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=signup
 ```
+
+for **Confirm signup**, and the same with `type=magiclink` for **Magic Link**. Both templates,
+not one: `shouldCreateUser` is on, so a brand new subscriber gets the signup email and a
+returning one gets the magic link, and half the subscribers dead-end if only one is changed.
+
+`{{ .RedirectTo }}` rather than `{{ .SiteURL }}/auth/callback`, and that is the correction.
+The route sets `emailRedirectTo` to `/auth/callback?next=%2Faccount`, and `.SiteURL` throws it
+away: the link still signs them in, then lands them on the homepage instead of their account.
+`.RedirectTo` is that URL with the `next` still on it, which is why the token hash is appended
+with `&` rather than `?`. Any future caller of `signInWithOtp` must therefore pass an
+`emailRedirectTo` that carries a query string, or the `&` has nothing to attach to.
+
+`type` is passed straight to `verifyOtp` by `app/auth/callback/route.ts` with no whitelist and
+`email` as the default, so `signup`, `magiclink` and the generic `email` all verify. The
+specific ones are used here because they cannot be wrong for their template.
 
 **And set custom SMTP**, Authentication → Emails → SMTP Settings, using Resend's SMTP
 credentials and a from address on the verified domain. Supabase's built-in sender is
@@ -67,9 +82,10 @@ paid cannot get in and nothing in this build ever hears about it. Auth email doe
 through `lib/mail.ts`, so none of the alerting covers it.
 
 **Worked when:** you request a link on production, open it on your phone, and land signed in
-on `/account`. The URL in the email should read
-`https://wordofmodel.ai/auth/callback?token_hash=...&type=email`. A `?code=` instead means the
-template was not changed.
+on `/account` rather than the homepage. The URL should read
+`https://wordofmodel.ai/auth/callback?next=%2Faccount&token_hash=...&type=signup`. A link to
+`supabase.co/auth/v1/verify?token=pkce_...` means that template was not changed; a missing
+`next=` means it used `.SiteURL` instead of `.RedirectTo`.
 
 **Skip it and:** a subscriber who pays cannot open their own report. The token hash template
 matters specifically because PKCE only works in the browser that asked, and people request
