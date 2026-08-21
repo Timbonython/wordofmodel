@@ -16,6 +16,7 @@ import { env } from './env';
 import { sendOpsAlert } from './billing-mail';
 import { capturesExpected, runnableMonthlySurfaces, samplesFor, samplingMap } from './engines';
 import { SURFACES, type RunPeriod, type Surface } from './scope';
+import { shareOfModel, aiOverviewStats, type ScoredCapture } from './share';
 import type { QuestionRow, RunRow } from './accounts';
 
 /**
@@ -199,6 +200,79 @@ export async function settleRun(runId: string): Promise<RunRow | null> {
 }
 
 /**
+ * What this run actually produced, in the terms somebody deciding whether to ship it needs.
+ *
+ * Two halves, and the split matters because they become available at different times. The
+ * capture counts need no interpretation and are true the moment the run settles. The Share
+ * of Model needs extraction to have run, and returns null until it has - a score computed
+ * over half-parsed captures would be worse than no score.
+ */
+export async function runSummary(run: RunRow): Promise<string[]> {
+  const { data: caps } = await db()
+    .from('captures')
+    .select('engine, question_id, outcome, extracted_at, target_mentioned, target_recommended, brands_named, sample')
+    .eq('run_id', run.id);
+  const rows = (caps ?? []) as Array<Record<string, unknown>>;
+
+  const { data: jobs } = await db()
+    .from('capture_jobs')
+    .select('engine, sample, status, attempts, error')
+    .eq('run_id', run.id)
+    .eq('status', 'failed');
+
+  const lines: string[] = ['WHAT LANDED', ''];
+  const surfaces = (run.surfaces ?? []) as Surface[];
+  for (const s of surfaces) {
+    const mine = rows.filter((r) => r.engine === s);
+    const answered = mine.filter((r) => r.outcome === 'answered').length;
+    const none = mine.filter((r) => r.outcome === 'no_answer').length;
+    lines.push(
+      `  ${s.padEnd(12)} ${String(mine.length).padStart(2)} captured` +
+        `  ${String(answered).padStart(2)} answered` +
+        (none ? `  ${none} showed nothing` : ''),
+    );
+  }
+
+  const failed = (jobs ?? []) as Array<{ engine: string; sample: number; attempts: number; error: string }>;
+  if (failed.length) {
+    lines.push('', 'WHAT FAILED', '');
+    for (const f of failed) lines.push(`  ${f.engine}/s${f.sample} after ${f.attempts} attempts: ${f.error}`);
+  }
+
+  // The score, only if there is a complete interpretation to compute it from.
+  const unextracted = rows.filter((r) => !r.extracted_at).length;
+  if (unextracted) {
+    lines.push('', `NO SCORE YET: ${unextracted} of ${rows.length} captures are not extracted.`);
+    return lines;
+  }
+
+  const { data: qs } = await db().from('questions').select('id, slot').eq('scope_id', run.scope_id);
+  const slot = Object.fromEntries((qs ?? []).map((q) => [(q as { id: string }).id, (q as { slot: string }).slot]));
+  const { data: comps } = await db()
+    .from('competitors')
+    .select('name')
+    .eq('scope_id', run.scope_id)
+    .is('removed_at', null);
+
+  const scored = rows.map((r) => ({ ...r, slot: slot[r.question_id as string] })) as unknown as ScoredCapture[];
+  const som = shareOfModel({ captures: scored, competitors: (comps ?? []).map((c) => (c as { name: string }).name) });
+  const pct = (v: number | null) => (v === null ? 'n/a' : `${(v * 100).toFixed(1)}%`);
+
+  lines.push('', 'SHARE OF MODEL, as it stands', '');
+  lines.push(`  named        ${pct(som.overall.share)}  over ${som.overall.pairs} surface-question pairs`);
+  lines.push(`  recommended  ${pct(som.overall.recommendShare)}`);
+  lines.push(`  branded control ${pct(som.branded.share)} named, ${pct(som.branded.recommendShare)} recommended`);
+  for (const s of som.bySurface) lines.push(`    ${s.surface.padEnd(12)} ${pct(s.score.share)}`);
+  const aio = aiOverviewStats(scored);
+  if (aio.samplesTaken) {
+    lines.push(`  Google showed an overview for ${aio.questionsAnswered}/${aio.questionsAsked} questions`);
+  }
+  lines.push('', 'This is computed over what landed, so it is NOT comparable with a full');
+  lines.push('month unless you decide it is. That is the decision this email is asking for.');
+  return lines;
+}
+
+/**
  * Tell somebody, once, when a run did not deliver.
  *
  * The alert claim is conditional on alerted_at being null, the same shape as
@@ -243,7 +317,7 @@ export async function alertOnRun(run: RunRow, scopeLabel?: string): Promise<void
         'The report is HELD, not sent. Captures already taken are kept, so re-running',
         'this run resumes rather than starting over and paying twice.',
         '',
-        'Check capture_jobs for this run_id: status=failed rows carry error and error_kind.',
+        ...(await runSummary(run)),
       ],
     });
   } catch (err) {

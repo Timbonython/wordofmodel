@@ -60,13 +60,32 @@ export function samplingNote(samples: Record<string, number>): string {
   );
 }
 
-/** Why a surface has no location against it, generated from what was actually sent. */
+/**
+ * Why a surface has no location against it, generated from what was actually sent.
+ *
+ * CORRECTED 20 Aug 2026, after the first Australian run. The earlier version of this said
+ * only that Gemini and Grok answer from a US network origin, which implied a non-US
+ * subscriber's answers on those two surfaces are simply American. The real run says
+ * otherwise: asked "who is best IN AUSTRALIA for global eSIM", Gemini from a US origin
+ * returned SimCorner and Amaysim - Australian companies that could not appear in a
+ * US-targeted answer.
+ *
+ * The reason is that every unbranded question names the country in its own text. The geo
+ * parameter is belt; the question wording is braces. So the two location-neutral surfaces
+ * are less diluted for a non-US subscriber than the parameter alone would suggest, and the
+ * note should say what is true rather than over-claiming a limitation.
+ *
+ * The network origin still matters and is still pinned, because it is the only thing
+ * carrying market for anything the question text does not state - and because an origin
+ * that drifted between months would move the number for a reason that is not the market.
+ */
 export function geoNote(surfaceLabel: string, geo: GeoSent, marketLabel: string, region: string): string {
   if (geo.supported) return `${surfaceLabel}: asked as a buyer in ${marketLabel}.`;
   return (
-    `${surfaceLabel}: ${geo.reason}, so the answer is location-neutral. Asked from a ` +
-    `${region} network origin, held constant every month so month-to-month changes are ` +
-    `not caused by where we asked from.`
+    `${surfaceLabel}: ${geo.reason}. Your question names ${marketLabel}, so the answer is ` +
+    `still about your market, but it is not additionally located the way the other surfaces ` +
+    `are. Asked from a ${region} network origin, held constant every month so a change in ` +
+    `your number is never caused by a change in where we asked from.`
   );
 }
 

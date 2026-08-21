@@ -21,17 +21,25 @@ import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import type { RunRow } from '@/lib/accounts';
 
-export const maxDuration = 60;
+// 300, not 60. A run that did not deliver waits for its extraction to finish before the
+// alert goes out, so the email carries the numbers rather than telling somebody to go and
+// look. Extraction over 55 captures at concurrency 4 took 29 seconds measured.
+export const maxDuration = 300;
 
 /** Kick the extraction pass for a settled run. Fire and forget, like the tick chains. */
-async function extractRun(runId: string): Promise<void> {
+async function extractRun(runId: string, wait: boolean): Promise<void> {
   await fetch(`${env.siteUrl}/api/run/extract`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.cronSecret}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ runId }),
-    signal: AbortSignal.timeout(2_000),
+    // A complete run does not need waiting on: nobody is blocked and the report is built
+    // later. A run that did not deliver is waited for, because the alert about it is
+    // supposed to say what landed, and it cannot until the captures are interpreted.
+    signal: AbortSignal.timeout(wait ? 120_000 : 2_000),
   }).catch(() => {
-    // A timeout means it started and is working, which is the expected case.
+    // Fire and forget: a timeout on the short path means it started and is working. On the
+    // wait path it means extraction is slow, and the alert goes out with capture counts and
+    // no score rather than not going out at all.
   });
 }
 export const dynamic = 'force-dynamic';
@@ -61,20 +69,28 @@ async function handle(req: Request): Promise<Response> {
     // null means another sweep settled it first and holds the alert claim. Say nothing.
     if (!finished) continue;
     settled.push({ run: finished.id, status: finished.status, reason: finished.failure_reason });
-    await alertOnRun(finished);
 
-    // A complete run's captures are ready to interpret. Fired here rather than from the
-    // tick that finished the last job, for the same reason nothing else settles a run: the
-    // sweeper is the only thing that knows the run is done.
+    // EXTRACT EVERY SETTLED RUN, NOT JUST THE COMPLETE ONES.
     //
-    // Fire and forget, and never allowed to break the sweep. Extraction costs no engine
-    // call and is safe to run twice, so the worst case of a lost trigger is that the next
-    // sweep starts it - or somebody runs it by hand. The captures are already paid for.
-    if (finished.status === 'complete') {
-      void extractRun(finished.id).catch((err) =>
-        console.error(`sweep: could not start extraction for run ${finished.id}`, err),
-      );
-    }
+    // This used to fire only on 'complete', which left a partial run holding paid-for
+    // captures with no interpretation - and the person deciding whether to ship it or
+    // re-run it could not see what they had. Found the first time a run actually went
+    // partial, on 20 Aug 2026, when xAI was at capacity.
+    //
+    // Holding is about not SHIPPING. Interpretation costs no engine call, is re-runnable,
+    // and is precisely what the decision needs. A partial run that cannot be read is a
+    // partial run nobody can act on.
+    //
+    // Never allowed to break the sweep: extraction is safe to run twice, so a lost trigger
+    // costs one cycle. The captures are already paid for either way.
+    const needsAlert = finished.status !== 'complete';
+    await extractRun(finished.id, needsAlert).catch((err) =>
+      console.error(`sweep: could not start extraction for run ${finished.id}`, err),
+    );
+
+    // Alerted AFTER extraction so the email carries the numbers. The claim inside
+    // alertOnRun is still atomic, so two overlapping sweeps cannot both send.
+    await alertOnRun(finished);
   }
 
   // One kick covers every run with work: the claim is global and takes whatever is next.
