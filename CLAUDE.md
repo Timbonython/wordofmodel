@@ -490,11 +490,17 @@ never as movement. Delta reporting has to read all three.
 
 ### Outstanding
 
-- **No end to end run yet.** Needs a scope with five approved questions.
-- Production Stripe webhook endpoint still not registered (CLAUDE.md go-live item). Until
-  it is, the baseline run comes from the daily scheduler or `/api/run/start` by hand.
-- Copy changes for "within 24 hours" are **written but held** until a run delivers end to
-  end. Do not ship them before then.
+- ~~No end to end run yet.~~ Done 20 Aug, Zapme, 54 of 55 captures. The run is `partial`
+  because the Grok situation capture was lost, so its report is held rather than sent - which
+  is the rule working. Re-running that one capture would make it shippable.
+- Production Stripe webhook endpoint still not registered. Until it is, the baseline run
+  comes from the daily scheduler or `/api/run/start` by hand. **See `GO-LIVE.md`**, which is
+  the ordered runbook for this and the other eight steps.
+- ~~Copy changes for "within 24 hours" held until a run delivers end to end.~~ **Shipped**
+  in `ab75afa` and validated 21 Aug: a run completed, a report built from its stored
+  evidence, and the email delivered. The site, the confirmation email and `/start/confirmed`
+  all say 24 hours. The only "seven days" left in the repo is the ops queue view in the
+  onboarding spec, which is internal.
 - Extraction, Share of Model and the report are Session 4. **The Google AI Overview
   trigger rate goes in the REPORT BODY, not the method note** — `aiOverviewCoverage()` in
   `lib/method.ts`. A low rate is a finding about the subscriber's category: Google

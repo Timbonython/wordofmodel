@@ -1,4 +1,4 @@
-import { approveOnboarding } from '@/lib/onboarding';
+import { approveOnboarding, ScopeLockedError } from '@/lib/onboarding';
 import { createCheckout } from '@/lib/checkout';
 import { validEmail } from '@/lib/email';
 import {
@@ -47,6 +47,25 @@ export async function POST(request: Request) {
     approved = await approveOnboarding({ email, profile, competitors, questions });
   } catch (err) {
     if (err instanceof InputError) return Response.json({ error: err.message }, { status: 400 });
+
+    // A subscriber whose scope has been measured walked the wizard again. Refused rather
+    // than applied: finishing it would rewrite the questions their trend line is built on,
+    // and month two would report the difference as their market moving. Says what it would
+    // have cost and where to go, because "we could not save your setup" would read as a bug
+    // and they would try again.
+    if (err instanceof ScopeLockedError) {
+      return Response.json(
+        {
+          error:
+            'Your questions are already live and being measured, so we have left them alone. ' +
+            'Changing them now would restart your history: month two would compare two ' +
+            'different questions and report the difference as movement in your market. ' +
+            'Reply to any report and we will change them properly, keeping what you have.',
+        },
+        { status: 409 },
+      );
+    }
+
     console.error('onboarding approval failed', err instanceof Error ? err.message : err);
     return Response.json({ error: 'We could not save your setup. Try again.' }, { status: 500 });
   }

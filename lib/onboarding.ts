@@ -261,6 +261,67 @@ export interface ApprovedOnboarding {
  * subscriber. Nothing reads a scope without checking subscriptions, so this is
  * safe to leave standing when somebody abandons at the card.
  */
+/**
+ * Plain fields rather than constructor parameter properties, which Node cannot strip:
+ * scripts/extract-check.mjs and scripts/alerts-check.mjs import lib/*.ts directly, so
+ * every file in here has to survive type stripping or the checks stop running.
+ */
+export class ScopeLockedError extends Error {
+  scopeId: string;
+  brandName: string;
+
+  constructor(scopeId: string, brandName: string) {
+    super(
+      `The setup for ${brandName} is already live and has been measured. Changing it here ` +
+        `would rewrite the questions their history is built on.`,
+    );
+    this.name = 'ScopeLockedError';
+    this.scopeId = scopeId;
+    this.brandName = brandName;
+  }
+}
+
+/**
+ * THE SECOND WALK THROUGH THE WIZARD USED TO EDIT A LIVE SUBSCRIBER'S SETUP.
+ *
+ * upsertScope refuses to touch a scope that has runs, and that guard was undone one line
+ * later: writeCompetitors and writeQuestions ran against the returned scope anyway.
+ * writeQuestions upserts on (scope_id, slot), so it rewrote the TEXT of an existing
+ * question and kept its id.
+ *
+ * That is worse than restarting the history, which is what 0002 makes a rewritten question
+ * do on purpose. Last month's captures stay attached to a question whose wording has
+ * changed, the id still matches, and delta.ts - which checks comparability per question id
+ * precisely so a rewrite cannot be mistaken for movement - compares two different questions
+ * and reports the difference as the market moving. The fifth contamination path, made
+ * invisible by the one mechanism built to expose it.
+ *
+ * Nobody has to be malicious for this. A subscriber revisits /start out of curiosity, walks
+ * it to the end, and their month two delta quietly means something else.
+ *
+ * So the whole write refuses once a scope has been measured, rather than half of it. A lead
+ * who abandoned at the card and came back is unaffected: no runs, nothing to protect, and
+ * editing is the behaviour they expect.
+ */
+async function assertScopeEditable(accountId: string): Promise<void> {
+  const { data: scopes, error } = await db()
+    .from('scopes')
+    .select('id, brand_name')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error) throw new Error(`Scope lookup failed: ${error.message}`);
+  const scope = scopes?.[0] as { id: string; brand_name: string } | undefined;
+  if (!scope) return;
+
+  const { count, error: runError } = await db()
+    .from('runs')
+    .select('id', { count: 'exact', head: true })
+    .eq('scope_id', scope.id);
+  if (runError) throw new Error(`Run lookup failed: ${runError.message}`);
+  if (count && count > 0) throw new ScopeLockedError(scope.id, scope.brand_name);
+}
+
 export async function approveOnboarding(input: {
   email: string;
   profile: WizardProfile;
@@ -281,6 +342,10 @@ export async function approveOnboarding(input: {
   }
   const account = accountData as AccountRow;
 
+  // Refuses before anything is written, so a locked scope cannot be half-edited: the
+  // competitor set and the questions are two separate writes and either alone is damage.
+  await assertScopeEditable(account.id);
+
   const scope = await upsertScope(account.id, input.profile);
   await writeCompetitors(scope.id, input.competitors);
   await writeQuestions(scope.id, input.questions);
@@ -293,9 +358,10 @@ export async function approveOnboarding(input: {
  * through the wizard is what keeps a person who came back from ending up with
  * two scopes and a report against the wrong one.
  *
- * A scope that already has runs is not touched. Once a report has been produced
- * the questions are locked, and rewriting the scope underneath a trend line
- * would silently break the comparison the whole product rests on.
+ * A scope that already has runs never reaches here: assertScopeEditable refuses the whole
+ * approval first. This function keeps its own check anyway, because it is the last thing
+ * standing between a second wizard pass and a live subscriber's configuration, and the
+ * caller's guard has already been bypassed once by accident.
  */
 async function upsertScope(accountId: string, profile: WizardProfile): Promise<ScopeRow> {
   const fields = {
@@ -391,9 +457,14 @@ async function writeCompetitors(scopeId: string, input: CompetitorInput[]): Prom
  * That timestamp is the record that the approval gate was honoured, and it is
  * the thing to point at if a subscriber ever asks who chose their questions.
  *
- * Upsert on (scope_id, slot), the unique key from 0002. Changing a question
- * after captures exist means a new row rather than an edit, but no captures can
- * exist yet: a scope with runs is returned untouched by upsertScope above.
+ * Upsert on (scope_id, slot), the unique key from 0002, which REWRITES the text of an
+ * existing row and keeps its id. That is safe only while the scope has never been measured,
+ * and it is why approveOnboarding refuses outright once it has: an id that survives a
+ * rewrite is exactly what delta.ts trusts to tell one question from another.
+ *
+ * The comment here used to say no captures could exist because upsertScope returns a scope
+ * with runs untouched. That was true of the scope row and false of this function, which ran
+ * regardless. Stating a guarantee the code did not provide is how it survived review.
  */
 async function writeQuestions(scopeId: string, questions: ProposedQuestion[]): Promise<void> {
   const approvedAt = new Date().toISOString();
