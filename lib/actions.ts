@@ -193,6 +193,49 @@ function alsoWouldChangeIt(reason: HedgeReason, firstLabel: string, ctx: { domai
   return `What would change it: the same thing ${firstLabel} is asking for: ${SHORT[reason]}.${reading}`;
 }
 
+/**
+ * HOW MUCH OF THE SENTENCE TO PRINT, AND THE RULE IS ABOUT WHAT THE TAIL DOES.
+ *
+ * Two of Grok's sentences, from two readings of the same answer:
+ *
+ *   "...not as established as bigger eSIM players like Airalo, BUT users who like the combo
+ *    of data plans and persistent virtual numbers often praise its value and convenience."
+ *   "...not the most battle-tested or highest-rated overall, SO check current plans and
+ *    coverage for your exact countries, read recent reviews, and start small."
+ *
+ * The first tail changes how the reason reads: it is the softening, and cutting it would
+ * make Grok look harsher than it was. That one is printed whole with the reason clause
+ * marked. The second tail is shopping advice to the buyer. It is not part of the
+ * explanation, it pads the quote, and under a heading about what is wrong it is noise.
+ * That one is capped at the end of the reason, with an ellipsis, because a cut a reader
+ * cannot see is the thing we refuse to do.
+ *
+ * Decided on the conjunction, deterministically, and deliberately NOT by asking the model.
+ * v4 taught that every field added to the judgment call can move an answer somewhere else
+ * in it, and the metric this product sells sits in that same call. A contrastive tail
+ * (but, though, although, while, however, yet) qualifies the reason and stays. A
+ * consequence tail (so, therefore, thus, which is why) is what the buyer should do about
+ * it and goes. Anything else keeps the whole sentence: the failure direction is printing
+ * more of what they said, never less.
+ *
+ * Either way the untouched sentence sits in the evidence section of the same report, in
+ * the answer it came from.
+ */
+const CONSEQUENCE_TAIL = /^[,;:\s]*(so|therefore|thus|hence|which is why|meaning)\b/i;
+
+export function presentQuote(quote: string, span: string | null): { text: string; mark: string | null } {
+  if (!span) return { text: quote, mark: null };
+  const at = quote.indexOf(span);
+  if (at < 0) return { text: quote, mark: null };
+
+  const tail = quote.slice(at + span.length);
+  if (CONSEQUENCE_TAIL.test(tail)) {
+    const kept = quote.slice(0, at + span.length).replace(/[,;:\s]+$/, '');
+    return { text: `${kept}…`, mark: null };
+  }
+  return { text: quote, mark: span };
+}
+
 /** "a.com, b.com and c.com" - an Oxford-free list, because it is read aloud in a sentence. */
 function listOf(items: string[]): string {
   if (items.length <= 1) return items[0] ?? '';
@@ -217,8 +260,12 @@ export interface HedgeCandidate {
 export interface ReportAction {
   surface: string;
   label: string;
+  /**
+   * What is printed. The surface's sentence, either whole or capped at the end of its
+   * reason with a visible ellipsis. See presentQuote.
+   */
   quote: string;
-  /** Marked inside the quote when present. Never cut out of it. */
+  /** Marked inside the quote when the whole sentence is printed. Null when it was capped. */
   span: string | null;
   reason: HedgeReason;
   cause: Cause;
@@ -281,11 +328,12 @@ export function buildActions(candidates: HedgeCandidate[]): ReportActions {
   const items = ordered.map((c) => {
     const first = statedFirstBy.get(c.reason);
     if (!first) statedFirstBy.set(c.reason, c.label);
+    const shown = presentQuote(c.quote.trim(), c.span?.trim() || null);
     return {
       surface: c.surface,
       label: c.label,
-      quote: c.quote.trim(),
-      span: c.span?.trim() || null,
+      quote: shown.text,
+      span: shown.mark,
       reason: c.reason,
       cause: CAUSE[c.reason],
       whatWouldChangeIt: first

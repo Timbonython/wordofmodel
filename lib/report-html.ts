@@ -52,29 +52,7 @@ const num = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(
 const monthName = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-/**
- * THE EMAIL IS THE SAME DOCUMENT WITH ITS EVIDENCE LINKED RATHER THAN INLINED.
- *
- * Not a second template. A summary email written separately would drift from the report
- * within two months, and the subscriber would have two documents disagreeing about their
- * month. So there is one renderer and one option.
- *
- * The reason the option exists is Gmail: it clips a message at about 102KB and hides the
- * rest behind "View entire message". Zapme's report is 218KB, and 190KB of that is 51
- * verbatim answers. Clipped, the method note and half the evidence vanish behind a link
- * that looks like a Gmail control rather than part of the product. Everything the report
- * concludes travels in the email; the raw answers, which are the part nobody reads in an
- * inbox and everybody wants when they are checking us, are one click away and behind a
- * login.
- */
-export interface RenderOptions {
-  /** Drop the verbatim answers and link to them instead. The email variant. */
-  omitEvidence?: boolean;
-  /** Absolute URL of the hosted report. Required when omitting the evidence. */
-  viewUrl?: string;
-}
-
-export function renderReport(r: ReportData, opts: RenderOptions = {}): string {
+export function renderReport(r: ReportData): string {
   const period = monthName(r.run.periodStart);
   return `<!doctype html>
 <html lang="en">
@@ -103,7 +81,7 @@ ${sectionDelta(r)}
 ${sectionLeaderboard(r)}
 ${sectionGrid(r)}
 ${sectionSources(r)}
-${sectionEvidence(r, opts)}
+${sectionEvidence(r)}
 ${sectionMethod(r)}
 </main>
 
@@ -384,19 +362,8 @@ ${aio}
 }
 
 // 9 -------------------------------------------------------------- the evidence
-function sectionEvidence(r: ReportData, opts: RenderOptions = {}): string {
+function sectionEvidence(r: ReportData): string {
   const total = r.evidence.reduce((t, e) => t + e.answers.length, 0);
-  if (opts.omitEvidence) {
-    // The claim stays in the email even though the answers do not. "All 51 answers are
-    // there and you can read them" is the sentence that makes the rest of the report
-    // checkable, and dropping it along with the answers would quietly remove the offer.
-    return `  <section>
-    <div class="eyebrow">The evidence</div>
-    <h2>All ${total} answers, word for word</h2>
-    <p class="lede">Nothing in this report is summarised from memory. Every answer it is built on is stored exactly as the surface gave it, and the full report has all ${total} of them, unedited, with what each surface cited.</p>
-    ${opts.viewUrl ? `<p><a class="cta" href="${esc(opts.viewUrl)}">Read the full report</a></p>` : ''}
-  </section>`;
-  }
   const blocks = r.evidence
     .map((q) => {
       const answers = q.answers
