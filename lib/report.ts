@@ -133,7 +133,8 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     .select(
       'id, engine, question_id, sample, outcome, extracted_at, target_mentioned, target_recommended, ' +
         'target_position, top_recommendation, brands_named, domains_cited, answer_text, citations, ' +
-        'model_used, provider, grounded, geo_sent, vercel_region, hedge_quote, hedge_reason',
+        'model_used, provider, grounded, geo_sent, vercel_region, hedge_quote, hedge_reason, ' +
+        'extraction_version',
     )
     .eq('run_id', run.id);
   if (capErr) throw new Error(`Capture lookup failed: ${capErr.message}`);
@@ -424,7 +425,10 @@ export async function attachDelta(report: ReportData, run: RunRow): Promise<Repo
     const slots = new Map((qs ?? []).map((q) => [(q as { id: string }).id, (q as { slot: string }).slot]));
     const { data: caps } = await db()
       .from('captures')
-      .select('engine, question_id, sample, outcome, extracted_at, target_mentioned, target_recommended, brands_named')
+      .select(
+        'engine, question_id, sample, outcome, extracted_at, target_mentioned, target_recommended, ' +
+          'brands_named, extraction_version',
+      )
       .eq('run_id', r.id);
     const { data: comps } = await db()
       .from('competitors')
@@ -437,9 +441,12 @@ export async function attachDelta(report: ReportData, run: RunRow): Promise<Repo
       status: r.status,
       surfaces: r.surfaces as string[],
       samples: r.samples,
-      captures: (caps ?? []).map((c) => ({
-        ...(c as Record<string, unknown>),
-        slot: slots.get((c as { question_id: string }).question_id),
+      // Same cast-through-unknown as buildReport, and for the same reason: a select string
+      // built by concatenation defeats supabase-js's row inference and it hands back
+      // GenericStringError rather than failing at runtime.
+      captures: ((caps ?? []) as unknown as Array<Record<string, unknown>>).map((c) => ({
+        ...c,
+        slot: slots.get(c.question_id as string),
       })) as unknown as ScoredCapture[],
       competitors: (comps ?? []).map((c) => (c as { name: string }).name),
     };

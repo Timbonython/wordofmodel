@@ -18,6 +18,14 @@
  * question mean a new row, so the question_id differs and the pair is simply not the same
  * question. That is why comparability is checked per question id rather than per slot.
  *
+ * A SIXTH, and it is the only one that can move a number without anything about the RUN
+ * changing at all: THE EXTRACTION VERSION. Same questions, same surfaces, same samples,
+ * same stored answers - read by a different version of our own reading. captures carries
+ * extraction_version precisely because a re-parse is cheap and will happen; the prompt
+ * changed twice on 21 Aug 2026 alone. Two months read by different versions differ in how
+ * we interpreted them, and a subtraction across that is comparing readings rather than
+ * movement. It is the same rule as the other five, applied to us instead of to the run.
+ *
  * THE RULE. A surface is compared only when everything about how it was measured is
  * identical in both months. The overall figure is compared only when every surface is. When
  * the overall is suppressed the per-surface figures that DO hold are still shown, because a
@@ -101,6 +109,24 @@ function numeratorFor(
 const round = (n: number) => Math.round(n * 10000) / 10000;
 
 /**
+ * Which extraction versions read this surface's usable answers, as one comparable string.
+ *
+ * A set rather than a max, because "all v3" and "half v2, half v3" are different states and
+ * the second is worth refusing to compare even against another month that also holds both.
+ * Null when the surface has no usable answers: there is nothing to have read, and the caller
+ * already refuses that case with a better sentence than this one would produce.
+ */
+function versionsOf(pairs: Map<string, ScoredCapture[]>): string | null {
+  const versions = new Set<number>();
+  for (const samples of pairs.values()) {
+    for (const c of samples) {
+      if (c.outcome === 'answered' && c.extracted_at) versions.add(c.extraction_version ?? 0);
+    }
+  }
+  return versions.size ? [...versions].sort((a, b) => a - b).join(',') : null;
+}
+
+/**
  * Why this surface cannot be compared, or null if it can.
  *
  * Every check is about HOW it was measured, never about what it found. A surface that
@@ -124,6 +150,21 @@ function surfaceObjection(now: RunSnapshot, before: RunSnapshot, surface: string
 
   const nowQs = usablePairs(now.captures, surface, false);
   const beforeQs = usablePairs(before.captures, surface, false);
+
+  // The sixth path, and the one that leaves no trace in the run. Everything about the two
+  // months can be identical and the numbers still differ, because we re-read the answers
+  // with a different version of the extraction prompt. Compared per surface like the rest,
+  // and stated in the same terms: what changed was ours, not theirs.
+  const nowVersions = versionsOf(nowQs);
+  const beforeVersions = versionsOf(beforeQs);
+  if (nowVersions && beforeVersions && nowVersions !== beforeVersions) {
+    return (
+      `We improved how we read answers between these two months, so ${label(surface)}'s two ` +
+      `figures were produced by different versions of that reading. The difference would ` +
+      `partly be us rather than your market, so we are not putting a change against it. The ` +
+      `answers themselves are unchanged and are printed in full below.`
+    );
+  }
   const nowKeys = [...nowQs.keys()].sort().join(',');
   const beforeKeys = [...beforeQs.keys()].sort().join(',');
   if (!nowKeys || !beforeKeys) {

@@ -44,6 +44,8 @@ export interface ScoredCapture {
   target_mentioned: boolean | null;
   target_recommended: boolean | null;
   brands_named: string[];
+  /** Which reading produced the three fields above. Delta refuses to compare across it. */
+  extraction_version: number | null;
 }
 
 export interface Score {
