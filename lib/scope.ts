@@ -57,3 +57,31 @@ export const MONTHLY_SURFACES = (Object.keys(SURFACES) as Surface[]).filter(
 );
 
 export const QUARTERLY_SURFACES = Object.keys(SURFACES) as Surface[];
+
+/**
+ * THE PRICE, AS A STRING, FROM THE ONLY NUMBER THAT REACHES STRIPE.
+ *
+ * The amounts live in lib/stripe.ts because that is what builds the line item and what
+ * assertPrice() checks. They were also typed into the marketing page as literals, into the
+ * scan result, and into the terms, which is four places for one number and three of them
+ * silently wrong the day it changes. The page now formats the same constant Stripe charges.
+ *
+ * Here rather than in lib/stripe.ts because that module is server-only and this is rendered
+ * in the browser, which is the same reason lib/scope.ts exists at all.
+ */
+export const PRICE_USD = {
+  founding_monthly: 149,
+  standard_monthly: 249,
+} as const;
+
+/**
+ * How many founding places there are, for copy. lib/stripe.ts owns the number the claim
+ * function is given; this is the same value where the browser can read it, and stripe.ts
+ * throws at load if they ever drift.
+ */
+export const FOUNDING_SEATS_PUBLIC = 20;
+
+/** "USD 149" - the form every price on the site takes. */
+export function priceLabel(key: keyof typeof PRICE_USD): string {
+  return `USD ${PRICE_USD[key]}`;
+}

@@ -74,7 +74,26 @@ export interface FoundingState {
  * count: a scarcity number somebody can disprove with a screenshot costs more than the
  * scarcity was worth.
  */
-export async function foundingState(): Promise<FoundingState> {
+/**
+ * THE NUMBER ON THE PAGE. Confirmed subscriptions only, and it never goes up.
+ *
+ * DELIBERATELY NOT THE NUMBER THAT DECIDES A CHARGE, which is claimFoundingSeat() in
+ * lib/founding.ts. The two differ by the claims held during somebody else's checkout, and the
+ * asymmetry is chosen rather than accidental:
+ *
+ *   Counting live claims here would make the public figure fall when a stranger opens a
+ *   checkout and rise again half an hour later when they abandon it. A scarcity number that
+ *   rebounds reads as a trick, and it is the one thing a visitor can catch us doing.
+ *
+ *   Ignoring claims here means the page can say "one place left" while a claim is pending, and
+ *   the next person to reach checkout is told it has gone. That is rare, it is honest, and it
+ *   happens BEFORE the card rather than after it.
+ *
+ * So the displayed count is monotonic and slightly generous, the charged rate is strict, and
+ * nobody is charged a rate they were not shown. The page is a forecast; the session is the
+ * fact. Nothing may read this function to decide money.
+ */
+export async function foundingDisplay(): Promise<FoundingState> {
   // count(distinct) is not expressible through the query builder, so the account ids are
   // read and deduplicated here. Bounded by design - the founding set is twenty accounts
   // and their markets - so this is a handful of rows, not a scan. If it ever is not,
@@ -102,9 +121,9 @@ export async function foundingState(): Promise<FoundingState> {
  * cost the founding line rather than the front page. Falls back to null, and
  * the caller renders the offer without a count.
  */
-export async function foundingStateOrNull(): Promise<FoundingState | null> {
+export async function foundingDisplayOrNull(): Promise<FoundingState | null> {
   try {
-    return await foundingState();
+    return await foundingDisplay();
   } catch {
     return null;
   }

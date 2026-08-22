@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { isSupportedMarket } from '@/lib/geo';
 import { iso2 } from '@/lib/domain';
 import { getScan } from '@/lib/db';
-import { foundingStateOrNull } from '@/lib/billing';
+import { foundingDisplayOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +52,7 @@ export default async function StartPage({
     }
   }
 
-  const founding = await foundingStateOrNull();
+  const founding = await foundingDisplayOrNull();
 
   return (
     <>

@@ -1,15 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  ABN,
-  CONTACT_EMAIL,
-  ENTITY,
-  FOUNDING_PRICE_USD,
-  JURISDICTION,
-  LAST_UPDATED,
-  STANDARD_PRICE_USD,
-} from '@/lib/legal';
-import { FOUNDING_SEATS } from '@/lib/stripe';
+import { ABN, CONTACT_EMAIL, ENTITY, JURISDICTION, LAST_UPDATED } from '@/lib/legal';
+import { FOUNDING_SEATS_PUBLIC as FOUNDING_SEATS, PRICE_USD } from '@/lib/scope';
 
 export const metadata: Metadata = {
   title: 'Terms - Word of Model',
@@ -104,9 +96,9 @@ export default function TermsPage() {
         <section>
           <h2>Price, billing and the founding rate</h2>
           <p>
-            USD {STANDARD_PRICE_USD} a month, billed monthly in advance, renewing automatically
+            USD {PRICE_USD.standard_monthly} a month, billed monthly in advance, renewing automatically
             until you cancel. The first {FOUNDING_SEATS} subscribers pay a founding rate of USD{' '}
-            {FOUNDING_PRICE_USD} a month, held for twelve months from when you subscribe.
+            {PRICE_USD.founding_monthly} a month, held for twelve months from when you subscribe.
           </p>
           <p>
             The {FOUNDING_SEATS} founding places are counted as {FOUNDING_SEATS} businesses, not{' '}

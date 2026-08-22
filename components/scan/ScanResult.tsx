@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { splitBold } from '@/lib/markup';
 import type { FreeResult, GatedResult } from '@/lib/types';
 import { AnswerExcerpt } from './AnswerExcerpt';
+import { priceLabel, FOUNDING_SEATS_PUBLIC } from '@/lib/scope';
 
 function Bolded({ text }: { text: string }) {
   return (
@@ -130,6 +131,25 @@ export function ScanResult({
             <p className="note">A copy is on its way to {email}. It is built to be forwarded.</p>
           )}
 
+          {/* THE TOP CTA, AND IT IS HERE BECAUSE OF WHERE THE READER IS.
+              This is the moment a visitor is closest to buying: they have just been told
+              whether an AI recommends them. The full result runs for several screens, so an
+              offer only at the bottom is an offer most of them never reach. */}
+          {wizardLive ? (
+            <div className="offer offer-top">
+              <p>
+                <strong>That was one question, two engines, once.</strong> The subscription runs five
+                questions across five platforms every month, with your competitors ranked beside you.
+              </p>
+              <a className="button" href={`/start?scan=${scanId}`}>
+                Set up my report
+              </a>
+              <p className="note" style={{ marginTop: 10 }}>
+                {priceLabel('founding_monthly')}/mo founding rate. Three minutes to set up, and your first report lands within 24 hours.
+              </p>
+            </div>
+          ) : null}
+
           <div className="eyebrow" style={{ marginTop: 40 }}>
             The answers, word for word
           </div>
@@ -196,10 +216,10 @@ export function ScanResult({
               every month, with the competitors ranked next to you and the three things to fix, in order.
             </p>
             <p>
-              <strong>USD 249/mo.</strong> Founding rate USD 149/mo, first 20 subscribers, locked for 12 months.
+              <strong>{priceLabel('standard_monthly')}/mo.</strong> Founding rate {priceLabel('founding_monthly')}/mo, first {FOUNDING_SEATS_PUBLIC} subscribers, locked for 12 months.
             </p>
             <a className="button" href={wizardLive ? `/start?scan=${scanId}` : '#pricing'}>
-              Start my first report
+              {wizardLive ? 'Set up my report' : 'See the pricing'}
             </a>
           </div>
         </div>

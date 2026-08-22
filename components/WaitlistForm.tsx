@@ -3,10 +3,25 @@
 import { useState } from 'react';
 
 /**
- * Stands in for the onboarding wizard. No Stripe, no accounts, no dashboard: the
- * first twenty founding subscribers get worked through by hand.
+ * The secondary path: somebody who is not buying today, but will hear from us.
+ *
+ * NO RENDERED STATE MAY BE A DEAD END. The confirmation used to be a paragraph and nothing
+ * else, so a visitor arriving from the waitlist email hit "You are on the list" with nothing
+ * to click and no way to buy. Absence is a value in this build and it has to render as itself;
+ * the same rule applies to a UI state. `buyHref` is therefore not optional decoration - it is
+ * how the done state keeps an action in it.
  */
-export function WaitlistForm({ source, cta = 'Start with a free scan' }: { source: string; cta?: string }) {
+export function WaitlistForm({
+  source,
+  cta = 'Email me when a place opens',
+  buyHref,
+  buyLabel = 'Set up my report now',
+}: {
+  source: string;
+  cta?: string;
+  buyHref?: string;
+  buyLabel?: string;
+}) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +47,16 @@ export function WaitlistForm({ source, cta = 'Start with a free scan' }: { sourc
 
   if (state === 'done') {
     return (
-      <p className="waitlist-done">
-        You are on the list. We open the founding rate in small batches, and you will get an email from a person, not a
-        sequence.
-      </p>
+      <div className="waitlist-done">
+        <p>You are on the list, and a person will email you rather than a sequence.</p>
+        {buyHref ? (
+          <p>
+            <a className="button" href={buyHref}>
+              {buyLabel}
+            </a>
+          </p>
+        ) : null}
+      </div>
     );
   }
 

@@ -15,6 +15,7 @@ import {
 } from '@/lib/billing';
 import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
 import { ensureBaselineRun } from '@/lib/run';
+import { convertClaim, releaseClaimBySession } from '@/lib/founding';
 import { kickChains } from '@/lib/cron';
 import { getScope } from '@/lib/onboarding';
 
@@ -87,6 +88,12 @@ async function handle(event: Stripe.Event): Promise<void> {
     case 'checkout.session.completed':
       return onCheckoutCompleted(event.data.object, eventAt);
 
+    // A founding place is held from session creation, so an abandoned checkout has to give it
+    // back. The claim expires on its own after thirty minutes, which is the backstop; this
+    // returns it the moment Stripe says the session is dead, so the next visitor sees it.
+    case 'checkout.session.expired':
+      return releaseClaimBySession(event.data.object.id);
+
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted':
@@ -115,6 +122,14 @@ async function onCheckoutCompleted(
   const subscriptionId =
     typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
   if (!subscriptionId) throw new Error('Checkout session completed with no subscription');
+
+  // The founding place stops being a claim and starts being a subscription. Doing this before
+  // the subscription row is written is deliberate: both are idempotent, and a converted claim
+  // that somehow lost its subscription is a place held by an account that paid, which is the
+  // safe direction. A claim left pending would free itself in half an hour and let somebody
+  // else take a place this person has already been charged for.
+  const claimId = session.metadata?.founding_claim_id;
+  if (claimId) await convertClaim(claimId);
 
   const accountId = session.metadata?.account_id;
   const scopeId = session.metadata?.scope_id ?? session.client_reference_id ?? undefined;

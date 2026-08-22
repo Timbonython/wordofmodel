@@ -24,6 +24,9 @@ export const LAST_UPDATED = '22 August 2026';
 /** The governing law for the terms. Adelaide, South Australia. */
 export const JURISDICTION = 'South Australia, Australia';
 
-/** Monthly price in US dollars, and the founding rate. Kept in step with lib/stripe.ts. */
-export const STANDARD_PRICE_USD = 249;
-export const FOUNDING_PRICE_USD = 149;
+/**
+ * The prices are NOT redefined here. lib/scope.ts holds the dollars, lib/stripe.ts holds the
+ * cents, and stripe.ts throws at load if the two disagree. A third copy in the terms is how a
+ * page ends up promising a price nobody charges.
+ */
+export { PRICE_USD, priceLabel } from './scope';

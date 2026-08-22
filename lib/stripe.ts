@@ -1,6 +1,7 @@
 import 'server-only';
 import Stripe from 'stripe';
 import { env } from './env';
+import { PRICE_USD, FOUNDING_SEATS_PUBLIC } from './scope';
 
 /**
  * The Stripe client, and the guards around it.
@@ -80,7 +81,23 @@ export const PRICES: Record<PriceKey, { amount: number; label: string }> = {
   standard_monthly: { amount: 24_900, label: 'Standard' },
 };
 
-export const FOUNDING_SEATS = 20;
+export const FOUNDING_SEATS = FOUNDING_SEATS_PUBLIC;
+
+/**
+ * The cents Stripe charges and the dollars the site prints must be the same number.
+ *
+ * Checked at module load rather than in a test, because a test only fails when somebody runs
+ * it and this fails the build. A page saying 149 while Stripe charges 249 is a chargeback and
+ * the end of the brand's credibility; it is worth three lines to make it unrepresentable.
+ */
+for (const [key, price] of Object.entries(PRICES)) {
+  const printed = PRICE_USD[key as PriceKey];
+  if (price.amount !== printed * 100) {
+    throw new Error(
+      `Price mismatch for ${key}: Stripe charges ${price.amount} cents, the site prints USD ${printed}.`,
+    );
+  }
+}
 
 /** The product name. Prints on Checkout and on every invoice, so it is copy. */
 export const PRODUCT_NAME = 'Word of Model - Monthly Report';

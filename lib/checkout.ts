@@ -3,7 +3,7 @@ import type Stripe from 'stripe';
 import { db } from './db';
 import { env } from './env';
 import { assertPrice, priceIdFor, stripe, type PriceKey } from './stripe';
-import { foundingState } from './billing';
+import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
 import type { AccountRow, ScopeRow } from './accounts';
 
 /**
@@ -47,7 +47,16 @@ export async function createCheckout(input: {
   account: AccountRow;
   scope: ScopeRow;
 }): Promise<{ url: string; priceKey: PriceKey }> {
-  const { priceKey } = await foundingState();
+  // THE SEAT IS CLAIMED HERE, AND THIS IS THE READ THAT DECIDES THE PRICE.
+  //
+  // It used to count confirmed subscriptions, which are written by the webhook after payment,
+  // so two people checking out for the last place both read nineteen taken and both got it.
+  // The claim is atomic and holds the place for as long as the session can be paid.
+  //
+  // priceKey comes out of the claim and goes straight into assertPrice() and the line item
+  // below. There is no second read between deciding and charging, which is what makes the
+  // price on Stripe's page the price this function decided.
+  const { claimId, priceKey } = await claimFoundingSeat(input.account.id);
   await assertPrice(priceKey);
 
   const customer = await customerFor(input.account);
@@ -55,47 +64,63 @@ export async function createCheckout(input: {
     account_id: input.account.id,
     scope_id: input.scope.id,
     price_key: priceKey,
+    ...(claimId ? { founding_claim_id: claimId } : {}),
   };
 
-  const session = await stripe().checkout.sessions.create({
-    mode: 'subscription',
-    customer,
-    client_reference_id: input.scope.id,
-    line_items: [{ price: priceIdFor(priceKey), quantity: 1 }],
-    metadata,
-    // The same metadata on the subscription, because customer.subscription.*
-    // events do not carry the session and would otherwise arrive with no way to
-    // tell which account or scope they belong to.
-    subscription_data: { metadata },
-    // Set deliberately, not by accident. Not GST registered, so no Australian
-    // GST is charged. The EU and UK VAT question is open and is flagged for the
-    // accountant in the build plan; turning this on later is a decision, not a
-    // default.
-    automatic_tax: { enabled: false },
-    // Managed Payments is Stripe's merchant of record product, and it is ON by
-    // default on new accounts. It handles tax for you, which is why it refuses a
-    // session with automatic_tax off: the two cannot both be true.
-    //
-    // Turned off here so the tax position stays the one that was decided rather
-    // than the one that was defaulted. Tim is the merchant of record, no
-    // Australian GST is charged, and nothing about the EU/UK VAT question is
-    // silently answered by a Stripe default.
-    //
-    // Worth a real decision with the accountant, because Managed Payments is a
-    // plausible answer to the VAT question the spec parks: it would make Stripe
-    // the merchant of record and put EU and UK VAT on them. It also changes the
-    // fees and whose name is on the invoice, so it is a commercial choice, not a
-    // configuration one.
-    managed_payments: { enabled: false },
-    billing_address_collection: 'auto',
-    // No trial. The free scan is the trial.
-    allow_promotion_codes: false,
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-    success_url: `${env.siteUrl}/start/confirmed?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${env.siteUrl}/start?step=pay&resumed=1`,
-  });
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe().checkout.sessions.create({
+      mode: 'subscription',
+      customer,
+      client_reference_id: input.scope.id,
+      line_items: [{ price: priceIdFor(priceKey), quantity: 1 }],
+      metadata,
+      // The same metadata on the subscription, because customer.subscription.*
+      // events do not carry the session and would otherwise arrive with no way to
+      // tell which account or scope they belong to.
+      subscription_data: { metadata },
+      // Set deliberately, not by accident. Not GST registered, so no Australian
+      // GST is charged. The EU and UK VAT question is open and is flagged for the
+      // accountant in the build plan; turning this on later is a decision, not a
+      // default.
+      automatic_tax: { enabled: false },
+      // Managed Payments is Stripe's merchant of record product, and it is ON by
+      // default on new accounts. It handles tax for you, which is why it refuses a
+      // session with automatic_tax off: the two cannot both be true.
+      //
+      // Turned off here so the tax position stays the one that was decided rather
+      // than the one that was defaulted. Tim is the merchant of record, no
+      // Australian GST is charged, and nothing about the EU/UK VAT question is
+      // silently answered by a Stripe default.
+      //
+      // Worth a real decision with the accountant, because Managed Payments is a
+      // plausible answer to the VAT question the spec parks: it would make Stripe
+      // the merchant of record and put EU and UK VAT on them. It also changes the
+      // fees and whose name is on the invoice, so it is a commercial choice, not a
+      // configuration one.
+      managed_payments: { enabled: false },
+      billing_address_collection: 'auto',
+      // No trial. The free scan is the trial.
+      allow_promotion_codes: false,
+      expires_at: Math.floor(Date.now() / 1000) + CLAIM_MINUTES * 60,
+      success_url: `${env.siteUrl}/start/confirmed?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.siteUrl}/start?step=pay&resumed=1`,
+    });
+  } catch (err) {
+    // A place held for a session that does not exist is a place nobody can buy. It would free
+    // itself in half an hour; giving it back now is better.
+    if (claimId) await releaseClaim(claimId, 'released');
+    throw err;
+  }
 
-  if (!session.url) throw new Error('Stripe did not return a checkout URL.');
+  if (!session.url) {
+    if (claimId) await releaseClaim(claimId, 'released');
+    throw new Error('Stripe did not return a checkout URL.');
+  }
+
+  // Now the claim can be tied to the thing that will convert or expire it.
+  if (claimId) await attachSessionToClaim(claimId, session.id);
+
   return { url: session.url, priceKey };
 }
 

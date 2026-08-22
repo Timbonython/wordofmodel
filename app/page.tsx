@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { ScanPanel } from '@/components/scan/ScanPanel';
 import { WaitlistForm } from '@/components/WaitlistForm';
-import { foundingStateOrNull } from '@/lib/billing';
+import { foundingDisplayOrNull } from '@/lib/billing';
+import { priceLabel } from '@/lib/scope';
 import { env } from '@/lib/env';
 
 // The founding count changes at most twenty times, ever. A minute of cache
@@ -18,7 +19,7 @@ export const revalidate = 60;
  * persuasive, and if it is not, somebody will screenshot it.
  */
 export default async function Page() {
-  const founding = await foundingStateOrNull();
+  const founding = await foundingDisplayOrNull();
   const wizardLive = env.wizardLive;
   return (
     <>
@@ -270,9 +271,9 @@ export default async function Page() {
         {/* ============ 8. PRICING ============ */}
         <section id="pricing">
           <div className="eyebrow">Pricing</div>
-          <h2>One plan. USD 249 a month.</h2>
+          <h2>One plan. {priceLabel('standard_monthly')} a month.</h2>
           <div className="price">
-            <p className="amount">USD 249 / month</p>
+            <p className="amount">{priceLabel('standard_monthly')} / month</p>
             <p>
               Five questions. Five AI platforms. Twenty five answers captured word for word, every month. Competitor
               leaderboard, source analysis, and three ranked actions. Plus a quarterly deep read that adds Claude and
@@ -280,16 +281,18 @@ export default async function Page() {
             </p>
             {founding === null ? (
               <p>
-                <span className="founding">Founding rate: USD 149 a month.</span> First 20 subscribers, locked for
+                <span className="founding">Founding rate: {priceLabel('founding_monthly')} a month.</span> First 20 subscribers, locked for
                 twelve months.
               </p>
             ) : founding.remaining > 0 ? (
               <p>
-                <span className="founding">Founding rate: USD 149 a month.</span>{' '}
-                {founding.remaining === 1
-                  ? 'One of the 20 places left'
-                  : `${founding.remaining} of the 20 places left`}
-                , locked for twelve months.
+                <span className="founding">Founding rate: {priceLabel('founding_monthly')} a month.</span>{' '}
+                {founding.remaining === 20
+                  ? 'All 20 founding places are open'
+                  : founding.remaining === 1
+                    ? 'One founding place left'
+                    : `${founding.remaining} founding places left`}
+                , locked for twelve months from the day you start.
               </p>
             ) : (
               <p className="note">All 20 founding places are taken.</p>
@@ -297,17 +300,18 @@ export default async function Page() {
             {wizardLive ? (
               <>
                 <Link className="button" href="/start">
-                  Start with a free scan
+                  Set up my report
                 </Link>
                 <p className="note" style={{ marginTop: 14 }}>
-                  Three minutes. You approve your five questions before anything is charged.
+                  Three minutes: confirm your business, approve your five questions, then pay. Nothing is
+                  charged until you have seen the questions and said yes to them.
                 </p>
               </>
             ) : (
               <>
-                <WaitlistForm source="pricing" cta="Start with a free scan" />
+                <WaitlistForm source="pricing" cta="Email me when a place opens" />
                 <p className="note" style={{ marginTop: 14 }}>
-                  Leave your address and we will set you up by hand. No card taken on this page.
+                  Subscriptions open shortly. Leave your address and you will hear the day they do.
                 </p>
               </>
             )}

@@ -167,7 +167,7 @@ Cancel any time, no contract.
 
 **Founding rate: USD 149 a month.** First 20 subscribers, locked for twelve months.
 
-*[ Start with a free scan ]*
+*[ Set up my report ]*
 
 *Builder: annual at USD 2,490 goes on the checkout as an option, not the pricing block. One number on the page.*
 
