@@ -47,13 +47,15 @@ export async function POST(request: Request) {
   // outage must not cost the visitor the thing they just gave an address for.
   let emailed = true;
   try {
+    // The email carries the verdict and two links, not the scan itself. The result has a URL
+    // now, so a copy pasted into a message would be a second version of it going stale.
     await sendScanEmail({
       to: email,
+      scanId,
       brandName,
       domain: scan.domain,
       question: scan.question,
       free: scan.result,
-      gated,
       runAt,
     });
     await markEmailed(scanId);

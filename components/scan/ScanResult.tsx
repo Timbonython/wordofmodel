@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { splitBold } from '@/lib/markup';
+import { splitBold, stripMarkdown } from '@/lib/markup';
 import type { FreeResult, GatedResult } from '@/lib/types';
 import { AnswerExcerpt } from './AnswerExcerpt';
 import { priceLabel, FOUNDING_SEATS_PUBLIC } from '@/lib/scope';
@@ -14,7 +14,22 @@ function Bolded({ text }: { text: string }) {
   );
 }
 
-/** Step 5, ungated, then step 6 behind a single field, then step 7. */
+/**
+ * The scan result, and the order is the whole design.
+ *
+ * IT WAS COMPREHENSIVE WHEN ITS JOB IS TO MAKE ONE POINT. Verdict, then both answers in full,
+ * then every brand named, then every cited domain, then who beat you, and only then the offer:
+ * several screens of reading before the one thing a visitor could act on. This is the moment
+ * somebody is closest to buying, and it was being spent proving how thorough we are.
+ *
+ * Inverted. A one line verdict in plain words, one short quote as the evidence, the gap stated
+ * honestly - two answers to one question, against twenty five answers to five questions every
+ * month - and then the button. Everything else is still here, below, for the people who want
+ * it, with the same button at the end.
+ *
+ * ONE CTA, TWICE, NOT THREE. A third button in the middle is the tell that a page is too long,
+ * and the fix for that is cutting rather than another button.
+ */
 export function ScanResult({
   scanId,
   domain,
@@ -23,6 +38,8 @@ export function ScanResult({
   cached,
   runAt,
   wizardLive = false,
+  initialGated = null,
+  initialBrandName,
 }: {
   scanId: string;
   domain: string;
@@ -31,12 +48,15 @@ export function ScanResult({
   cached: boolean;
   runAt: string;
   wizardLive?: boolean;
+  /** Supplied by the permalink, which has already been through the email gate. */
+  initialGated?: GatedResult | null;
+  initialBrandName?: string;
 }) {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gated, setGated] = useState<GatedResult | null>(null);
-  const [brandName, setBrandName] = useState('you');
+  const [gated, setGated] = useState<GatedResult | null>(initialGated);
+  const [brandName, setBrandName] = useState(initialBrandName ?? 'you');
   const [emailed, setEmailed] = useState(true);
 
   async function reveal(event: React.FormEvent) {
@@ -65,6 +85,23 @@ export function ScanResult({
       setBusy(false);
     }
   }
+
+  // One quote, chosen the same way every time rather than per render.
+  const quote = (() => {
+    if (!gated?.captures.length) return null;
+    const pick =
+      gated.captures.find((c) => c.recommended) ??
+      gated.captures.find((c) => c.mentioned) ??
+      gated.captures[0];
+    if (!pick) return null;
+    const clean = stripMarkdown(pick.answer).replace(/\s+/g, ' ').trim();
+    const twoSentences = clean.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+    const text = twoSentences.length > 320 ? `${twoSentences.slice(0, 317)}...` : twoSentences;
+    return { text, label: pick.engine_label, model: pick.model };
+  })();
+
+  const ctaHref = wizardLive ? `/start?scan=${scanId}` : '/#pricing';
+  const ctaLabel = wizardLive ? 'Start my first report' : 'See the pricing';
 
   return (
     <div className="result">
@@ -123,34 +160,56 @@ export function ScanResult({
         </div>
       ) : (
         <div className="revealed">
-          {!emailed ? (
-            <p className="error">
-              It is all here on screen, but our mail server would not take it just now. Nothing is lost.
-            </p>
-          ) : (
-            <p className="note">A copy is on its way to {email}. It is built to be forwarded.</p>
-          )}
-
-          {/* THE TOP CTA, AND IT IS HERE BECAUSE OF WHERE THE READER IS.
-              This is the moment a visitor is closest to buying: they have just been told
-              whether an AI recommends them. The full result runs for several screens, so an
-              offer only at the bottom is an offer most of them never reach. */}
-          {wizardLive ? (
-            <div className="offer offer-top">
-              <p>
-                <strong>That was one question, two engines, once.</strong> The subscription runs five
-                questions across five platforms every month, with your competitors ranked beside you.
+          {/* Only for somebody who has just handed over an address. The permalink arrives here
+              with the result already open and no email in play, and it used to render "a copy
+              is on its way to ." with nothing after the "to". */}
+          {email ? (
+            !emailed ? (
+              <p className="error">
+                It is all here on screen, but our mail server would not take it just now. Nothing is lost.
               </p>
-              <a className="button" href={`/start?scan=${scanId}`}>
-                Set up my report
-              </a>
-              <p className="note" style={{ marginTop: 10 }}>
-                {priceLabel('founding_monthly')}/mo founding rate. Three minutes to set up, and your first report lands within 24 hours.
+            ) : (
+              <p className="note">
+                A short summary is on its way to {email}, with a link back to this page. The link is the
+                thing to forward: it stays current, and it is shorter than the email.
               </p>
-            </div>
+            )
           ) : null}
 
-          <div className="eyebrow" style={{ marginTop: 40 }}>
+          {/* THE EVIDENCE, THEN THE OFFER, BEFORE ANY OF THE DETAIL.
+              One quote, picked deterministically: the engine that recommended them if one did,
+              then one that merely named them, then whatever answered. */}
+          {quote ? (
+            <blockquote className="scan-quote">
+              <p>{quote.text}</p>
+              <cite>
+                {quote.label}
+                {quote.model ? `, ${quote.model}` : ''}
+              </cite>
+            </blockquote>
+          ) : null}
+
+          <div className="offer offer-top">
+            <p className="gap">
+              <strong>That was two answers to one question, once.</strong> Your report is twenty five
+              answers to five questions, every month, with the companies that came up instead of you
+              ranked beside you and what to do about it, in order.
+            </p>
+            <a className="button" href={ctaHref}>
+              {ctaLabel}
+            </a>
+            <p className="note" style={{ marginTop: 10 }}>
+              {priceLabel('founding_monthly')}/mo founding rate, first {FOUNDING_SEATS_PUBLIC} subscribers.
+              Three minutes to set up, and your first report lands within 24 hours.
+            </p>
+          </div>
+
+          <div className="eyebrow" style={{ marginTop: 44 }}>
+            The rest of it
+
+          </div>
+
+          <div className="eyebrow" style={{ marginTop: 24 }}>
             The answers, word for word
           </div>
           {gated.captures.map((capture) => (
@@ -208,18 +267,16 @@ export function ScanResult({
             </>
           ) : null}
 
-          {/* ---------------- step 7: the offer ---------------- */}
+          {/* The same offer at the end, for the people who read to the end. Same label, same
+              destination: two chances to act on one thing being offered. */}
           <div className="offer">
-            <p>That was one question and two engines.</p>
             <p>
-              <strong>Word of Model</strong> runs five questions your buyers actually ask, across five AI platforms,
-              every month, with the competitors ranked next to you and the three things to fix, in order.
+              <strong>{priceLabel('standard_monthly')}/mo.</strong> Founding rate{' '}
+              {priceLabel('founding_monthly')}/mo, first {FOUNDING_SEATS_PUBLIC} subscribers, locked for
+              12 months. Cancel any time.
             </p>
-            <p>
-              <strong>{priceLabel('standard_monthly')}/mo.</strong> Founding rate {priceLabel('founding_monthly')}/mo, first {FOUNDING_SEATS_PUBLIC} subscribers, locked for 12 months.
-            </p>
-            <a className="button" href={wizardLive ? `/start?scan=${scanId}` : '#pricing'}>
-              {wizardLive ? 'Set up my report' : 'See the pricing'}
+            <a className="button" href={ctaHref}>
+              {ctaLabel}
             </a>
           </div>
         </div>

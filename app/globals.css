@@ -901,6 +901,45 @@ footer .wrap {
   font-size: 17px;
 }
 
+/* The offer sitting directly under the verdict, before any of the detail. Same furniture as
+   the one at the bottom, without the rule above it: at the top the verdict is the rule. */
+.offer-top {
+  margin-top: 28px;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.offer-top .gap {
+  max-width: 62ch;
+}
+
+/* One quote as the evidence. Set in mono like every other verbatim answer in this product, so
+   a reader can tell at a glance which words are a machine's and which are ours. */
+.scan-quote {
+  margin: 26px 0 0;
+  padding: 0 0 0 18px;
+  border-left: 3px solid var(--mark-you);
+}
+
+.scan-quote p {
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0;
+  max-width: 62ch;
+}
+
+.scan-quote cite {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--ink-faint);
+}
+
 .waitlist-done {
   border-left: 3px solid var(--good);
   padding-left: 16px;
