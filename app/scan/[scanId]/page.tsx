@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { getScan } from '@/lib/db';
 import { buildGated, buildVerdict } from '@/lib/verdict';
 import { ScanResult } from '@/components/scan/ScanResult';
@@ -37,35 +38,9 @@ export default async function ScanPermalink({
   const { scanId } = await params;
   const scan = await getScan(scanId);
 
-  if (!scan || !scan.captures) {
-    return (
-      <>
-        <header className="masthead">
-          <div className="wrap">
-            <Link href="/" className="wordmark">
-              Word of Model<span>.ai</span>
-            </Link>
-            <div className="issue">Scan</div>
-          </div>
-        </header>
-        <main className="wrap legal">
-          <section>
-            <div className="eyebrow">Scan</div>
-            <h1>That scan has gone.</h1>
-            <p className="lede">
-              The link is wrong, or the scan was run long enough ago that we no longer hold it.
-              Running another takes about a minute.
-            </p>
-            <p>
-              <Link className="button" href="/#scan">
-                Run a free scan
-              </Link>
-            </p>
-          </section>
-        </main>
-      </>
-    );
-  }
+  // notFound() rather than a friendly 200. The page it renders is the same one, and the
+  // response now says what happened: a missing scan reports as missing. See not-found.tsx.
+  if (!scan || !scan.captures) notFound();
 
   const brandName = scan.brand_name || scan.domain;
   const captures = scan.captures as Capture[];
