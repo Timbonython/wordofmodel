@@ -75,9 +75,11 @@ try {
   const { url, priceKey } = await createCheckout({ account, scope });
   check('a session was created', Boolean(url));
 
-  const sessions = await stripe().checkout.sessions.list({ customer: account.stripe_customer_id, limit: 1 });
-  const session = sessions.data[0];
-  sessionId = session?.id ?? null;
+  // The session id comes out of the URL Stripe returned. Reading it back off the account row
+  // would be reading a column createCheckout writes, which is the thing under test.
+  sessionId = url.match(/\/c\/pay\/(cs_[^#?]+)/)?.[1] ?? null;
+  check('the checkout URL carries a session id', Boolean(sessionId), sessionId ?? url.slice(0, 60));
+  const session = await stripe().checkout.sessions.retrieve(sessionId);
 
   const items = await stripe().checkout.sessions.listLineItems(session.id, { limit: 1 });
   const line = items.data[0];
@@ -89,7 +91,7 @@ try {
     `stripe ${line.amount_total}c, page USD ${PRICE_USD[priceKey]}`,
   );
   check('currency is usd', line.price.currency === 'usd', line.price.currency);
-  check('no trial on the session', !session.subscription_data?.trial_period_days);
+  check('the session is a subscription', session.mode === 'subscription', session.mode);
 
   const { data: claim } = await db()
     .from('founding_claims')

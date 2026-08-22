@@ -48,7 +48,9 @@ export default async function Page() {
           <p className="lede">Nobody told you whether you were in that list.</p>
           <p className="hero-cta">Find out in about a minute. Free.</p>
 
-          <ScanPanel wizardLive={wizardLive} />
+          <div id="scan">
+            <ScanPanel wizardLive={wizardLive} />
+          </div>
         </section>
 
         {/* ============ 2. THE SHIFT ============ */}
@@ -309,7 +311,12 @@ export default async function Page() {
               </>
             ) : (
               <>
-                <WaitlistForm source="pricing" cta="Email me when a place opens" />
+                <WaitlistForm
+                  source="pricing"
+                  cta="Email me when a place opens"
+                  buyHref="/#scan"
+                  buyLabel="Run a free scan while you wait"
+                />
                 <p className="note" style={{ marginTop: 14 }}>
                   Subscriptions open shortly. Leave your address and you will hear the day they do.
                 </p>
