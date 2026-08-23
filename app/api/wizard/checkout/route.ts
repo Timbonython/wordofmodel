@@ -9,6 +9,9 @@ import {
 } from '@/lib/wizard-input';
 import { checkRateLimit, clientIp, hashIp, recordAttempt } from '@/lib/ratelimit';
 
+/** Matches a v4 uuid and nothing else. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
@@ -34,12 +37,16 @@ export async function POST(request: Request) {
   if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
 
   let approved;
+  let scanId: string | null = null;
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const email = validEmail(typeof body.email === 'string' ? body.email : '');
     if (!email) throw new InputError('We need an address to send the report to.');
 
     const profile = parseProfile(body.profile);
+    // A uuid or nothing. It arrives from a URL a stranger controls, and it only ever ends up
+    // in a foreign key, so a malformed one has to be dropped rather than passed along.
+    scanId = typeof body.scanId === 'string' && UUID.test(body.scanId) ? body.scanId : null;
     const competitors = parseCompetitors(body.competitors);
     const questions = parseQuestions(body.questions);
 
@@ -74,6 +81,7 @@ export async function POST(request: Request) {
     const { url, priceKey } = await createCheckout({
       account: approved.account,
       scope: approved.scope,
+      scanId,
     });
     return Response.json({ url, priceKey });
   } catch (err) {

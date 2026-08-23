@@ -5,6 +5,7 @@ import { SLOT_LABEL, QUESTION_SLOTS, type QuestionSlot } from '@/lib/scope';
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
+import { metaTrack, useMetaEvent } from '@/components/MetaPixel';
 
 /**
  * The onboarding wizard.
@@ -98,11 +99,17 @@ export default function Wizard({
   prefill,
   prefillEmail,
   foundingRemaining,
+  scanId,
 }: {
   prefill: WizardProfileInput | null;
   prefillEmail: string | null;
   foundingRemaining: number | null;
+  /** Carried into the Checkout session so a paying customer traces back to the ad. */
+  scanId: string | null;
 }) {
+  // Reaching the wizard is the step that separates a bad ad from a bad result page.
+  useMetaEvent('Lead');
+
   const [step, setStep] = useState<Step>('business');
   const [domain, setDomain] = useState(prefill?.website ?? '');
   const [unsupportedMarket, setUnsupportedMarket] = useState<string | null>(null);
@@ -239,11 +246,13 @@ export default function Wizard({
 
   const pay = () =>
     run('Opening the payment page', async () => {
+      metaTrack('InitiateCheckout');
       const out = await post<{ url: string }>('/api/wizard/checkout', {
         email,
         profile,
         competitors: liveCompetitors(),
         questions,
+        scanId,
       });
       window.location.href = out.url;
     });

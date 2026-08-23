@@ -111,6 +111,16 @@ export const env = {
   get vercelRegion(): string {
     return process.env.VERCEL_REGION || 'local';
   },
+  /**
+   * Meta advertising. Both unset by default, which means no pixel is served and no server
+   * event is sent: forgetting them can only ever result in less tracking, never more.
+   */
+  get metaPixelId(): string | null {
+    return process.env.META_PIXEL_ID || null;
+  },
+  get metaCapiToken(): string | null {
+    return process.env.META_CAPI_TOKEN || null;
+  },
   get resendKey() {
     return required('RESEND_API_KEY');
   },

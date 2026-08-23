@@ -12,6 +12,8 @@ import { FOUNDING_SEATS, idOf, periodEnd, periodStart, type PriceKey } from './s
  */
 
 export interface SubscriptionRow {
+  /** The scan this subscriber came from, or null if they arrived without one. */
+  scan_id?: string | null;
   id: string;
   account_id: string;
   scope_id: string;
@@ -184,6 +186,8 @@ export async function upsertSubscription(input: {
   scopeId: string;
   priceKey: PriceKey;
   eventAt: Date;
+  /** Where this customer came from. Set on insert only: first touch does not change later. */
+  scanId?: string | null;
 }): Promise<{ row: SubscriptionRow; created: boolean }> {
   const { sub, eventAt } = input;
   const existing = await getSubscriptionByStripeId(sub.id);
@@ -218,6 +222,7 @@ export async function upsertSubscription(input: {
       stripe_customer_id: idOf(sub.customer) ?? '',
       stripe_price_id: sub.items.data[0]?.price.id ?? '',
       price_key: input.priceKey,
+      scan_id: input.scanId ?? null,
       status: sub.status,
       report_day: reportDayFrom(periodStart(sub)),
       cancel_at_period_end: sub.cancel_at_period_end,

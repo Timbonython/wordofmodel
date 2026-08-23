@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { isSupportedMarket } from '@/lib/geo';
 import { iso2 } from '@/lib/domain';
 import { getScan } from '@/lib/db';
+import { recordFunnel } from '@/lib/funnel';
 import { foundingDisplayOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
 
@@ -28,6 +29,11 @@ export default async function StartPage({
   searchParams: Promise<{ scan?: string }>;
 }) {
   const { scan: scanId } = await searchParams;
+
+  // Reaching /start is the step between a scan and a card, and it is the one that tells the
+  // difference between a bad ad and a bad result page. Recorded once per scan by the unique
+  // index in 0014, so reloads cannot inflate it.
+  await recordFunnel({ event: 'wizard_started', scanId: scanId ?? null });
 
   let prefill: WizardProfileInput | null = null;
   let prefillEmail: string | null = null;
@@ -70,6 +76,7 @@ export default async function StartPage({
           prefill={prefill}
           prefillEmail={prefillEmail}
           foundingRemaining={founding?.remaining ?? null}
+          scanId={scanId ?? null}
         />
       </main>
     </>

@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env';
 import type { Capture, FreeResult, Profile } from './types';
+import type { TouchParams } from './funnel';
 
 let client: SupabaseClient | null = null;
 
@@ -70,6 +71,8 @@ export async function createScan(input: {
   question: string;
   ipHash: string;
   userAgent: string | null;
+  /** First touch, stored on the row rather than a cookie: people scan on a phone and pay on a laptop. */
+  touch?: TouchParams;
 }): Promise<string> {
   const { data, error } = await db()
     .from('scans')
@@ -85,6 +88,11 @@ export async function createScan(input: {
       status: 'running',
       ip_hash: input.ipHash,
       user_agent: input.userAgent?.slice(0, 400) ?? null,
+      utm_source: input.touch?.utm_source ?? null,
+      utm_medium: input.touch?.utm_medium ?? null,
+      utm_campaign: input.touch?.utm_campaign ?? null,
+      utm_content: input.touch?.utm_content ?? null,
+      fbclid: input.touch?.fbclid ?? null,
     })
     .select('id')
     .single();

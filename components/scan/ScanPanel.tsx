@@ -220,12 +220,26 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
     setPhase('running');
 
     try {
-      await stream('/api/scan', { domain, profile, edited });
+      // Read at submit rather than on mount: the parameters are on the URL the visitor landed
+      // on, and this is the first server call that can store them somewhere that survives a
+      // cleared browser or a hop to a laptop.
+      await stream('/api/scan', { domain, profile, edited, touch: touchFromUrl() });
       setPhase((current) => (current === 'running' ? 'confirm' : current));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That did not work.');
       setPhase('confirm');
     }
+  }
+
+  function touchFromUrl(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    const q = new URLSearchParams(window.location.search);
+    const out: Record<string, string> = {};
+    for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid']) {
+      const v = q.get(k);
+      if (v) out[k] = v.slice(0, 200);
+    }
+    return out;
   }
 
   function field(key: keyof Editable, label: string, placeholder: string) {

@@ -10,19 +10,21 @@ export const metadata: Metadata = {
 /**
  * The privacy policy, written from what the code actually does rather than from a template.
  *
- * Every claim on this page is checkable against the build. No analytics and no advertising
- * trackers is true because there is no analytics package in the dependencies and nothing in
- * the app sets a cookie except Supabase auth. IP addresses are hashed with a salt before
+ * Every claim on this page is checkable against the build. No analytics is true because there
+ * is no analytics package in the dependencies. IP addresses are hashed with a salt before
  * storage because that is what lib/ratelimit.ts does. The sub-processor list is the set of
  * services the code actually calls.
  *
- * THE TRACKING CLAIM IS DATED, AND THAT IS NOT HEDGING. The ad plan includes retargeting,
- * which needs a pixel, so the day somebody adds a Meta or LinkedIn tag this page becomes
- * false: not vague, false, in a way a subscriber could have relied on. Dating it makes the
- * pixel a deliberate edit here rather than a silent contradiction, and the "if we advertise"
- * section says in advance what that edit will look like.
+ * THE PIXEL SHIPPED IN THE SAME COMMIT AS THIS WORDING, 23 Aug 2026, which is the whole point
+ * of having dated the old claim. The page said there were no advertising trackers, promised
+ * that adding one would be disclosed here before it started, and named the UK and the EEA as
+ * needing consent first. Rather than build a consent banner we do not serve the pixel to those
+ * visitors at all - stricter, cheaper, and impossible to get subtly wrong. See lib/meta.ts,
+ * where the country list lives, and app/layout.tsx, where the decision is made server side so
+ * nothing in a browser can default it to true.
  *
- * If any of this changes, this page changes in the same commit.
+ * If any of this changes, this page changes in the same commit. That is not a style rule: a
+ * privacy policy that drifts from the code is a statement somebody relied on.
  */
 export default function PrivacyPage() {
   return (
@@ -94,32 +96,47 @@ export default function PrivacyPage() {
           <h2>What we do not do</h2>
           <ul className="plain">
             <li>
-              <strong>As of {LAST_UPDATED}, no analytics and no advertising trackers.</strong> No
-              Google Analytics, no Meta pixel, no LinkedIn tag, nothing that follows you off this
-              site. The only cookie set here is the one that keeps you signed in after a magic
-              link, and there is no password to store, so we do not store one.
+              <strong>No analytics.</strong> No Google Analytics, no session recording, no
+              heatmaps, nothing watching how you move around the page.
             </li>
             <li>We do not sell your information, and we do not share it for anyone else&apos;s marketing.</li>
             <li>
               We do not put your customers&apos; personal information into AI assistants. The
               questions we ask are about your market and your category.
             </li>
+            <li>
+              We do not put any tracker on the report pages. Those are what you pay for, and
+              there is no reason for an advertising company to see them.
+            </li>
           </ul>
         </section>
 
         <section>
-          <h2>If we advertise</h2>
+          <h2>Advertising, and exactly what changed</h2>
           <p>
-            We may run ads to find customers. If that ever means adding an advertising tracker to
-            this site, or sending a hashed version of your email address to an ad platform so it
-            can tell whether its ad worked, we will say so on this page and date the change before
-            it starts, not after. If you are in the United Kingdom or the European Economic Area
-            you will be asked first, because that is what consent means there.
+            <strong>On {LAST_UPDATED} we added a Meta advertising pixel to the marketing pages.</strong>{' '}
+            Until then this page said there was no such thing here, and we said that if it ever
+            changed we would say so before it started rather than after. This is that.
           </p>
           <p>
-            Our preference, and the reason the list above currently reads the way it does, is to
-            measure advertising by which link somebody arrived through rather than by following
-            them around. That is less precise for us and considerably less invasive for you.
+            <strong>Not if you are in the UK or the EEA.</strong> The pixel is not served to
+            visitors from the United Kingdom, the European Economic Area or Switzerland at all.
+            Not disabled, not consent-gated: the script is never in the page. That is stricter
+            than asking, it cannot be got subtly wrong, and our advertising is aimed at the
+            United States anyway.
+          </p>
+          <p>
+            What it does elsewhere: reports that a scan finished, that somebody reached the setup
+            page, and that a checkout started. When a subscription is paid we send Meta a
+            confirmation from our server, including your email address hashed so that it cannot
+            be read back into an address. We never send Meta the results of your scan or anything
+            in your report.
+          </p>
+          <p>
+            Alongside it we keep our own count, tied to the scan rather than to a cookie, so we
+            can tell which advertising works without depending on Meta&apos;s figures. If you
+            would rather not be counted at all, an ad blocker stops the pixel, and you can email
+            us to have your scan and everything attached to it deleted.
           </p>
         </section>
 

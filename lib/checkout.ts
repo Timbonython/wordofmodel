@@ -4,6 +4,7 @@ import { db } from './db';
 import { env } from './env';
 import { assertPrice, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
+import { recordFunnel } from './funnel';
 import type { AccountRow, ScopeRow } from './accounts';
 
 /**
@@ -46,6 +47,8 @@ export async function customerFor(account: AccountRow): Promise<string> {
 export async function createCheckout(input: {
   account: AccountRow;
   scope: ScopeRow;
+  /** The scan this subscriber came from, if they came from one. Attribution's join key. */
+  scanId?: string | null;
 }): Promise<{ url: string; priceKey: PriceKey }> {
   // THE SEAT IS CLAIMED HERE, AND THIS IS THE READ THAT DECIDES THE PRICE.
   //
@@ -65,6 +68,10 @@ export async function createCheckout(input: {
     scope_id: input.scope.id,
     price_key: priceKey,
     ...(claimId ? { founding_claim_id: claimId } : {}),
+    // Carried through Stripe rather than held in a cookie, because the cookie died the moment
+    // they scanned on a phone and paid on a laptop. The webhook writes it onto the
+    // subscription, so the ad that produced a customer is still knowable months later.
+    ...(input.scanId ? { scan_id: input.scanId } : {}),
   };
 
   let session: Stripe.Checkout.Session;
@@ -120,6 +127,12 @@ export async function createCheckout(input: {
 
   // Now the claim can be tied to the thing that will convert or expire it.
   if (claimId) await attachSessionToClaim(claimId, session.id);
+
+  await recordFunnel({
+    event: 'checkout_started',
+    scanId: input.scanId ?? null,
+    accountId: input.account.id,
+  });
 
   return { url: session.url, priceKey };
 }

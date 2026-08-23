@@ -16,6 +16,8 @@ import {
 import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
 import { ensureBaselineRun } from '@/lib/run';
 import { convertClaim, releaseClaimBySession } from '@/lib/founding';
+import { recordFunnel } from '@/lib/funnel';
+import { sendPurchaseEvent } from '@/lib/meta';
 import { kickChains } from '@/lib/cron';
 import { getScope } from '@/lib/onboarding';
 
@@ -131,6 +133,28 @@ async function onCheckoutCompleted(
   const claimId = session.metadata?.founding_claim_id;
   if (claimId) await convertClaim(claimId);
 
+  // FIRED FROM HERE, NEVER FROM THE BROWSER. The visitor is redirected out to Stripe and back,
+  // through whatever ad blocker and privacy setting they have; the browser is the least
+  // reliable witness to the one event that decides whether the advertising worked.
+  const scanId = session.metadata?.scan_id ?? null;
+  await recordFunnel({
+    event: 'subscription_active',
+    scanId,
+    accountId: session.metadata?.account_id ?? null,
+  });
+
+  // The only Purchase event, and it is sent from here. event_id is the session id, so a
+  // browser event added later would collapse into this one rather than double the count.
+  const buyerEmail = session.customer_details?.email ?? null;
+  if (buyerEmail) {
+    await sendPurchaseEvent({
+      email: buyerEmail,
+      priceKey: (session.metadata?.price_key as 'founding_monthly' | 'standard_monthly') ?? 'standard_monthly',
+      eventId: session.id,
+      country: session.customer_details?.address?.country ?? null,
+    });
+  }
+
   const accountId = session.metadata?.account_id;
   const scopeId = session.metadata?.scope_id ?? session.client_reference_id ?? undefined;
   if (!accountId || !scopeId) {
@@ -144,6 +168,7 @@ async function onCheckoutCompleted(
     scopeId,
     priceKey: priceKeyOf(sub),
     eventAt,
+    scanId,
   });
 
   await sendReceipt({
@@ -283,6 +308,9 @@ async function onSubscriptionChanged(sub: Stripe.Subscription, eventAt: Date): P
     scopeId,
     priceKey: existing?.price_key ?? priceKeyOf(sub),
     eventAt,
+    // Only used on insert. Whichever of the two events lands first carries it, which is why
+    // createCheckout puts the same metadata on the session AND the subscription.
+    scanId: existing?.scan_id ?? sub.metadata?.scan_id ?? null,
   });
 }
 

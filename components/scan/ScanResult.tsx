@@ -5,6 +5,7 @@ import { splitBold, stripMarkdown } from '@/lib/markup';
 import type { FreeResult, GatedResult } from '@/lib/types';
 import { AnswerExcerpt } from './AnswerExcerpt';
 import { priceLabel, FOUNDING_SEATS_PUBLIC } from '@/lib/scope';
+import { metaTrack } from '@/components/MetaPixel';
 
 function Bolded({ text }: { text: string }) {
   return (
@@ -76,6 +77,9 @@ export function ScanResult({
         error?: string;
       };
       if (!response.ok || !body.gated) throw new Error(body.error || 'That did not work. Try again.');
+      // A genuine result, on screen. Not a page load and not a failed scan: this line is
+      // inside the success branch for the same reason scan_completed is.
+      metaTrack('ViewContent');
       setGated(body.gated);
       setBrandName(body.brandName || 'you');
       setEmailed(body.emailed !== false);

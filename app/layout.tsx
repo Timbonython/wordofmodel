@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from 'next/font/google';
+import { headers } from 'next/headers';
 import { env } from '@/lib/env';
+import { metaAllowedFor } from '@/lib/meta';
+import { MetaPixel } from '@/components/MetaPixel';
 import './globals.css';
 
 // The report template's type stack, self hosted by next/font so the site and the
@@ -53,10 +56,19 @@ export const viewport: Viewport = {
   themeColor: '#F7F6F2',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Decided on the server, from the country Vercel puts on the request, and passed down as a
+  // fact rather than a flag the browser could get wrong. No pixel id, or a visitor in the UK
+  // or the EEA, and the script is never in the page at all - not loaded and disabled, absent.
+  const country = (await headers()).get('x-vercel-ip-country');
+  const pixel = metaAllowedFor(country) ? env.metaPixelId : null;
+
   return (
     <html lang="en" className={`${sans.variable} ${condensed.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {pixel ? <MetaPixel pixelId={pixel} /> : null}
+      </body>
     </html>
   );
 }

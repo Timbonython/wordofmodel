@@ -1,6 +1,7 @@
 import { iso2, normaliseDomain } from '@/lib/domain';
 import { writeQuestion } from '@/lib/detect';
 import { completeScan, createScan, failScan, findCachedScan } from '@/lib/db';
+import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { askChatGpt } from '@/lib/openai';
 import { askPerplexity } from '@/lib/perplexity';
 import { checkRateLimit, clientIp, hashIp, recordAttempt } from '@/lib/ratelimit';
@@ -17,6 +18,8 @@ interface ScanBody {
   domain?: string;
   profile?: Partial<ConfirmedProfile>;
   edited?: boolean;
+  /** utm_* and fbclid, read off the landing URL by the client and stored on the row. */
+  touch?: Record<string, unknown>;
 }
 
 /**
@@ -83,6 +86,10 @@ export async function POST(request: Request) {
     const question = await writeQuestion(profile);
     emit({ type: 'question', question });
 
+    // First touch, from the URL the visitor landed on, passed up by the client. Stored on the
+    // row because it has to survive a cleared browser and a hop to another device.
+    const touch = touchFrom((body.touch ?? {}) as Record<string, unknown>);
+
     const scanId = await createScan({
       domain,
       profile,
@@ -90,7 +97,9 @@ export async function POST(request: Request) {
       question,
       ipHash,
       userAgent,
+      touch,
     });
+    await recordFunnel({ event: 'scan_started', scanId, utmSource: touch.utm_source });
 
     try {
       // ---- step 4: both engines at once ----
@@ -195,6 +204,10 @@ export async function POST(request: Request) {
         null,
       );
       await completeScan(scanId, { captures, result: free, costUsd });
+      // ONLY HERE. Not on page load, not on an errored scan, not on an empty one: the two
+      // failure paths above call failScan and record nothing. A scan that failed is not a scan
+      // that happened, and counting it would flatter the ad that produced it.
+      await recordFunnel({ event: 'scan_completed', scanId, utmSource: touch.utm_source });
 
       emit({
         type: 'result',
