@@ -19,7 +19,7 @@ export interface AiOverviewResult {
    * false is a RESULT, not an error. AI Overviews do not fire on every query, and
    * "Google showed nothing" is a real observation that belongs in the evidence with
    * provenance against it. It becomes captures.outcome = 'no_answer', which is
-   * excluded from the Share of Model denominator and reported in the method note.
+   * excluded from the score denominator and reported in the method note.
    * Recording it as an empty answer instead would make Google's trigger rate look
    * like the subscriber's market position.
    */

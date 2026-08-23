@@ -16,7 +16,8 @@
     "extract:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/extract-check.mjs",
     "alerts": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/alerts-check.mjs",
     "founding:race": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/founding-race.mjs",
-    "checkout:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/checkout-check.mjs"
+    "checkout:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/checkout-check.mjs",
+    "noise": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/noise-floor.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

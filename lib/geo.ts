@@ -79,7 +79,7 @@ export type MarketCountry = keyof typeof MARKETS;
  * existed had "burner phone numbers" in it - a product category sitting in the column
  * every geo parameter derives from. The five generated questions came back naming four
  * different countries, none of them chosen by anybody, and a run against that scope would
- * have computed one Share of Model across four markets.
+ * have computed one score across four markets.
  *
  * A select cannot produce that. It also cannot produce a market geoFor() would throw on,
  * because it is built from the same table.

@@ -1,11 +1,12 @@
 /**
  * The report, rendered.
  *
- * SECTION ORDER, AND WHY IT IS NOT THE OFFER SHEET'S. The offer sheet leads with the number
- * and files the branded question at the bottom as a control condition. Zapme's first run
- * showed that backwards: a blended Share of Model of 9.3% reads as "do more marketing",
- * while the branded question says five surfaces know them and one will recommend them.
- * Those are different diagnoses with different fixes, and the second one is the finding.
+ * SECTION ORDER, AND WHY IT IS NOT THE OFFER SHEET'S. The offer sheet leads with the naming
+ * rate and files the branded question at the bottom as a control condition. Zapme's first run
+ * showed that backwards: a blended naming rate of 9.3% reads as "do more marketing", while
+ * the branded question says five surfaces know them and one will recommend them. Those are
+ * different diagnoses with different fixes, and the second one is the finding - which is why
+ * the recommendation count is now the headline number rather than a column.
  *
  *   1  the diagnosis          what is true, then what it means
  *   2  presence and endorsement, side by side, neither blended into the other
@@ -34,6 +35,7 @@ import 'server-only';
 import { REPORT_CSS } from './report-css';
 import { SLOT_LABEL } from './scope';
 import { countWord } from './actions';
+import { BELOW_FLOOR_NOTE } from './metric';
 import type { GridState, ReportData } from './report';
 
 function esc(s: string): string {
@@ -68,7 +70,7 @@ export function renderReport(r: ReportData): string {
 </head>
 <body>
 <header class="masthead"><div class="wrap">
-  <div class="wordmark">Word of Model<span>.ai</span></div>
+  <div class="wordmark">Word of Model&trade;<span>.ai</span></div>
   <div class="issue">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
 </div></header>
 
@@ -86,8 +88,8 @@ ${sectionMethod(r)}
 </main>
 
 <footer><div class="wrap note">
-  Word of Model &middot; ${esc(period)} &middot; run ${esc(r.run.id.slice(0, 8))} &middot;
-  thresholds v${r.versions.threshold} &middot; reading v${r.versions.extraction}
+  Word of Model&trade; &middot; ${esc(period)} &middot; run ${esc(r.run.id.slice(0, 8))} &middot;
+  headline v${r.versions.metric} &middot; thresholds v${r.versions.threshold} &middot; reading v${r.versions.extraction}
 </div></footer>
 </body>
 </html>`;
@@ -107,21 +109,27 @@ function sectionDiagnosis(r: ReportData): string {
 function sectionPair(r: ReportData): string {
   const p = r.presence;
   const e = r.endorsement;
+  const gap = r.recognised > e.endorsed;
   return `  <section>
     <div class="eyebrow">Where you stand</div>
     <div class="pair">
       <div class="half">
-        <div class="k">Presence &middot; Share of Model</div>
-        <div class="v">${pct(p.shareOfModel)}</div>
-        <div class="sub">named in ${num(p.numerator)} of ${p.pairs} readings. A reading is one surface answering one of your four unbranded questions; where we ask three times, it counts as the share of those that named you, which is why this can be a fraction.</div>
+        <div class="k">Recommendation Share</div>
+        <div class="v">${e.endorsed} <span style="font-size:26px;color:var(--ink-faint)">of ${e.askedDirectly}</span></div>
+        <div class="sub">surfaces that recommend you when a buyer asks about you by name. This is the number this report is built around.</div>
       </div>
       <div class="half">
-        <div class="k">Endorsement</div>
-        <div class="v">${e.endorsed} <span style="font-size:26px;color:var(--ink-faint)">of ${e.askedDirectly}</span></div>
-        <div class="sub">surfaces that recommend you when asked about you by name. ${e.recognised} of ${e.askedDirectly} could describe you.</div>
+        <div class="k">Presence</div>
+        <div class="v">${pct(p.shareOfModel)}</div>
+        <div class="sub">how often you are named at all: ${num(p.numerator)} of ${p.pairs} readings across your four unbranded questions. Supporting detail, not the headline.</div>
       </div>
     </div>
-    <p class="note" style="margin-top:14px">Endorsement is a count, not a percentage. Five readings cannot carry one: a single engine changing its mind would move a percentage twenty points with nothing behind it.</p>
+    ${
+      gap
+        ? `<p class="gap-line">${e.recognised} of ${e.askedDirectly} surfaces know who you are. ${e.endorsed} of ${e.askedDirectly} will put you forward. <strong>That gap is the finding</strong>, and everything below is about closing it.</p>`
+        : ''
+    }
+    <p class="note" style="margin-top:14px">A count, not a percentage, and never an arrow. It runs from nought to ${e.askedDirectly}: one surface changing its mind moves it twenty points, and a surface changing its mind is something we have measured happening on its own. Where you stand is a status. The trends in this report sit on figures with enough readings under them to carry one.</p>
   </section>`;
 }
 
@@ -213,14 +221,21 @@ function sectionDelta(r: ReportData): string {
   if (!d) return '';
 
   const suppressed = d.overall.comparable ? '' : `    <p class="suppressed">${esc(d.overall.reason ?? '')}</p>`;
-  const headline = d.overall.comparable
-    ? `<h2>${d.overall.change! >= 0 ? 'Up' : 'Down'} ${num(Math.abs(d.overall.change!))} readings since ${esc(monthName(d.previousPeriod))}</h2>`
-    : `<h2>What we can compare since ${esc(monthName(d.previousPeriod))}</h2>`;
+  const headline = !d.overall.comparable
+    ? `<h2>What we can compare since ${esc(monthName(d.previousPeriod))}</h2>`
+    : d.overall.belowFloor
+      ? `<h2>Nothing moved further than we can measure</h2>`
+      : `<h2>${d.overall.change! >= 0 ? 'Up' : 'Down'} ${num(Math.abs(d.overall.change!))} readings since ${esc(monthName(d.previousPeriod))}</h2>`;
+
+  // The floor, said once, where the number would have been. Not an apology: a subscriber told
+  // that nothing cleared the instrument's own error has been told something true, by the only
+  // product in this category that has measured what that error is.
+  const floorNote = d.overall.comparable && d.overall.belowFloor ? `    <p class="suppressed">${esc(BELOW_FLOOR_NOTE)}</p>` : '';
 
   const rows = d.bySurface
     .map((s) =>
       s.comparable
-        ? `        <tr><td>${esc(s.surface)}</td><td class="num">${num(s.before!)} &rarr; ${num(s.now!)} of ${s.pairs}</td><td class="num ${s.change! > 0 ? '' : s.change! < 0 ? 'zero' : ''}">${s.change! > 0 ? '+' : ''}${num(s.change!)}</td></tr>`
+        ? `        <tr><td>${esc(s.surface)}</td><td class="num">${num(s.before!)} &rarr; ${num(s.now!)} of ${s.pairs}</td><td class="num ${s.belowFloor ? 'note' : s.change! < 0 ? 'zero' : ''}">${s.belowFloor ? 'steady' : `${s.change! > 0 ? '+' : ''}${num(s.change!)}`}</td></tr>`
         : `        <tr><td>${esc(s.surface)}</td><td colspan="2" class="note">${esc(s.reason ?? 'not compared')}</td></tr>`,
     )
     .join('\n');
@@ -236,7 +251,7 @@ function sectionDelta(r: ReportData): string {
   return `  <section>
     <div class="eyebrow">What changed</div>
     ${headline}
-${suppressed}
+${suppressed}${floorNote}
     <table class="board">
       <thead><tr><th>Surface</th><th class="num">Readings naming you</th><th class="num">Change</th></tr></thead>
       <tbody>
@@ -264,7 +279,7 @@ function sectionLeaderboard(r: ReportData): string {
     <h2>Named across the same answers as you</h2>
     <p class="lede">Every company here is measured over exactly the answers you are measured over. Same questions, same surfaces, same exclusions.</p>
     <table class="board">
-      <thead><tr><th>Company</th><th class="barcell"></th><th class="num">Share of Model</th></tr></thead>
+      <thead><tr><th>Company</th><th class="barcell"></th><th class="num">Named in</th></tr></thead>
       <tbody>
 ${you}
 ${rows}

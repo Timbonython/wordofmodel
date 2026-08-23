@@ -130,7 +130,7 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:100%;background:${PALETTE.card};border:1px solid ${PALETTE.rule};">
 
       <tr><td style="padding:22px 30px 16px 30px;border-bottom:2px solid ${PALETTE.ink};">
-        <div style="font-family:${SANS};font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:${PALETTE.ink};">Word of Model<span style="color:${PALETTE.inkFaint};">.ai</span></div>
+        <div style="font-family:${SANS};font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:${PALETTE.ink};">Word of Model&trade;<span style="color:${PALETTE.inkFaint};">.ai</span></div>
         <div style="font-family:${MONO};font-size:11px;color:${PALETTE.inkSoft};padding-top:6px;">${escapeHtml(input.domain)} &middot; free scan</div>
       </td></tr>
 

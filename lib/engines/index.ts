@@ -10,7 +10,7 @@
  * broken one. A surface we have not committed to is a surface we do not claim to
  * measure, and a hardcoded 25 would mark every run partial and ship nothing.
  *
- * Committing the provider later moves every subscriber's Share of Model denominator on
+ * Committing the provider later moves every subscriber's score denominator on
  * the same day. runs.surfaces records the set each run actually used so the delta
  * reports that as a configuration change rather than as the market moving - the same
  * rule 0002 writes for competitors, one level up.

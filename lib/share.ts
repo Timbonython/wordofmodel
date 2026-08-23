@@ -1,5 +1,5 @@
 /**
- * Share of Model.
+ * The naming rate and the recommendation rate, per surface and overall.
  *
  * THE UNIT OF THE DENOMINATOR IS ONE SURFACE ANSWERING ONE QUESTION. Not one API call,
  * not one row. Every surface is estimating the same quantity - the probability that this

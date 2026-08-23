@@ -27,7 +27,7 @@ const HTML = { 'content-type': 'text/html; charset=utf-8' };
 
 /**
  * Private, never stored, never indexed. A shared computer with a warm back button is the
- * ordinary case; a search engine holding a subscriber's Share of Model is not recoverable.
+ * ordinary case; a search engine holding a subscriber's figures is not recoverable.
  */
 const SECURITY = {
   'cache-control': 'private, no-store, max-age=0',
@@ -98,7 +98,7 @@ function notice(title: string, body: string): string {
 </head>
 <body>
   <div class="box">
-    <div class="wordmark">Word of Model<span>.ai</span></div>
+    <div class="wordmark">Word of Model&trade;<span>.ai</span></div>
     <h1>${title}</h1>
     ${body}
   </div>

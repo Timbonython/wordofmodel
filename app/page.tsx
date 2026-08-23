@@ -26,9 +26,9 @@ export default async function Page() {
       <header className="masthead">
         <div className="wrap">
           <div className="wordmark">
-            Word of Model <span>/ free scan</span>
+            Word of Model&trade; <span>/ free scan</span>
           </div>
-          <div className="issue">SHARE OF MODEL &nbsp;·&nbsp; WHAT AI SAYS ABOUT YOU</div>
+          <div className="issue">RECOMMENDATION SHARE &nbsp;·&nbsp; WHAT AI SAYS ABOUT YOU</div>
         </div>
       </header>
 
@@ -156,7 +156,7 @@ export default async function Page() {
           <div className="gets">
             <div className="get">
               <h3>The number</h3>
-              <p>Your Share of Model, and whether it moved. One plain sentence on whether that's good.</p>
+              <p>How many of them recommend you, how often you are named at all, and the gap between the two. One plain sentence on what it means.</p>
             </div>
             <div className="get">
               <h3>What changed</h3>
@@ -425,10 +425,10 @@ export default async function Page() {
 
       <footer>
         <div className="wrap">
-          <span>Word of Model · wordofmodel.ai</span>
+          <span>Word of Model&trade; · wordofmodel.ai</span>
           <span>
-            <strong>Share of Model</strong> is how often you get named. <strong>Word of Model</strong> is what's
-            actually being said.
+            <strong>Recommendation Share</strong> is how many of them put you forward. <strong>Word of Model</strong> is
+            what they actually said.
           </span>
           <span className="footer-links">
             <Link href="/privacy">Privacy</Link> &middot; <Link href="/terms">Terms</Link>

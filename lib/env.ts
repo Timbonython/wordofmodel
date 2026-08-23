@@ -66,7 +66,7 @@ export const env = {
    * and captures_expected is 20. That is a complete run, not a broken one: a surface
    * we have not committed to is a surface we do not claim to measure.
    *
-   * Committing it later changes the Share of Model denominator for every subscriber
+   * Committing it later changes the score denominator for every subscriber
    * at once, which is a configuration change and must be reported as one. runs.surfaces
    * is what makes that visible - see the note in 0005.
    */

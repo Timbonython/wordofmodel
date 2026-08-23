@@ -8,7 +8,7 @@
  * overview to a real buyer can come back with no ai_overview item at all.
  *
  * Downstream that is indistinguishable from Google having shown nothing, which would
- * put a fabricated zero into the Share of Model denominator every month. It costs a
+ * put a fabricated zero into the score denominator every month. It costs a
  * flat USD 0.002 to turn on, refunded when the element turns out not to have been
  * asynchronous. lib/geo.ts sends it as true and says why.
  *

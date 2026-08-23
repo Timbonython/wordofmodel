@@ -15,7 +15,7 @@
  * exists.
  *
  * WHEN THE TWO DISAGREE, THE RECORD WINS AND SOMEBODY IS TOLD. A rebuild that produces a
- * different Share of Model from the one on file means the evidence changed underneath a
+ * different headline figure from the one on file means the evidence changed underneath a
  * report we have already sent, which is either a re-extraction or a bug and is never
  * nothing. The subscriber keeps reading what they were sent; Tim gets the alert.
  */
@@ -35,6 +35,7 @@ export interface ReportRow {
   scope_id: string;
   threshold_version: number;
   extraction_version: number;
+  metric_version: number;
   presence: number | null;
   presence_pairs: number;
   recognised: number;
@@ -78,6 +79,7 @@ export async function saveReport(report: ReportData, run: RunRow): Promise<Repor
       scope_id: run.scope_id,
       threshold_version: report.versions.threshold,
       extraction_version: report.versions.extraction,
+      metric_version: report.versions.metric,
       presence: report.presence.shareOfModel,
       presence_pairs: report.presence.pairs,
       recognised: report.endorsement.recognised,
@@ -153,6 +155,7 @@ async function reissue(report: ReportData, row: ReportRow): Promise<ReportRow | 
     .update({
       threshold_version: report.versions.threshold,
       extraction_version: report.versions.extraction,
+      metric_version: report.versions.metric,
       presence: report.presence.shareOfModel,
       presence_pairs: report.presence.pairs,
       recognised: report.endorsement.recognised,
@@ -180,7 +183,11 @@ async function reissue(report: ReportData, row: ReportRow): Promise<ReportRow | 
 function renderFrom(report: ReportData, row: ReportRow): ReportData {
   return {
     ...report,
-    versions: { threshold: row.threshold_version, extraction: row.extraction_version },
+    versions: {
+      threshold: row.threshold_version,
+      extraction: row.extraction_version,
+      metric: row.metric_version,
+    },
     presence: { ...report.presence, shareOfModel: row.presence, pairs: row.presence_pairs },
     endorsement: {
       recognised: row.recognised,
@@ -207,7 +214,7 @@ function driftBetween(report: ReportData, row: ReportRow): string[] {
   const out: string[] = [];
   const rebuilt = report.presence.shareOfModel;
   if (numOrNull(rebuilt) !== numOrNull(row.presence)) {
-    out.push(`Share of Model on file ${row.presence}, rebuilds to ${rebuilt}.`);
+    out.push(`Naming rate on file ${row.presence}, rebuilds to ${rebuilt}.`);
   }
   if (report.endorsement.endorsed !== row.endorsed) {
     out.push(`Endorsement on file ${row.endorsed}, rebuilds to ${report.endorsement.endorsed}.`);
@@ -220,6 +227,12 @@ function driftBetween(report: ReportData, row: ReportRow): string[] {
   }
   if (report.versions.extraction !== row.extraction_version) {
     out.push(`Read at version ${row.extraction_version}, captures now read at ${report.versions.extraction}.`);
+  }
+  if (report.versions.metric !== row.metric_version) {
+    out.push(
+      `Issued under headline definition v${row.metric_version}, today's code computes v${report.versions.metric}. ` +
+        `The stored figures are the ones that were sent.`,
+    );
   }
   return out;
 }
@@ -268,7 +281,7 @@ export async function runsAwaitingReport(withinDays = 45, limit = 25): Promise<R
   // extraction pass without waiting for it, so for a minute or so a complete run holds
   // captures with a null extracted_at. Those are excluded from the score everywhere, by
   // design - which means a report built in that window is not incomplete, it is WRONG: a
-  // Share of Model over a smaller denominator, stored as the record and emailed. Waiting
+  // a naming rate over a smaller denominator, stored as the record and emailed. Waiting
   // costs one sweep cycle. Extraction over 55 captures measured 29 seconds.
   const { data: pending, error: capErr } = await db()
     .from('captures')

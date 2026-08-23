@@ -8,7 +8,7 @@
  *
  * ORDER MATTERS AND IT IS NOT THE OFFER SHEET'S ORDER. The offer sheet puts the number
  * first and the branded question last, as a control-condition footnote. The first real run
- * showed why that is backwards: Zapme's blended Share of Model is 9.3%, which reads as "do
+ * showed why that is backwards: Zapme's blended naming rate is 9.3%, which reads as "do
  * more marketing", while the branded question says five surfaces know them and one will
  * recommend them. That is the models having formed a view, and it is a different diagnosis
  * with a different fix. So the diagnosis leads and the branded evidence is second.
@@ -23,6 +23,7 @@ import { aiOverviewCoverage, VARIANCE_NOTE, COMPARABILITY_NOTE, CITATION_CAVEAT,
 import { buildActions, isHedgeReason, type HedgeReason, type ReportActions } from './actions';
 import { SURFACES, type QuestionSlot, type Surface } from './scope';
 import { EXTRACTION_VERSION } from './extract';
+import { METRIC_VERSION, NOISE_FLOOR_NOTE } from './metric';
 import type { RunRow } from './accounts';
 import type { Citation } from './types';
 import type { GeoSent } from './geo';
@@ -68,11 +69,16 @@ interface CaptureRecord extends ScoredCapture {
 export interface ReportData {
   scope: { brandName: string; market: string; marketCountry: string; website: string | null };
   run: { id: string; periodStart: string; status: string; surfaces: string[]; samples: Record<string, number> };
-  versions: { threshold: number; extraction: number };
+  versions: { threshold: number; extraction: number; metric: number };
 
   diagnosis: DiagnosisResult;
-  /** Presence is the FRAME. Share of Model is the metric and keeps its name on the number. */
+  /**
+   * How often the brand is NAMED. Supporting detail since 23 Aug 2026: the headline is the
+   * recommendation count below. The field keeps its shape so stored reports still read.
+   */
   presence: { shareOfModel: number | null; pairs: number; numerator: number };
+  /** Surfaces that could describe them, for the gap line. Same number as endorsement.recognised. */
+  recognised: number;
   endorsement: { recognised: number; endorsed: number; askedDirectly: number };
 
   bySurface: Array<{ surface: string; label: string; shareOfModel: number | null; pairs: number }>;
@@ -252,7 +258,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
       surfaces: run.surfaces as string[],
       samples: run.samples,
     },
-    versions: { threshold: THRESHOLD_VERSION, extraction: EXTRACTION_VERSION },
+    versions: { threshold: THRESHOLD_VERSION, extraction: EXTRACTION_VERSION, metric: METRIC_VERSION },
 
     diagnosis,
     presence: {
@@ -261,6 +267,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
       numerator: som.overall.mentioned,
     },
     endorsement: { recognised, endorsed, askedDirectly },
+    recognised,
 
     bySurface: som.bySurface.map((s) => ({
       surface: s.surface,
@@ -352,7 +359,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
  * inputs, which is what makes every sentence here checkable.
  */
 function methodLines(captures: CaptureRecord[], run: RunRow, market: string): string[] {
-  const lines: string[] = [VARIANCE_NOTE, '', THRESHOLD_NOTE, '', COMPARABILITY_NOTE, ''];
+  const lines: string[] = [VARIANCE_NOTE, '', NOISE_FLOOR_NOTE, '', THRESHOLD_NOTE, '', COMPARABILITY_NOTE, ''];
 
   const region = captures[0]?.vercel_region ?? 'US';
   for (const surface of run.surfaces as string[]) {
@@ -424,6 +431,16 @@ export async function attachDelta(report: ReportData, run: RunRow): Promise<Repo
   if (!prev) return report;
 
   const snapshot = async (r: RunRow): Promise<RunSnapshot> => {
+    // The definition this run's report was ISSUED under, not the one in the code today. A run
+    // that was never reported gets today's, because if we reported it now that is what it
+    // would be, and inventing a break against a month nobody has seen helps nobody.
+    const { data: reportRow } = await db()
+      .from('reports')
+      .select('metric_version')
+      .eq('run_id', r.id)
+      .maybeSingle();
+    const metricVersion = (reportRow as { metric_version: number } | null)?.metric_version ?? METRIC_VERSION;
+
     const { data: qs } = await db().from('questions').select('id, slot').eq('scope_id', r.scope_id);
     const slots = new Map((qs ?? []).map((q) => [(q as { id: string }).id, (q as { slot: string }).slot]));
     const { data: caps } = await db()
@@ -442,6 +459,7 @@ export async function attachDelta(report: ReportData, run: RunRow): Promise<Repo
       runId: r.id,
       periodStart: r.period_start,
       status: r.status,
+      metricVersion,
       surfaces: r.surfaces as string[],
       samples: r.samples,
       // Same cast-through-unknown as buildReport, and for the same reason: a select string

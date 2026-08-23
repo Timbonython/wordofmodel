@@ -1,23 +1,25 @@
 /**
  * Presence and endorsement: the two-number diagnosis at the top of the report.
  *
- * WHY TWO NUMBERS AND NOT ONE. A blended Share of Model of 9.3% says "do more marketing".
+ * WHY TWO NUMBERS AND NOT ONE. A blended naming rate of 9.3% says "do more marketing".
  * The same data split says: five surfaces named you when asked, one endorsed you. That is
  * the models having formed a view and it being unfavourable, which is a different diagnosis
  * with a different fix. Blending them destroys the distinction, and the distinction is the
  * finding.
  *
- * NAMING, HELD DELIBERATELY. **Share of Model** is the metric and keeps its name wherever
- * the number appears. **Presence** and **endorsement** are the framing pair - the two axes
- * of the diagnosis, not second names for the figure. Copy reads "Presence: your Share of
- * Model is 9.3%", never "your presence score is 9.3%". Same discipline CLAUDE.md holds
- * between Share of Model and Word of Model: if the frame becomes the metric's name, the
- * number starts reading as marketing.
+ * NAMING, CHANGED 23 AUG 2026. The headline metric is **Recommendation Share**, a count of
+ * the surfaces that recommend the brand when asked about it directly. **Presence** is the
+ * naming rate and is supporting detail. The old name, Share of Model, is retired: Jellyfish
+ * holds Share of Model(TM) in this category, and the number it named was the wrong one to
+ * lead with anyway. Never abbreviate Recommendation Share to a percentage with a decimal on
+ * it - it is a count out of five, and see lib/metric.ts for why that matters.
  *
- * ENDORSEMENT IS A COUNT, NEVER A PERCENTAGE. "1 of 5 surfaces endorsed you". Five
- * observations cannot carry a percentage: one engine changing its mind would swing a
- * percentage twenty points with nothing real behind it. The denominator is always shown,
- * the same way the AI Overview coverage line shows "4 of 5 questions".
+ * THE HEADLINE IS A COUNT, NEVER A PERCENTAGE. "1 of 5 surfaces recommend you". Five
+ * observations cannot carry a percentage: one engine changing its mind would swing one
+ * twenty points with nothing real behind it, and on 23 Aug 2026 we measured a single
+ * question naming a brand four times out of ten with nothing changed in between. The
+ * denominator is always shown, the same way the AI Overview coverage line shows "4 of 5
+ * questions".
  */
 
 import 'server-only';
@@ -61,7 +63,7 @@ export type Diagnosis =
   | 'established';
 
 export interface DiagnosisInput {
-  /** Share of Model across the four unbranded questions. null when nothing was answered. */
+  /** The naming rate across the four unbranded questions. null when nothing was answered. */
   presence: number | null;
   /** Surfaces that NAMED the brand on the branded question. */
   recognised: number;

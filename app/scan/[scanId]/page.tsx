@@ -50,7 +50,7 @@ export default async function ScanPermalink({
       <header className="masthead">
         <div className="wrap">
           <Link href="/" className="wordmark">
-            Word of Model<span>.ai</span>
+            Word of Model&trade;<span>.ai</span>
           </Link>
           <div className="issue">{brandName}</div>
         </div>

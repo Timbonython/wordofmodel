@@ -59,7 +59,7 @@ export default async function StartPage({
       <header className="masthead">
         <div className="wrap">
           <Link href="/" className="wordmark">
-            Word of Model<span>.ai</span>
+            Word of Model&trade;<span>.ai</span>
           </Link>
           <div className="issue">Setup</div>
         </div>

@@ -134,7 +134,7 @@ function htmlBody(r: ReportData, url: string): string {
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:100%;background:${C.card};border:1px solid ${C.rule};">
 
       <tr><td style="padding:22px 30px 16px 30px;border-bottom:2px solid ${C.ink};">
-        <div style="font-family:${SANS};font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:${C.ink};">Word of Model<span style="color:${C.inkFaint};">.ai</span></div>
+        <div style="font-family:${SANS};font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:${C.ink};">Word of Model&trade;<span style="color:${C.inkFaint};">.ai</span></div>
         <div style="font-family:${MONO};font-size:11px;color:${C.inkSoft};padding-top:6px;">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
       </td></tr>
 
@@ -151,7 +151,7 @@ ${convergence}${said}
             <a href="${esc(url)}" style="display:inline-block;font-family:${MONO};font-size:13px;letter-spacing:.06em;color:${C.paper};text-decoration:none;padding:14px 24px;">Read the full report</a>
           </td></tr>
         </table>
-        <p style="font-family:${SANS};font-size:14px;line-height:1.6;color:${C.inkSoft};margin:18px 0 0 0;">Your Share of Model, where you sit against your competitor set, what each surface said question by question, all ${answers} answers word for word, and how every figure was measured are in the report. That page is the record, and it is the version to quote.</p>
+        <p style="font-family:${SANS};font-size:14px;line-height:1.6;color:${C.inkSoft};margin:18px 0 0 0;">How many surfaces recommend you, how often you are named at all, where you sit against your competitor set, what each surface said question by question, all ${answers} answers word for word, and how every figure was measured are in the report. That page is the record, and it is the version to quote.</p>
       </td></tr>
 
       <tr><td style="padding:18px 30px 22px 30px;border-top:1px solid ${C.rule};">
@@ -194,9 +194,9 @@ function textBody(r: ReportData, url: string): string {
     url,
     ``,
     wrap(
-      `Your Share of Model, where you sit against your competitor set, all ${answers} answers ` +
-        `word for word, and how every figure was measured are in the report. That page is the ` +
-        `record, and it is the version to quote.`,
+      `How many surfaces recommend you, how often you are named at all, where you sit against ` +
+        `your competitor set, all ${answers} answers word for word, and how every figure was ` +
+        `measured are in the report. That page is the record, and it is the version to quote.`,
     ),
     ``,
     `Measured across ${r.run.surfaces.map(surfaceLabel).join(', ')}.`,

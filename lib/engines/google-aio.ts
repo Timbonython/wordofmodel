@@ -13,7 +13,7 @@
  *    fraction of queries, lower for the conversational buyer questions this product
  *    asks than for head terms. `no_answer` is a real, stored, provenance-carrying
  *    observation: the surface was asked and showed nothing. It is excluded from the
- *    Share of Model denominator and reported explicitly, because counting it as an
+ *    score denominator and reported explicitly, because counting it as an
  *    absence would make Google's trigger rate look like the subscriber's market
  *    position, and that rate moves every month for reasons that are not the market.
  *
