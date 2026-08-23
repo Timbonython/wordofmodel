@@ -112,6 +112,11 @@ function signInBody(): string {
 }
 
 function missingBody(): string {
-  return `<p>This report either does not exist or belongs to another account. If you were sent a link and it is not working, reply to the email it came in and we will sort it out.</p>
-    <p><a class="cta" href="${env.siteUrl}/account">Your account</a></p>`;
+  // The likeliest cause by a distance is being signed in as the wrong address: a magic link
+  // signs you in on the device that opened it and keeps you there. Saying so, and pointing at
+  // the page that now names the address and offers a way out, is more useful than "does not
+  // exist".
+  return `<p>This report either does not exist, or it belongs to a different address from the one you are signed in as. That is the usual reason: a sign-in link keeps you signed in on whichever device opened it.</p>
+    <p>Your account page shows which address that is, and lets you sign out and back in as another.</p>
+    <p><a class="cta" href="${env.siteUrl}/account">Check which address I am signed in as</a></p>`;
 }

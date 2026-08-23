@@ -4,6 +4,7 @@ import { getCurrentAccount } from '@/lib/auth';
 import { getSubscriptionForAccount, LIVE_STATUSES } from '@/lib/billing';
 import { getScope } from '@/lib/onboarding';
 import { formatReportDate } from '@/lib/billing-mail';
+import { priceLabel } from '@/lib/scope';
 import SignIn from '@/components/wizard/SignIn';
 import PortalButton from '@/components/wizard/PortalButton';
 
@@ -22,8 +23,20 @@ export const metadata: Metadata = {
  * Cancellation is one click from here into the hosted portal, which is the same
  * number of steps as signing up. That is both the July 2027 Unfair Trading
  * Practices position and the only defensible way to sell a subscription.
+ *
+ * IT ALSO HAS TO SAY WHO YOU ARE, which it did not. A magic link leaves somebody signed in
+ * indefinitely on whichever device opened the email, and this page showed no address and
+ * offered no way out. Found on a phone signed in as one address when a report link for
+ * another arrived: the report refused, correctly, and there was no way to see whose session
+ * you were in, leave it, or fix it. A page that cannot answer "as whom" is a dead end wearing
+ * a subscription summary.
  */
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ signed_out?: string }>;
+}) {
+  const { signed_out: signedOut } = await searchParams;
   const account = await getCurrentAccount();
 
   if (!account) {
@@ -31,6 +44,7 @@ export default async function AccountPage() {
       <Shell>
         <section className="wizard-step">
           <div className="eyebrow">Sign in</div>
+          {signedOut ? <p className="note">You are signed out on this device.</p> : null}
           <h2>We&apos;ll email you a link</h2>
           <p className="lede">
             No password. Put in the address your report goes to and we&apos;ll send a link that
@@ -52,6 +66,19 @@ export default async function AccountPage() {
       <section className="wizard-step">
         <div className="eyebrow">Your subscription</div>
 
+        {/* WHO, AND HOW TO STOP BEING THEM. The report link sends people here when it refuses
+            them, and "signed in as somebody else" is the commonest reason it does. */}
+        <div className="identity">
+          <span>
+            Signed in as <strong>{account.email}</strong>
+          </span>
+          <form method="post" action="/api/auth/sign-out">
+            <button type="submit" className="linklike">
+              Sign out
+            </button>
+          </form>
+        </div>
+
         {!subscription && (
           <>
             <h2>No subscription on this address yet</h2>
@@ -71,7 +98,7 @@ export default async function AccountPage() {
           <>
             <h2>
               {scope?.brand_name ?? 'Your report'},{' '}
-              {subscription.price_key === 'founding_monthly' ? 'USD 149' : 'USD 249'} a month
+              {priceLabel(subscription.price_key)} a month
             </h2>
 
             <dl className="account-facts">
