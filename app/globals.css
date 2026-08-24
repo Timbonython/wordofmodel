@@ -1249,4 +1249,35 @@ footer .wrap {
 .legal ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--rule); line-height: 1.65; }
 .legal ul.plain li:last-child { border-bottom: 0; }
 .legal a { color: inherit; }
+
+/* The drift table. It is the most important thing on the method page and it is the one
+   element that will be screenshotted, so it gets the report's own typographic treatment
+   rather than looking like a spreadsheet somebody pasted in. */
+.table-scroll { overflow-x: auto; max-width: 68ch; margin: 20px 0 8px; }
+.legal table.drift { border-collapse: collapse; width: 100%; font-size: 15px; }
+.legal table.drift th,
+.legal table.drift td {
+  text-align: left;
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.legal table.drift thead th {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.legal table.drift tbody td:first-child { font-weight: 600; }
+
+/* Somebody else's numbers. Marked apart from ours on purpose: the page promises you can
+   check its claims against your own report, and that is true of one kind and not the other. */
+.legal ul.cited { list-style: none; padding: 0; margin: 0 0 16px; max-width: 68ch; }
+.legal ul.cited li {
+  padding: 12px 0 12px 16px;
+  border-left: 2px solid var(--rule);
+  margin-bottom: 10px;
+  line-height: 1.65;
+}
 .footer-links a { color: inherit; }

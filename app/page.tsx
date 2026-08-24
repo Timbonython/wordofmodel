@@ -192,6 +192,36 @@ export default async function Page() {
           </div>
         </section>
 
+        {/* ============ 4a. THE COMPETITORS YOU DIDN'T PICK ============ */}
+        <section>
+          <div className="eyebrow">The competitors you didn't pick</div>
+          <h2>You give us four. We tell you who the AI actually named.</h2>
+          <p>
+            Most months those two lists aren't the same, and the gap is usually the useful part. A
+            business you have never heard of, quietly being recommended to your buyers. A big name you
+            assumed you competed with, which never comes up at all.
+          </p>
+          <p>
+            That's not a scoreboard. It's a map of the category as the machine understands it,
+            which is increasingly the version your buyer sees first.
+          </p>
+        </section>
+
+        {/* ============ 4b. WHERE THE ANSWERS COME FROM ============ */}
+        <section>
+          <div className="eyebrow">Where the answers come from</div>
+          <h2>Every answer is built out of somebody else's pages</h2>
+          <p>
+            We show you which ones. Usually a short list, usually surprising, and usually not yours. A
+            trade publication you have never pitched. A forum thread from four years ago. A comparison
+            article on a site you have never heard of.
+          </p>
+          <p>
+            That list is the most actionable thing in the report, because it's the one thing you can
+            go and do something about this month.
+          </p>
+        </section>
+
         {/* ============ 5. HOW IT WORKS ============ */}
         <section>
           <div className="eyebrow">How it works</div>
@@ -256,6 +286,35 @@ export default async function Page() {
           </p>
         </section>
 
+        {/* ============ 6a. WHY WE DON'T CHECK EVERY DAY ============ */}
+        <section>
+          <div className="eyebrow">Why we don't check every day</div>
+          <h2>Because nothing you'd do about it changes every day</h2>
+          <p>
+            Ask an AI the same question twice and you'll get different answers. That's not a
+            glitch, it's how they work. Published research puts a single question asked once at plus
+            or minus forty four points. So a dashboard refreshing every hour isn't showing you your
+            position moving. It's showing you the weather.
+          </p>
+          <p>
+            Meanwhile the things that actually matter barely move at all. Across a study of over a
+            thousand categories, the brands that owned a category kept the top spot in ninety percent of
+            month-to-month comparisons. And AI answers currently send about one percent of website
+            traffic.
+          </p>
+          <p className="punch">
+            So the question isn't how often you check. It's what you learn when you do.
+          </p>
+          <p>
+            Which sources the AI is leaning on. Who it names when your buyer asks. What it says about
+            you, word for word, so you can argue with it. And three things worth doing about it.
+          </p>
+          <p>Those change when somebody publishes something, not when the clock ticks.</p>
+          <p>
+            <Link href="/method">Every number on this page, and where it came from</Link>.
+          </p>
+        </section>
+
         {/* ============ 7. WHO THIS IS FOR ============ */}
         <section>
           <div className="eyebrow">Who this is for</div>
@@ -277,9 +336,10 @@ export default async function Page() {
           <div className="price">
             <p className="amount">{priceLabel('standard_monthly')} / month</p>
             <p>
-              Five questions. Five AI platforms. Twenty five answers captured word for word, every month. Competitor
-              leaderboard, source analysis, and three ranked actions. Plus a quarterly deep read that adds Claude and
-              Copilot by hand. Cancel any time, no contract.
+              Five questions. Five AI platforms. Twenty five answers captured word for word, every month, from fifty
+              five readings, because the surfaces that move most get asked three times. Competitor leaderboard, source
+              analysis, and three ranked actions. Plus a quarterly deep read that adds Claude and Copilot by hand.
+              Cancel any time, no contract.
             </p>
             {founding === null ? (
               <p>
@@ -331,6 +391,25 @@ export default async function Page() {
           <h2>Ask the awkward ones first</h2>
 
           <details className="faq">
+            <summary>Shouldn't I be tracking this daily?</summary>
+            <div className="body">
+              <p>
+                Plenty of tools will sell you that, and if you want a live chart you should buy one.
+              </p>
+              <p>
+                We think it's the wrong instrument for the job. The daily number moves mostly on its
+                own, the category leaders barely move at all, and AI is currently about one percent of
+                the traffic to a typical site. Watching it hourly is a lot of attention spent on a small
+                and noisy signal.
+              </p>
+              <p>
+                Once a month, read properly, with the actual answers attached and three things to do, is
+                a better use of your time. If that turns out to be wrong we'll say so.
+              </p>
+            </div>
+          </details>
+
+          <details className="faq">
             <summary>Can't I just do this myself in ChatGPT?</summary>
             <div className="body">
               <p>
@@ -354,7 +433,9 @@ export default async function Page() {
             <div className="body">
               <p>
                 Yes. We set the market when you sign up, because the answers genuinely differ by country. Most of our
-                questions are written for a specific market on purpose.
+                questions are written for a specific market on purpose. If your buyers are in one town rather than one
+                country, say so and your five questions name the town. Three of the five platforms will also be
+                searched from there, and your report says which.
               </p>
             </div>
           </details>
@@ -431,7 +512,8 @@ export default async function Page() {
             what they actually said.
           </span>
           <span className="footer-links">
-            <Link href="/privacy">Privacy</Link> &middot; <Link href="/terms">Terms</Link>
+            <Link href="/method">How we measure</Link> &middot; <Link href="/privacy">Privacy</Link>{' '}
+            &middot; <Link href="/terms">Terms</Link>
           </span>
         </div>
       </footer>

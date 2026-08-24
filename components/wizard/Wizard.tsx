@@ -610,7 +610,8 @@ export default function Wizard({
           <h2>{price} a month. Cancel any time.</h2>
           <p className="lede">
             Five questions, five AI platforms, twenty five answers captured word for word, every
-            month. Four times a year we also read Claude and Microsoft Copilot by hand.
+            month, from fifty five readings. Four times a year we also read Claude and Microsoft
+            Copilot by hand.
           </p>
 
           {founding && !discount && (

@@ -111,7 +111,8 @@ export async function resolveLocality(input: string, country: string): Promise<L
   // reasonable tie-break for "Springfield" and it is theirs rather than ours.
   candidates.sort((a, b) => (b.reach ?? 0) - (a.reach ?? 0));
   const best = candidates[0];
-  const canonical = best.canonical_name as string;
+  if (!best?.canonical_name) return unresolved;
+  const canonical = best.canonical_name;
   const { city, region } = partsOf(canonical);
 
   return { input: typed, canonical, city, region };
