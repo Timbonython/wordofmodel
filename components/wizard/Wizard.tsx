@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SLOT_LABEL, QUESTION_SLOTS, type QuestionSlot } from '@/lib/scope';
+import { SLOT_LABEL, QUESTION_SLOTS, priceLabel, type QuestionSlot } from '@/lib/scope';
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
@@ -187,8 +187,46 @@ export default function Wizard({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * A validated cohort code, and the price that comes with it.
+   *
+   * ONE READ DECIDES THE NUMBER ON THIS SCREEN AND THE NUMBER STRIPE CHARGES. The code is
+   * checked server side, the price shown here is the price that check returned, and
+   * createCheckout re-validates the same code and builds the session from it. The version
+   * of this where Stripe's own page collects the code means the page says 249 and the
+   * invoice says 49, which is the failure checkout:check exists to make impossible.
+   */
+  const [discountInput, setDiscountInput] = useState('');
+  const [discount, setDiscount] = useState<{ code: string; priceUsd: number; line: string } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
   const founding = foundingRemaining !== null && foundingRemaining > 0;
-  const price = founding ? 'USD 149' : 'USD 249';
+  // Formatted from the same constants Stripe charges, never typed. The two literals that
+  // used to be here were the fourth and fifth copies of a number that lives in lib/stripe.ts.
+  const listPrice = founding ? priceLabel('founding_monthly') : priceLabel('standard_monthly');
+  const price = discount ? `USD ${discount.priceUsd}` : listPrice;
+
+  const applyDiscount = () =>
+    run('Checking your code', async () => {
+      setDiscountError(null);
+      const typed = discountInput.trim();
+      if (!typed) {
+        setDiscount(null);
+        return;
+      }
+      try {
+        const out = await post<{ code: string; priceUsd: number; line: string }>(
+          '/api/wizard/discount',
+          { code: typed },
+        );
+        setDiscount(out);
+      } catch (err) {
+        // Never silently to full price and never silently to a discount. The customer is
+        // told which one they are on before the button says what it will charge.
+        setDiscount(null);
+        setDiscountError(err instanceof Error ? err.message : 'We could not check that code.');
+      }
+    });
 
   function set<K extends keyof WizardProfileInput>(key: K, value: WizardProfileInput[K]) {
     setProfile((p) => ({ ...p, [key]: value }));
@@ -295,6 +333,9 @@ export default function Wizard({
         competitors: liveCompetitors(),
         questions,
         scanId,
+        // The validated code, not the raw box. If it stopped being valid in between, the
+        // route says so rather than opening a session at a price nobody was shown.
+        discountCode: discount?.code ?? null,
       });
       window.location.href = out.url;
     });
@@ -572,14 +613,20 @@ export default function Wizard({
             month. Four times a year we also read Claude and Microsoft Copilot by hand.
           </p>
 
-          {founding && (
+          {founding && !discount && (
             <p className="founding">
-              Founding rate: USD 149 a month, locked for twelve months.{' '}
+              Founding rate: {priceLabel('founding_monthly')} a month, locked for twelve
+              months.{' '}
               {foundingRemaining === 1
                 ? 'One place left.'
                 : `${foundingRemaining} of 20 places left.`}
             </p>
           )}
+
+          {/* Says the whole deal in one line, including what happens at month four. A
+              discount that does not print its own end date is a price rise waiting to
+              arrive with no warning. */}
+          {discount && <p className="founding">{discount.line}</p>}
 
           <div className="wizard-fields">
             <Field
@@ -589,6 +636,32 @@ export default function Wizard({
               onChange={setEmail}
               type="email"
             />
+            <label className="wizard-field">
+              <span className="k">Got a code?</span>
+              <span className="h">Optional. The price above changes before you pay, not after</span>
+              <span className="code-row">
+                <input
+                  className="field"
+                  value={discountInput}
+                  onChange={(e) => {
+                    setDiscountInput(e.target.value);
+                    setDiscount(null);
+                    setDiscountError(null);
+                  }}
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                />
+                <button
+                  className="button secondary"
+                  onClick={applyDiscount}
+                  disabled={Boolean(busy) || !discountInput.trim()}
+                  type="button"
+                >
+                  Apply
+                </button>
+              </span>
+              {discountError && <span className="h note-warn">{discountError}</span>}
+            </label>
           </div>
 
           <div className="wizard-actions">

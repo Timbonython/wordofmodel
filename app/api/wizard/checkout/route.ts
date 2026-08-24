@@ -1,5 +1,6 @@
 import { approveOnboarding, ScopeLockedError } from '@/lib/onboarding';
 import { createCheckout } from '@/lib/checkout';
+import { DiscountError } from '@/lib/discount';
 import { validEmail } from '@/lib/email';
 import {
   InputError,
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
 
   let approved;
   let scanId: string | null = null;
+  let discountCode: string | null = null;
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const email = validEmail(typeof body.email === 'string' ? body.email : '');
@@ -49,6 +51,10 @@ export async function POST(request: Request) {
     scanId = typeof body.scanId === 'string' && UUID.test(body.scanId) ? body.scanId : null;
     const competitors = parseCompetitors(body.competitors);
     const questions = parseQuestions(body.questions);
+    discountCode =
+      typeof body.discountCode === 'string' && body.discountCode.trim()
+        ? body.discountCode.trim()
+        : null;
 
     await recordAttempt(ipHash, 'wizard');
     approved = await approveOnboarding({ email, profile, competitors, questions });
@@ -78,13 +84,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { url, priceKey } = await createCheckout({
+    const { url, priceKey, discount } = await createCheckout({
       account: approved.account,
       scope: approved.scope,
       scanId,
+      discountCode,
     });
-    return Response.json({ url, priceKey });
+    return Response.json({ url, priceKey, discountCode: discount?.code ?? null });
   } catch (err) {
+    // A code that stopped being valid between the wizard checking it and this call. Said
+    // plainly and separately from a payment failure, because the customer can fix this one:
+    // clear the box and continue at the standard price. Never silently dropped to full
+    // price, which is the same failure as silently applying a discount.
+    if (err instanceof DiscountError) {
+      return Response.json({ error: err.message, discountRejected: true }, { status: 400 });
+    }
     // The approval is already saved, so this is recoverable: they come back,
     // the wizard reuses the same account and scope, and they get another
     // session. Say that rather than implying the work is lost.

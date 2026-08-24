@@ -4,6 +4,7 @@ import { db } from './db';
 import { env } from './env';
 import { assertPrice, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
+import { validateDiscount, type ValidDiscount } from './discount';
 import { recordFunnel } from './funnel';
 import type { AccountRow, ScopeRow } from './accounts';
 
@@ -49,7 +50,15 @@ export async function createCheckout(input: {
   scope: ScopeRow;
   /** The scan this subscriber came from, if they came from one. Attribution's join key. */
   scanId?: string | null;
-}): Promise<{ url: string; priceKey: PriceKey }> {
+  /**
+   * A cohort code, already validated by the wizard and re-validated here.
+   *
+   * Re-validated rather than trusted, because the wizard's validation happened on a screen
+   * the customer could have left open while the code expired or filled up, and because the
+   * value arrives from a browser. The price the session charges is decided by THIS read.
+   */
+  discountCode?: string | null;
+}): Promise<{ url: string; priceKey: PriceKey; discount: ValidDiscount | null }> {
   // THE SEAT IS CLAIMED HERE, AND THIS IS THE READ THAT DECIDES THE PRICE.
   //
   // It used to count confirmed subscriptions, which are written by the webhook after payment,
@@ -59,7 +68,18 @@ export async function createCheckout(input: {
   // priceKey comes out of the claim and goes straight into assertPrice() and the line item
   // below. There is no second read between deciding and charging, which is what makes the
   // price on Stripe's page the price this function decided.
-  const { claimId, priceKey } = await claimFoundingSeat(input.account.id);
+  //
+  // A DISCOUNTED CHECKOUT NEVER CLAIMS A SEAT, and it does not claim one and give it back.
+  // claimFoundingSeat is not called at all, so there is no window in which one of twenty
+  // places is held by somebody who was never going to take it. The discount sits on the
+  // standard price, so the subscription is written price_key 'standard_monthly' and
+  // foundingDisplay() cannot see it: the public counter stays a count of people who paid
+  // 149 rather than a count of giveaways.
+  const discount = input.discountCode ? await validateDiscount(input.discountCode) : null;
+
+  const { claimId, priceKey } = discount
+    ? { claimId: null as string | null, priceKey: 'standard_monthly' as PriceKey }
+    : await claimFoundingSeat(input.account.id);
   await assertPrice(priceKey);
 
   const customer = await customerFor(input.account);
@@ -72,6 +92,10 @@ export async function createCheckout(input: {
     // they scanned on a phone and paid on a laptop. The webhook writes it onto the
     // subscription, so the ad that produced a customer is still knowable months later.
     ...(input.scanId ? { scan_id: input.scanId } : {}),
+    // On the subscription too, so month four - when the coupon runs out and the invoice
+    // steps to 249 - can be traced back to a cohort rather than looking like a price rise
+    // nobody can explain.
+    ...(discount ? { discount_code: discount.code } : {}),
   };
 
   let session: Stripe.Checkout.Session;
@@ -81,6 +105,11 @@ export async function createCheckout(input: {
       customer,
       client_reference_id: input.scope.id,
       line_items: [{ price: priceIdFor(priceKey), quantity: 1 }],
+      // The PROMOTION CODE, never the coupon. Stripe takes either, and passing the coupon
+      // applies the coupon's own limits and ignores max_redemptions and redeem_by on the
+      // promotion code entirely - which is where the cap lives. A leaked code with its cap
+      // bypassed is a hundred USD 49 subscriptions.
+      ...(discount ? { discounts: [{ promotion_code: discount.promotionCodeId }] } : {}),
       metadata,
       // The same metadata on the subscription, because customer.subscription.*
       // events do not carry the session and would otherwise arrive with no way to
@@ -108,7 +137,14 @@ export async function createCheckout(input: {
       managed_payments: { enabled: false },
       billing_address_collection: 'auto',
       // No trial. The free scan is the trial.
-      allow_promotion_codes: false,
+      //
+      // Stated only when there is no discount, and that is Stripe's rule rather than a
+      // preference: `allow_promotion_codes` and `discounts` are mutually exclusive and the
+      // API refuses a session carrying both, even with the flag set to FALSE. Omitting it
+      // defaults to the same thing. The explicit false is kept everywhere else because it is
+      // the line that says a customer cannot type a code into Stripe's page and be charged a
+      // number our page never showed them.
+      ...(discount ? {} : { allow_promotion_codes: false as const }),
       expires_at: Math.floor(Date.now() / 1000) + CLAIM_MINUTES * 60,
       success_url: `${env.siteUrl}/start/confirmed?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.siteUrl}/start?step=pay&resumed=1`,
@@ -134,7 +170,7 @@ export async function createCheckout(input: {
     accountId: input.account.id,
   });
 
-  return { url: session.url, priceKey };
+  return { url: session.url, priceKey, discount };
 }
 
 /**

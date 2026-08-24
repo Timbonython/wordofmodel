@@ -19,7 +19,8 @@
     "checkout:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/checkout-check.mjs",
     "noise": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/noise-floor.mjs",
     "funnel": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/funnel.mjs",
-    "requeue": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/requeue-capture.mjs"
+    "requeue": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/requeue-capture.mjs",
+    "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

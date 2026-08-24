@@ -1180,6 +1180,28 @@ footer .wrap {
 
 /* Said out loud, not defaulted quietly: we read a market we cannot measure. Uses the
    report's red-pen colour, the same device that marks an absence in the report itself. */
+/* The code box and its Apply button on one line. The price above it changes on Apply, so
+   the two have to be adjacent enough that the change is obviously caused by the click. */
+.code-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.code-row .field {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.code-row .button.secondary {
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule, #d9d4c7);
+  padding: 0 16px;
+}
+
 /* What a locality actually reaches. Sits inside the field stack rather than under the
    whole form, because it is a consequence of one box and has to read as one. */
 .wizard-note {

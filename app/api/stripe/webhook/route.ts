@@ -169,6 +169,7 @@ async function onCheckoutCompleted(
     priceKey: priceKeyOf(sub),
     eventAt,
     scanId,
+    discountCode: session.metadata?.discount_code ?? sub.metadata?.discount_code ?? null,
   });
 
   await sendReceipt({
@@ -311,6 +312,7 @@ async function onSubscriptionChanged(sub: Stripe.Subscription, eventAt: Date): P
     // Only used on insert. Whichever of the two events lands first carries it, which is why
     // createCheckout puts the same metadata on the session AND the subscription.
     scanId: existing?.scan_id ?? sub.metadata?.scan_id ?? null,
+    discountCode: existing?.discount_code ?? sub.metadata?.discount_code ?? null,
   });
 }
 

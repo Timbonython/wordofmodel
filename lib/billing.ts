@@ -21,6 +21,8 @@ export interface SubscriptionRow {
   stripe_customer_id: string;
   stripe_price_id: string;
   price_key: PriceKey;
+  /** Cohort code, on insert only. Null for everybody who paid the listed price. */
+  discount_code: string | null;
   status: Stripe.Subscription.Status;
   report_day: number;
   cancel_at_period_end: boolean;
@@ -188,6 +190,8 @@ export async function upsertSubscription(input: {
   eventAt: Date;
   /** Where this customer came from. Set on insert only: first touch does not change later. */
   scanId?: string | null;
+  /** Cohort code from the session metadata. Insert only, like scanId. */
+  discountCode?: string | null;
 }): Promise<{ row: SubscriptionRow; created: boolean }> {
   const { sub, eventAt } = input;
   const existing = await getSubscriptionByStripeId(sub.id);
@@ -223,6 +227,7 @@ export async function upsertSubscription(input: {
       stripe_price_id: sub.items.data[0]?.price.id ?? '',
       price_key: input.priceKey,
       scan_id: input.scanId ?? null,
+      discount_code: input.discountCode ?? null,
       status: sub.status,
       report_day: reportDayFrom(periodStart(sub)),
       cancel_at_period_end: sub.cancel_at_period_end,
