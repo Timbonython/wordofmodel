@@ -33,10 +33,20 @@ import type { QuestionSlot } from './scope';
 export function competitorPrompt(input: {
   brand_name: string;
   what_they_sell: string;
-  country: string;
+  /**
+   * Where the buyer is, in prose, and it is NOT always a country: on a scope with a
+   * locality it reads "Geelong, Australia". Built once by placeLabel() so the questions
+   * the subscriber approves and the market printed in their report cannot drift apart.
+   *
+   * Named `place` rather than `country` on purpose. It used to be `country`, and
+   * lib/onboarding.ts fed it to iso2() to recover an ISO code that was already sitting in
+   * the same object as market_country. A string with a town in it would have returned null
+   * from that and quietly dropped the country filter off the competitor search.
+   */
+  place: string;
 }): string {
   return `Find the four companies most likely to be recommended INSTEAD of ${input.brand_name}
-to a buyer of ${input.what_they_sell} in ${input.country}.
+to a buyer of ${input.what_they_sell} in ${input.place}.
 
 Prefer companies that actually appear in AI answers and review sites for
 this category. Do not include ${input.brand_name}. Do not include companies that only
@@ -57,16 +67,17 @@ Return ONLY: {"competitors": [{"name": "", "domain": ""}], "reasoning": "one sen
 
 export function questionsPrompt(input: {
   what_they_sell: string;
-  country: string;
+  /** Where the buyer is, in prose. May be narrower than a country. See competitorPrompt. */
+  place: string;
   category_term: string;
   buyer: string;
   brand_name: string;
   largest_competitor: string;
 }): string {
   return `Write five questions a real buyer would ask an AI assistant while choosing
-a supplier of ${input.what_they_sell} in ${input.country}. Follow this structure exactly:
+a supplier of ${input.what_they_sell} in ${input.place}. Follow this structure exactly:
 
-1. CATEGORY: who is best at ${input.category_term} in ${input.country}
+1. CATEGORY: who is best at ${input.category_term} in ${input.place}
 2. SITUATION: written in first person by ${input.buyer} describing their actual
    circumstance, then asking what they should do or who they should use
 3. ALTERNATIVES: what are the alternatives to ${input.largest_competitor}
@@ -76,7 +87,7 @@ a supplier of ${input.what_they_sell} in ${input.country}. Follow this structure
 Rules:
 - Only question 5 may mention ${input.brand_name}.
 - Write the way a busy buyer types, not the way a marketer writes.
-- Name the country or region in questions 1 to 4.
+- Name the place in questions 1 to 4, exactly as it is written above.
 - One sentence each. No preamble.
 
 Return ONLY: {"questions": [{"slot": 1, "text": ""}, ...]}`;
@@ -97,11 +108,12 @@ export function rewriteSlotPrompt(input: {
   current: string;
   others: string[];
   what_they_sell: string;
-  country: string;
+  /** Where the buyer is, in prose. May be narrower than a country. See competitorPrompt. */
+  place: string;
   brand_name: string;
 }): string {
   return `Rewrite ONE question a real buyer would ask an AI assistant while choosing
-a supplier of ${input.what_they_sell} in ${input.country}.
+a supplier of ${input.what_they_sell} in ${input.place}.
 
 It must follow this structure exactly:
 ${input.instruction}
@@ -113,7 +125,7 @@ ${
     : `- Never mention ${input.brand_name} or any brand name.`
 }
 - Write the way a busy buyer types, not the way a marketer writes.
-${input.slot === 'branded' ? '' : `- Name ${input.country} or the region.\n`}- One sentence. No preamble.
+${input.slot === 'branded' ? '' : `- Name ${input.place}, exactly as written.\n`}- One sentence. No preamble.
 - Do not repeat any of the questions listed under KEEP AWAY FROM.
 
 The question being replaced: ${input.current}
@@ -130,7 +142,7 @@ Return only the rewritten question.`;
  * the call site.
  */
 export const SLOT_STRUCTURE: Record<QuestionSlot, (v: Record<string, string>) => string> = {
-  category: (v) => `CATEGORY: who is best at ${v.category_term} in ${v.country}`,
+  category: (v) => `CATEGORY: who is best at ${v.category_term} in ${v.place}`,
   situation: (v) =>
     `SITUATION: written in first person by ${v.buyer} describing their actual circumstance, then asking what they should do or who they should use`,
   alternatives: (v) => `ALTERNATIVES: what are the alternatives to ${v.largest_competitor}`,

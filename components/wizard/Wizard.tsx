@@ -26,6 +26,15 @@ export interface WizardProfileInput {
   buyer: string;
   /** ISO 3166-1 alpha-2, chosen from a closed list. The prose form is derived server side. */
   market_country: string;
+  /**
+   * Optional, below country level, free text. Empty string means a country scope.
+   *
+   * Deliberately not a cascading state / county dropdown. That is a data problem with no
+   * end and it forces an opinion about every country's administrative subdivisions. This
+   * box is checked by the subscriber reading their own town inside the five questions on
+   * the next screen but one.
+   */
+  locality: string;
   category_term: string;
   website: string;
 }
@@ -80,6 +89,7 @@ const EMPTY: WizardProfileInput = {
   what_they_sell: '',
   buyer: '',
   market_country: DEFAULT_MARKET,
+  locality: '',
   category_term: '',
   website: '',
 };
@@ -141,6 +151,35 @@ export default function Wizard({
     );
   const [detected, setDetected] = useState(Boolean(prefill));
   const [profile, setProfile] = useState<WizardProfileInput>(prefill ?? EMPTY);
+  /**
+   * What the locality box resolved to, checked on blur rather than on every keystroke.
+   *
+   * Said here rather than only in the report, because the report arrives after the card.
+   * Two of the three examples in the field hint do not exist in Google's location list, so
+   * the ordinary case is a person typing something reasonable that resolves to nothing, and
+   * they should find that out while they can still change it.
+   */
+  const [localityStatement, setLocalityStatement] = useState<string | null>(null);
+
+  async function checkLocality() {
+    const typed = profile.locality.trim();
+    if (!typed) {
+      setLocalityStatement(null);
+      return;
+    }
+    try {
+      const out = await post<{ statement: string | null }>('/api/wizard/locality', {
+        locality: typed,
+        market_country: profile.market_country,
+      });
+      setLocalityStatement(out.statement);
+    } catch {
+      // A failed lookup is not a reason to block the wizard. The static note below still
+      // explains what a locality does, approval still works, and resolveLocality runs again
+      // server side at approval, which is the read that counts.
+      setLocalityStatement(null);
+    }
+  }
   const [competitors, setCompetitors] = useState<CompetitorRow[]>([]);
   const [reasoning, setReasoning] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -188,6 +227,9 @@ export default function Wizard({
         what_they_sell: out.profile.what_they_sell ?? '',
         buyer: out.profile.buyer ?? '',
         market_country: resolveMarket(out.profile.country ?? null),
+        // Never guessed from the site. A town read off a footer is a town nobody chose,
+        // and it would arrive already interpolated into five questions.
+        locality: '',
         category_term: out.profile.category_term ?? '',
         website: out.domain,
       });
@@ -340,6 +382,32 @@ export default function Wizard({
                     </span>
                   )}
                 </label>
+                <label className="wizard-field">
+                  <span className="k">Anywhere more specific?</span>
+                  <span className="h">
+                    Optional. A town or a city works best: Geelong, Coventry, Sacramento
+                  </span>
+                  <input
+                    className="field"
+                    value={profile.locality}
+                    onChange={(e) => {
+                      set('locality', e.target.value);
+                      setLocalityStatement(null);
+                    }}
+                    onBlur={checkLocality}
+                  />
+                </label>
+                {localityStatement && <p className="wizard-note">{localityStatement}</p>}
+                {profile.locality.trim() && (
+                  <p className="wizard-note">
+                    We will put {profile.locality.trim()} into your five questions, so you
+                    will see exactly how it reads before anything runs. Three of the five
+                    assistants also take a location directly and will be searched from
+                    there. Grok and Gemini accept no location at all, so for those two your
+                    town reaches the answer through the question and nothing else. Your
+                    report says which is which, every month.
+                  </p>
+                )}
                 <Field
                   label="Category"
                   hint="The phrase a buyer would search"

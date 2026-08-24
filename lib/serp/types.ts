@@ -9,6 +9,7 @@
 
 import 'server-only';
 import type { Citation } from '../types';
+import type { Locality } from '../geo';
 
 export type SerpProviderName = 'serpapi' | 'dataforseo';
 
@@ -42,5 +43,10 @@ export interface AiOverviewResult {
 
 export interface SerpProvider {
   name: SerpProviderName;
-  fetchAiOverview(input: { query: string; country: string }): Promise<AiOverviewResult>;
+  fetchAiOverview(input: {
+    query: string;
+    country: string;
+    /** Resolved at approval. Null means Google is asked at country level, on purpose. */
+    locality?: Locality | null;
+  }): Promise<AiOverviewResult>;
 }

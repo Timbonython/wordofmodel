@@ -107,8 +107,8 @@ function toCitations(refs: Reference[] | undefined): Citation[] {
 export const serpApiProvider: SerpProvider = {
   name: 'serpapi',
 
-  async fetchAiOverview({ query, country }): Promise<AiOverviewResult> {
-    const geo = serpApiGeo(country);
+  async fetchAiOverview({ query, country, locality }): Promise<AiOverviewResult> {
+    const geo = serpApiGeo(country, locality);
     const params = geo.params as Record<string, string>;
     let requests = 1;
 

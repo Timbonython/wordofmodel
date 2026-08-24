@@ -2,9 +2,10 @@ import 'server-only';
 import { checkCompetitors, type ProposedCompetitor } from './competitors';
 import { db } from './db';
 import { askJsonSearched, askJson, askText } from './openai';
-import { iso2 } from './domain';
 import { competitorPrompt, questionsPrompt, rewriteSlotPrompt, SLOT_STRUCTURE } from './wizard-prompts';
 import { QUESTION_SLOTS, type QuestionSlot, type AccountRow, type ScopeRow } from './accounts';
+import { resolveLocality } from './serp/locations';
+import type { Locality } from './geo';
 
 /**
  * The onboarding wizard: generation, and the writes into the scope model from
@@ -34,6 +35,21 @@ export interface WizardProfile {
    * derives from this and nothing else, so it is the field that has to be right.
    */
   market_country: string;
+  /**
+   * Optional, below country level, free text as the subscriber typed it: "Geelong", "the
+   * Bay Area", "West London". Empty string on a country scope.
+   *
+   * It is not a targeting setting. It goes into the five questions they read and approve,
+   * which is what stops the geography being a hidden field somebody can be surprised by in
+   * month three. Resolving it to a Google search location happens once, at approval.
+   */
+  locality: string;
+  /**
+   * The market as it reads in a sentence: "Geelong, Australia", or "Australia". DERIVED
+   * from market_country and locality by placeLabel(), never typed. Everything that prints
+   * or prompts uses this; everything geographic uses market_country.
+   */
+  place: string;
   category_term: string;
   website: string;
 }
@@ -87,11 +103,14 @@ export async function proposeCompetitors(
     competitorPrompt({
       brand_name: profile.brand_name,
       what_they_sell: profile.what_they_sell || profile.category_term,
-      country: profile.country,
+      place: profile.place,
     }),
     'competitors',
     COMPETITOR_SCHEMA,
-    iso2(profile.country),
+    // market_country, not iso2() on the prose. The ISO code has been sitting in the same
+    // object since Session 3 and re-deriving it by matching a country name was one town
+    // away from returning null and silently dropping the country filter.
+    profile.market_country,
   );
 
   // Three layers, in order of cost. Dedupe and drop the subscriber's own brand; then the
@@ -172,7 +191,7 @@ export async function proposeQuestions(
   const { questions } = await askJson<{ questions: Array<{ slot: number; text: string }> }>(
     questionsPrompt({
       what_they_sell: profile.what_they_sell || profile.category_term,
-      country: profile.country,
+      place: profile.place,
       category_term: profile.category_term,
       buyer: profile.buyer,
       brand_name: profile.brand_name,
@@ -207,7 +226,7 @@ export async function rewriteQuestion(input: {
 }): Promise<string> {
   const vars: Record<string, string> = {
     category_term: input.profile.category_term,
-    country: input.profile.country,
+    place: input.profile.place,
     buyer: input.profile.buyer,
     brand_name: input.profile.brand_name,
     largest_competitor: input.competitors[0]?.name ?? input.profile.category_term,
@@ -220,7 +239,7 @@ export async function rewriteQuestion(input: {
       current: input.current,
       others: input.others.map((q) => q.text),
       what_they_sell: input.profile.what_they_sell || input.profile.category_term,
-      country: input.profile.country,
+      place: input.profile.place,
       brand_name: input.profile.brand_name,
     }),
   );
@@ -346,7 +365,16 @@ export async function approveOnboarding(input: {
   // competitor set and the questions are two separate writes and either alone is damage.
   await assertScopeEditable(account.id);
 
-  const scope = await upsertScope(account.id, input.profile);
+  // Resolved once, here, and stored. Not at capture time: two captures in one run
+  // resolving differently would be a single report measured against two towns, and a
+  // resolution that runs monthly is a parameter that can change without anybody deciding.
+  // A lookup failure returns an unresolved locality rather than throwing, so Google drops
+  // to country level and the report says so.
+  const locality = input.profile.locality
+    ? await resolveLocality(input.profile.locality, input.profile.market_country)
+    : null;
+
+  const scope = await upsertScope(account.id, input.profile, locality);
   await writeCompetitors(scope.id, input.competitors);
   await writeQuestions(scope.id, input.questions);
 
@@ -363,12 +391,23 @@ export async function approveOnboarding(input: {
  * standing between a second wizard pass and a live subscriber's configuration, and the
  * caller's guard has already been bypassed once by accident.
  */
-async function upsertScope(accountId: string, profile: WizardProfile): Promise<ScopeRow> {
+async function upsertScope(
+  accountId: string,
+  profile: WizardProfile,
+  locality: Locality | null,
+): Promise<ScopeRow> {
   const fields = {
     account_id: accountId,
     category: profile.category_term,
-    market: profile.country,
+    // The prose market, which after local targeting is the place rather than the country.
+    // The ISO column below is what every geo parameter derives from; these two cannot
+    // disagree because both come out of the same parsed profile.
+    market: profile.place,
     market_country: profile.market_country,
+    locality: locality?.input || null,
+    locality_canonical: locality?.canonical ?? null,
+    locality_city: locality?.city ?? null,
+    locality_region: locality?.region ?? null,
     buyer: profile.buyer,
     brand_name: profile.brand_name,
     what_they_sell: profile.what_they_sell,

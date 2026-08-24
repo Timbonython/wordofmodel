@@ -35,7 +35,7 @@ export const googleAioEngine: Engine = {
   captureMethod: 'serp',
   pinnedModel: null,
 
-  async run({ question, country }: EngineInput): Promise<CaptureResult> {
+  async run({ question, country, locality }: EngineInput): Promise<CaptureResult> {
     const provider = committedProvider();
     if (!provider) {
       throw new CaptureError(
@@ -45,11 +45,11 @@ export const googleAioEngine: Engine = {
       );
     }
 
-    const geo = geoFor('google_aio', country, provider.name);
+    const geo = geoFor('google_aio', country, provider.name, locality);
     const started = Date.now();
 
     const r = await Promise.race([
-      provider.fetchAiOverview({ query: question, country }),
+      provider.fetchAiOverview({ query: question, country, locality }),
       new Promise<never>((_, reject) =>
         setTimeout(
           () => reject(new CaptureError(`${provider.name} took too long`, 'retryable')),

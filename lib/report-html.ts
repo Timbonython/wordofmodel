@@ -82,6 +82,7 @@ ${sectionActions(r)}
 ${sectionDelta(r)}
 ${sectionLeaderboard(r)}
 ${sectionGrid(r)}
+${sectionLocality(r)}
 ${sectionSources(r)}
 ${sectionEvidence(r)}
 ${sectionMethod(r)}
@@ -349,6 +350,27 @@ ${rows}
       <span><i class="k-gap"></i>not measured: we did not get a reading. Counted nowhere in this report</span>
       <span>counts are readings that named you, out of readings we got</span>
     </div>
+  </section>`;
+}
+
+// 7b ------------------------------------------------------------ where we asked from
+/**
+ * Only rendered for a scope narrower than a country, and it is a body section rather than a
+ * footnote on purpose.
+ *
+ * A subscriber paying for local precision has bought a claim about where we asked, and the
+ * true answer has three parts: three surfaces took their town as a parameter, two accept no
+ * location at all and carry it in the question, and a town Google's list does not hold drops
+ * to country level. Nobody else in the category discloses any of this, mostly because they
+ * are running one engine and filing it under several names. It reads as confidence, not as a
+ * caveat, which is why it sits above the sources rather than under the method.
+ */
+function sectionLocality(r: ReportData): string {
+  if (!r.localityNote) return '';
+  return `  <section>
+    <div class="eyebrow">Where we asked from</div>
+    <h2>How ${esc(r.scope.locality ?? '')} reached each surface</h2>
+    <p>${esc(r.localityNote)}</p>
   </section>`;
 }
 

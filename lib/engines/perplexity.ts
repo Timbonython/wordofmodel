@@ -53,10 +53,10 @@ export const perplexityEngine: Engine = {
   captureMethod: 'api',
   pinnedModel: MODELS.sonar,
 
-  async run({ question, country }: EngineInput): Promise<CaptureResult> {
+  async run({ question, country, locality }: EngineInput): Promise<CaptureResult> {
     // Refuses at the request, as it always has.
     const model = assertSonar(MODELS.sonar);
-    const geo = perplexityGeo(country);
+    const geo = perplexityGeo(country, locality);
     const started = Date.now();
 
     const j = await postJson<AgentEnvelope>(

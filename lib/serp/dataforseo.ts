@@ -75,8 +75,8 @@ function toCitations(refs: AiOverviewItem['references']): Citation[] {
 export const dataForSeoProvider: SerpProvider = {
   name: 'dataforseo',
 
-  async fetchAiOverview({ query, country }): Promise<AiOverviewResult> {
-    const geo = dataForSeoGeo(country);
+  async fetchAiOverview({ query, country, locality }): Promise<AiOverviewResult> {
+    const geo = dataForSeoGeo(country, locality);
 
     const j = await postJson<DfsResponse>(
       ENDPOINT,

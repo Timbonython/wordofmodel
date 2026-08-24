@@ -45,6 +45,9 @@ export default async function StartPage({
         brand_name: scan.brand_name ?? '',
         what_they_sell: scan.what_they_sell ?? '',
         buyer: scan.buyer ?? '',
+        // Never prefilled from a scan. A town read off a website is a town nobody chose,
+        // and it would arrive already written into five questions.
+        locality: '',
         // scans.country is a country NAME from the detector. Map it, and fall back to the
         // default rather than prefilling a market we cannot build geo parameters for.
         market_country: (() => {

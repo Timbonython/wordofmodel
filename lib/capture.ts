@@ -15,10 +15,36 @@ import { CaptureError } from './provenance';
 import { completeJob, failJob } from './jobs';
 import { addRunCost } from './run';
 import type { CaptureJobRow } from './accounts';
+import type { Locality } from './geo';
 
 interface JobContext {
   questionText: string;
   marketCountry: string;
+  /** Null on a country scope, which is most of them. */
+  locality: Locality | null;
+}
+
+/**
+ * Rebuild the resolved locality from the four scope columns.
+ *
+ * Read from the scope on every job rather than resolved here, because resolution happens
+ * once at approval against SerpApi's gazetteer and a capture must never re-derive it: two
+ * captures in the same run resolving differently would be one report measured against two
+ * towns. The columns are the record of what was decided.
+ */
+function localityOf(row: {
+  locality: string | null;
+  locality_canonical: string | null;
+  locality_city: string | null;
+  locality_region: string | null;
+}): Locality | null {
+  if (!row.locality) return null;
+  return {
+    input: row.locality,
+    canonical: row.locality_canonical,
+    city: row.locality_city,
+    region: row.locality_region,
+  };
 }
 
 /**
@@ -32,13 +58,28 @@ interface JobContext {
 async function contextFor(job: CaptureJobRow): Promise<JobContext> {
   const { data, error } = await db()
     .from('questions')
-    .select('text, scopes!inner(market_country)')
+    .select(
+      'text, scopes!inner(market_country, locality, locality_canonical, locality_city, locality_region)',
+    )
     .eq('id', job.question_id)
     .single();
   if (error || !data) throw new Error(`Could not read question ${job.question_id}: ${error?.message}`);
 
-  const row = data as unknown as { text: string; scopes: { market_country: string } };
-  return { questionText: row.text, marketCountry: row.scopes.market_country };
+  const row = data as unknown as {
+    text: string;
+    scopes: {
+      market_country: string;
+      locality: string | null;
+      locality_canonical: string | null;
+      locality_city: string | null;
+      locality_region: string | null;
+    };
+  };
+  return {
+    questionText: row.text,
+    marketCountry: row.scopes.market_country,
+    locality: localityOf(row.scopes),
+  };
 }
 
 /**
@@ -95,7 +136,11 @@ export async function runCaptureJob(job: CaptureJobRow): Promise<CaptureOutcome>
 
   try {
     const engine = engineFor(job.engine);
-    const result = await engine.run({ question: ctx.questionText, country: ctx.marketCountry });
+    const result = await engine.run({
+      question: ctx.questionText,
+      country: ctx.marketCountry,
+      locality: ctx.locality,
+    });
 
     const { error } = await db()
       .from('captures')

@@ -25,8 +25,8 @@ export const chatgptEngine: Engine = {
   captureMethod: 'api',
   pinnedModel: MODELS.answer,
 
-  async run({ question, country }: EngineInput): Promise<CaptureResult> {
-    const geo = chatgptGeo(country);
+  async run({ question, country, locality }: EngineInput): Promise<CaptureResult> {
+    const geo = chatgptGeo(country, locality);
     const started = Date.now();
 
     const j = await postJson<ResponsesEnvelope>(

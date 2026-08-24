@@ -10,7 +10,7 @@
 import 'server-only';
 import type { Citation } from '../types';
 import type { CaptureMethod, Surface } from '../scope';
-import type { GeoSent } from '../geo';
+import type { GeoSent, Locality } from '../geo';
 
 export interface CaptureResult {
   /**
@@ -50,6 +50,15 @@ export interface EngineInput {
   question: string;
   /** ISO 3166-1 alpha-2, from scopes.market_country. Never inferred from anything else. */
   country: string;
+  /**
+   * The town or region, resolved at approval and stored on the scope. Optional, and its
+   * absence is the ordinary case: most scopes are a country.
+   *
+   * Every engine takes it and only three can use it. The two that cannot are not a gap to
+   * be filled in later - grok and gemini accept no location parameter at all, the question
+   * text carries the place for them, and the report says which surface got which.
+   */
+  locality?: Locality | null;
 }
 
 export interface Engine {

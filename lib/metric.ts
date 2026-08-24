@@ -62,6 +62,30 @@ export const METRIC_VERSION = 2;
  */
 export const NOISE_FLOOR_PAIRS = 1;
 
+/**
+ * WHAT THE FLOOR WAS MEASURED ON, WHICH IS NARROWER THAN WHERE IT IS APPLIED. Two gaps, both
+ * stated here rather than left for somebody to assume away.
+ *
+ * FIRST, IT MEASURES NAMING, NOT RECOMMENDING. All three ten-run measurements counted whether
+ * the brand was NAMED, on UNBRANDED questions. The headline is Recommendation Share: how many
+ * surfaces RECOMMEND the brand on the BRANDED question. Nobody has measured how far that
+ * verdict drifts on its own. So the rule that the headline carries no arrow is a PRECAUTION
+ * taken in the absence of a measured floor, and the method page has to say that rather than
+ * implying the 4-of-10 figure bounds it. Citing a measurement of one thing to justify a
+ * decision about another is the failure this whole file exists to avoid.
+ *
+ * Measuring it is one command per surface - scripts/noise-floor.mjs already takes a slot -
+ * plus counting the recommendation verdict rather than the mention. Roughly USD 5.70 for all
+ * five at ten runs each, at the per-answer costs recorded on 20 Aug.
+ *
+ * SECOND, IT WAS MEASURED ON A NATIONAL SCOPE. Local answer sets are thinner and may drift
+ * further, or less. Until one local scope has been through the same ten runs, no claim about
+ * local delta reliability is backed by anything, and the floor stays at one pair because that
+ * is the most conservative reading available.
+ */
+export const FLOOR_MEASURED_ON =
+  'naming, on unbranded questions, on a national scope';
+
 /** Rounding to match the fractional pair arithmetic in share.ts and delta.ts. */
 const round = (n: number) => Math.round(n * 10000) / 10000;
 

@@ -19,14 +19,15 @@ import { db } from './db';
 import { diagnose, THRESHOLD_VERSION, THRESHOLD_NOTE, type DiagnosisResult } from './diagnosis';
 import { shareOfModel, aiOverviewStats, type ScoredCapture } from './share';
 import { computeDelta, type DeltaReport, type RunSnapshot } from './delta';
-import { aiOverviewCoverage, VARIANCE_NOTE, COMPARABILITY_NOTE, CITATION_CAVEAT, geoNote, samplingNote, AIO_PROVENANCE_NOTE } from './method';
+import { aiOverviewCoverage, VARIANCE_NOTE, COMPARABILITY_NOTE, CITATION_CAVEAT, geoNote, localityNote, samplingNote, AIO_PROVENANCE_NOTE } from './method';
 import { buildActions, isHedgeReason, type HedgeReason, type ReportActions } from './actions';
 import { SURFACES, type QuestionSlot, type Surface } from './scope';
 import { EXTRACTION_VERSION } from './extract';
 import { METRIC_VERSION, NOISE_FLOOR_NOTE } from './metric';
 import type { RunRow } from './accounts';
 import type { Citation } from './types';
-import type { GeoSent } from './geo';
+import { marketName } from './geo';
+import type { GeoSent, Locality } from './geo';
 
 export const surfaceLabel = (s: string) => SURFACES[s as Surface]?.label ?? s;
 
@@ -67,7 +68,23 @@ interface CaptureRecord extends ScoredCapture {
 }
 
 export interface ReportData {
-  scope: { brandName: string; market: string; marketCountry: string; website: string | null };
+  scope: {
+    brandName: string;
+    market: string;
+    marketCountry: string;
+    website: string | null;
+    /**
+     * Set only on a scope narrower than a country. `localityNote` below is the sentence
+     * that goes in the report body; this is here so the renderer can decide whether there
+     * is anything to print at all.
+     */
+    locality: string | null;
+  };
+  /**
+   * Which surfaces the subscriber's town actually reached, and how. Null on a country
+   * scope. Generated from captures.geo_sent, never from the scope's intent.
+   */
+  localityNote: string | null;
   run: { id: string; periodStart: string; status: string; surfaces: string[]; samples: Record<string, number> };
   versions: { threshold: number; extraction: number; metric: number };
 
@@ -116,11 +133,30 @@ export interface ReportData {
 export async function buildReport(run: RunRow): Promise<ReportData> {
   const { data: scopeRow, error: scopeErr } = await db()
     .from('scopes')
-    .select('brand_name, market, market_country, website')
+    .select(
+      'brand_name, market, market_country, website, locality, locality_canonical, locality_city, locality_region',
+    )
     .eq('id', run.scope_id)
     .single();
   if (scopeErr || !scopeRow) throw new Error(`Scope lookup failed: ${scopeErr?.message}`);
-  const scope = scopeRow as { brand_name: string; market: string; market_country: string; website: string | null };
+  const scope = scopeRow as {
+    brand_name: string;
+    market: string;
+    market_country: string;
+    website: string | null;
+    locality: string | null;
+    locality_canonical: string | null;
+    locality_city: string | null;
+    locality_region: string | null;
+  };
+  const locality: Locality | null = scope.locality
+    ? {
+        input: scope.locality,
+        canonical: scope.locality_canonical,
+        city: scope.locality_city,
+        region: scope.locality_region,
+      }
+    : null;
 
   const { data: qRows } = await db()
     .from('questions')
@@ -250,7 +286,11 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
       market: scope.market,
       marketCountry: scope.market_country,
       website: scope.website,
+      locality: locality?.input ?? null,
     },
+    localityNote: locality
+      ? localityReach(captures, run, locality, marketName(scope.market_country))
+      : null,
     run: {
       id: run.id,
       periodStart: run.period_start,
@@ -348,9 +388,34 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
         })),
     })),
 
-    method: methodLines(captures, run, scope.market),
+    method: methodLines(captures, run, scope.market, locality),
     delta: null,
   };
+}
+
+/**
+ * Which surfaces the town reached, read off the captures rather than off the surface list.
+ *
+ * geo_sent.precision is written by the engine at the moment of asking, so a surface that
+ * silently stopped accepting a city would move itself out of the parameterised group and
+ * into the question-only one, and the report would say so without anybody noticing first.
+ * That is the difference between a claim and a reading.
+ */
+function localityReach(
+  captures: CaptureRecord[],
+  run: RunRow,
+  locality: Locality,
+  countryLabel: string,
+): string {
+  const groups = { sentTown: [] as string[], sentCountry: [] as string[], noParameter: [] as string[] };
+  for (const surface of run.surfaces as string[]) {
+    const geo = captures.find((c) => c.engine === surface)?.geo_sent;
+    if (!geo) continue;
+    if (geo.precision === 'locality') groups.sentTown.push(surfaceLabel(surface));
+    else if (geo.precision === 'country') groups.sentCountry.push(surfaceLabel(surface));
+    else groups.noParameter.push(surfaceLabel(surface));
+  }
+  return localityNote(locality, groups, countryLabel);
 }
 
 /**
@@ -358,7 +423,12 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
  * the pipeline intended. captures.geo_sent, model_used, grounded and vercel_region are the
  * inputs, which is what makes every sentence here checkable.
  */
-function methodLines(captures: CaptureRecord[], run: RunRow, market: string): string[] {
+function methodLines(
+  captures: CaptureRecord[],
+  run: RunRow,
+  market: string,
+  locality: Locality | null,
+): string[] {
   const lines: string[] = [VARIANCE_NOTE, '', NOISE_FLOOR_NOTE, '', THRESHOLD_NOTE, '', COMPARABILITY_NOTE, ''];
 
   const region = captures[0]?.vercel_region ?? 'US';
@@ -374,7 +444,7 @@ function methodLines(captures: CaptureRecord[], run: RunRow, market: string): st
       ? `answered by ${model}, which it reported itself`
       : `captured through ${first.provider ?? 'a search provider'}`;
     lines.push(`${surfaceLabel(surface)}. ${asked}, ${who}.`);
-    if (geo) lines.push(`  ${geoNote(surfaceLabel(surface), geo, market, region)}`);
+    if (geo) lines.push(`  ${geoNote(surfaceLabel(surface), geo, market, region, locality)}`);
     const ungrounded = mine.filter((c) => c.grounded === false).length;
     if (ungrounded) {
       lines.push(

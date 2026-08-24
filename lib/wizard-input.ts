@@ -1,6 +1,6 @@
 import 'server-only';
 import { QUESTION_SLOTS, type QuestionSlot } from './accounts';
-import { isSupportedMarket, marketName } from './geo';
+import { isSupportedMarket, marketName, placeLabel } from './geo';
 import { normaliseDomain } from './domain';
 import {
   MAX_COMPETITORS,
@@ -50,11 +50,26 @@ export function parseProfile(input: unknown): WizardProfile {
   if (!isSupportedMarket(market_country)) {
     throw new InputError('Choose the country your buyers are in.');
   }
+  // Optional, and an empty box is the ordinary case. Never validated against a list of
+  // places: the point of the feature is that we do not hold an opinion about every
+  // country's administrative subdivisions. It is validated by being read back to the
+  // subscriber inside the five questions they approve.
+  const locality =
+    typeof p.locality === 'string' && p.locality.trim()
+      ? text(p.locality, 'Where more specifically', 120)
+      : '';
+
   return {
     brand_name: text(p.brand_name, 'Your brand name', 120),
     category_term,
     market_country,
     country: marketName(market_country),
+    locality,
+    // One function builds this, and everything that prints or prompts reads it. Two places
+    // formatting "Geelong, Australia" is two places for them to disagree, and the question
+    // the subscriber approved disagreeing with the market on their report is the whole
+    // failure this feature was designed to avoid.
+    place: placeLabel(market_country, locality ? { input: locality, canonical: null, city: null, region: null } : null),
     what_they_sell: typeof p.what_they_sell === 'string' && p.what_they_sell.trim()
       ? text(p.what_they_sell, 'What you sell', 200)
       : category_term,

@@ -11,10 +11,11 @@
  * 20 Aug 2026 rather than assumed. They differ far more than they look like they
  * should:
  *
- *   chatgpt     REAL.  web_search tool takes user_location { type, country, city,
- *                      region, timezone }. country is ISO alpha-2.
- *   perplexity  REAL.  Agent API web_search tool takes user_location { country,
- *                      region, city, latitude, longitude }. country is ISO alpha-2.
+ *   chatgpt     REAL, AND SUB-COUNTRY.  web_search tool takes user_location
+ *                      { type, country, city, region, timezone }. country is ISO
+ *                      alpha-2; city and region are free text.
+ *   perplexity  REAL, AND SUB-COUNTRY.  Agent API web_search tool takes user_location
+ *                      { country, region, city, latitude, longitude }.
  *   grok        NONE.  The xAI web_search tool accepts allowed_domains,
  *                      excluded_domains, enable_image_understanding and
  *                      enable_image_search. That is the entire list. The retired
@@ -23,8 +24,22 @@
  *                      did not carry it over.
  *   gemini      NONE.  Grounding with Google Search documents no location, country
  *                      or locale parameter, on either the current or legacy API.
- *   google_aio  REAL, and the strongest of the five. Both candidate SERP providers
- *                      take real geo targeting; see the provider blocks below.
+ *   google_aio  REAL, AND SUB-COUNTRY, and the strongest of the five. Both candidate
+ *                      SERP providers take real geo targeting; see the provider blocks
+ *                      below.
+ *
+ * THE COUNT THAT MATTERS FOR LOCAL TARGETING IS THREE AND TWO, NOT FOUR AND ONE.
+ * LOCAL-TARGETING-BRIEF.md was written on the assumption that only Google takes a
+ * location and the other four are reached purely through the wording of the question.
+ * That is wrong on two of them. ChatGPT and Perplexity both accept a city, and building
+ * to the brief would have left those fields empty while the report told the subscriber
+ * their town had only reached the question text - an understatement, but still a false
+ * sentence in the section of the report that exists to say what we actually did.
+ *
+ * So a locality reaches the surfaces in two different ways and the report says which:
+ *   chatgpt, perplexity, google_aio   named in the question AND sent as a parameter
+ *   grok, gemini                      named in the question only, and answered from
+ *                                     the pinned network origin below
  *
  * For the two that support nothing, the Vercel function region IS the location, and
  * that is why vercel.json pins iad1 and must never change: the product sells a
@@ -121,20 +136,88 @@ export interface GeoSent {
   params: Record<string, unknown> | null;
   /** Why, when unsupported. Printed in the method note. */
   reason?: string;
+  /**
+   * How precisely the location reached this surface AS A PARAMETER.
+   *
+   *   locality  the town or region went in the request
+   *   country   only the country went in the request
+   *   none      the surface takes no location at all
+   *
+   * Separate from `supported` because "we sent your country but this surface would not
+   * take your town" and "we sent your town" are different facts, and a subscriber paying
+   * for local precision is entitled to the difference. Recorded per capture, so a scope
+   * that adds a locality mid-life tells the truth about each month separately.
+   */
+  precision: 'locality' | 'country' | 'none';
 }
 
-const UNSUPPORTED = (reason: string): GeoSent => ({ supported: false, params: null, reason });
-
-/** OpenAI Responses web_search. country is a two letter ISO 3166-1 code. */
-export function chatgptGeo(country: string): GeoSent {
-  market(country);
-  return { supported: true, params: { type: 'approximate', country } };
+/**
+ * A place below country level, as the subscriber typed it and as the machines took it.
+ *
+ * `input` is theirs, verbatim, and it is what goes into the five questions they approve -
+ * which is the whole design of the feature: the geography stops being a hidden setting and
+ * becomes a sentence they signed off.
+ *
+ * `canonical`, `city` and `region` are what SerpApi's locations database matched it to.
+ * They are null when nothing matched, and a null is not a failure: it means Google is asked
+ * at country level while the other surfaces still carry the town in the question, and the
+ * report says exactly that. Guessing a canonical name from free text is how "Geelong" ends
+ * up measured as somewhere else with nobody able to see it.
+ */
+export interface Locality {
+  input: string;
+  canonical: string | null;
+  city: string | null;
+  region: string | null;
 }
 
-/** Perplexity Agent API web_search. Same ISO alpha-2 country. */
-export function perplexityGeo(country: string): GeoSent {
+const UNSUPPORTED = (reason: string): GeoSent => ({
+  supported: false,
+  params: null,
+  reason,
+  precision: 'none',
+});
+
+/**
+ * OpenAI Responses web_search. country is a two letter ISO 3166-1 code, and city and
+ * region are free text alongside it.
+ *
+ * The city sent is the one SerpApi resolved, not the raw box, so all three parameterised
+ * surfaces are located by the same string. A locality that resolved to nothing sends
+ * country alone rather than sending unvalidated free text to one vendor and not another:
+ * two surfaces disagreeing about where the buyer is would move the number for a reason
+ * that is not the market.
+ */
+export function chatgptGeo(country: string, locality?: Locality | null): GeoSent {
   market(country);
-  return { supported: true, params: { country } };
+  const city = locality?.city ?? null;
+  const region = locality?.region ?? null;
+  return {
+    supported: true,
+    params: {
+      type: 'approximate',
+      country,
+      ...(city ? { city } : {}),
+      ...(region ? { region } : {}),
+    },
+    precision: city || region ? 'locality' : 'country',
+  };
+}
+
+/** Perplexity Agent API web_search. Same ISO alpha-2 country, same resolved city. */
+export function perplexityGeo(country: string, locality?: Locality | null): GeoSent {
+  market(country);
+  const city = locality?.city ?? null;
+  const region = locality?.region ?? null;
+  return {
+    supported: true,
+    params: {
+      country,
+      ...(city ? { city } : {}),
+      ...(region ? { region } : {}),
+    },
+    precision: city || region ? 'locality' : 'country',
+  };
 }
 
 /**
@@ -159,16 +242,22 @@ export function geminiGeo(_country: string): GeoSent {
  * result quietly depends on which exit node they happened to use. That is exactly the
  * kind of invisible drift the bake-off exists to catch.
  */
-export function serpApiGeo(country: string): GeoSent {
+export function serpApiGeo(country: string, locality?: Locality | null): GeoSent {
   const m = market(country);
+  // The canonical name from SerpApi's own locations database, or the country. Never the
+  // raw box: `location` is matched against their gazetteer, and an unrecognised string is
+  // either rejected or matched to something else entirely, which is a capture filed under
+  // a town the subscriber never chose.
+  const canonical = locality?.canonical ?? null;
   return {
     supported: true,
     params: {
-      location: m.name,
+      location: canonical ?? m.name,
       gl: country.toLowerCase(),
       hl: m.language,
       google_domain: m.googleDomain,
     },
+    precision: canonical ? 'locality' : 'country',
   };
 }
 
@@ -188,34 +277,41 @@ export function serpApiGeo(country: string): GeoSent {
  * shown nothing. That is the number becoming a lie on a default setting. It costs a
  * flat $0.002, refunded when the element turns out not to be asynchronous.
  */
-export function dataForSeoGeo(country: string): GeoSent {
+export function dataForSeoGeo(country: string, locality?: Locality | null): GeoSent {
   const m = market(country);
+  const canonical = locality?.canonical ?? null;
   return {
     supported: true,
     params: {
-      location_name: m.name,
+      location_name: canonical ?? m.name,
       language_code: m.language,
       device: 'desktop',
       os: 'windows',
       load_async_ai_overview: true,
     },
+    precision: canonical ? 'locality' : 'country',
   };
 }
 
 /** Dispatch, so the engine modules never choose a geo function by hand. */
-export function geoFor(surface: Surface, country: string, provider?: string): GeoSent {
+export function geoFor(
+  surface: Surface,
+  country: string,
+  provider?: string,
+  locality?: Locality | null,
+): GeoSent {
   switch (surface) {
     case 'chatgpt':
-      return chatgptGeo(country);
+      return chatgptGeo(country, locality);
     case 'perplexity':
-      return perplexityGeo(country);
+      return perplexityGeo(country, locality);
     case 'grok':
       return grokGeo(country);
     case 'gemini':
       return geminiGeo(country);
     case 'google_aio':
-      if (provider === 'dataforseo') return dataForSeoGeo(country);
-      if (provider === 'serpapi') return serpApiGeo(country);
+      if (provider === 'dataforseo') return dataForSeoGeo(country, locality);
+      if (provider === 'serpapi') return serpApiGeo(country, locality);
       throw new Error(
         `google_aio needs a committed SERP provider before a geo parameter can be built. ` +
           `Set SERP_PROVIDER once the bake-off has decided.`,
@@ -242,11 +338,42 @@ export function article(word: string): 'a' | 'an' {
 }
 
 /**
+ * How the place reads in a sentence: "Geelong, Australia", or "Australia" on a scope with
+ * no locality.
+ *
+ * This is what goes into the five questions the subscriber approves, which is the point of
+ * the whole feature. It is also what the report prints. One function, so the question they
+ * signed off and the market named in their report can never be two different places.
+ */
+export function placeLabel(country: string, locality?: Locality | null): string {
+  const m = market(country);
+  return locality?.input ? `${locality.input}, ${m.name}` : m.name;
+}
+
+/**
  * The method note line for one surface, generated from what was actually sent rather
  * than from what we intended to send. captures.geo_sent is the input, so a surface
  * whose parameters change mid-life tells the truth about each month separately.
+ *
+ * Three branches, because after local targeting there are three true stories and the
+ * brief that asked for this feature only had two of them. See the header.
  */
-export function methodNoteFor(surfaceLabel: string, geo: GeoSent, marketLabel: string, region: string): string {
+export function methodNoteFor(
+  surfaceLabel: string,
+  geo: GeoSent,
+  marketLabel: string,
+  region: string,
+  locality?: Locality | null,
+): string {
+  if (geo.supported && geo.precision === 'locality') {
+    return `${surfaceLabel}: asked as a buyer in ${marketLabel}, with the location sent as a search parameter.`;
+  }
+  if (geo.supported && locality?.input) {
+    return (
+      `${surfaceLabel}: your question names ${marketLabel}, and the country was sent as a ` +
+      `search parameter. This surface was not given ${locality.input} itself.`
+    );
+  }
   if (geo.supported) {
     return `${surfaceLabel}: asked as a buyer in ${marketLabel}.`;
   }
