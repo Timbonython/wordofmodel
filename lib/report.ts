@@ -102,7 +102,18 @@ export interface ReportData {
   competitors: Array<{ name: string; shareOfModel: number | null; ahead: boolean }>;
 
   /** What each surface said when asked about them by name. The second section, not the last. */
-  branded: Array<{ surface: string; label: string; recommended: boolean; excerpt: string | null }>;
+  branded: Array<{
+    surface: string;
+    label: string;
+    recommended: boolean;
+    /**
+     * How the samples actually split. Printed whenever `of` is more than one and the readings
+     * disagreed, because a surface that recommended you in one reading of three is a different
+     * fact from one that did it in three, and the headline flattens both to the same word.
+     */
+    readings: { recommended: number; of: number };
+    excerpt: string | null;
+  }>;
 
   /**
    * What to do about it, in the surfaces' own words, grouped by the cause behind them.
@@ -208,7 +219,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
   });
   const askedDirectly = brandedUsable.filter((b) => b.usable.length).length;
   const recognised = brandedUsable.filter((b) => b.usable.some((c) => c.target_mentioned)).length;
-  const endorsed = brandedUsable.filter((b) => b.usable.some((c) => c.target_recommended)).length;
+  const endorsed = brandedUsable.filter((b) => endorses(b.usable)).length;
 
   const diagnosis = diagnose({ presence: som.overall.share, recognised, endorsed, askedDirectly });
 
@@ -241,12 +252,11 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
   // the same thing to the model; this is the half that does not depend on it complying.
   //
   // NEVER CONTRADICT THE BRANDED VERDICT. Endorsement is decided across a surface's samples
-  // - one sample recommending is enough for "recommends you" - while a hedge lives on a
-  // single capture. Gemini recommended Zapme in two readings of three, and the third
-  // carried a reason. Without this filter the same report said Gemini recommends you at the
-  // top and printed Gemini explaining why it did not, four inches below.
+  // by endorses() below, while a hedge lives on a single capture. Without this filter a
+  // report could say a surface recommends you at the top and print that same surface
+  // explaining why it did not, four inches below.
   const endorsingSurfaces = new Set(
-    brandedUsable.filter((b) => b.usable.some((c) => c.target_recommended)).map((b) => b.surface),
+    brandedUsable.filter((b) => endorses(b.usable)).map((b) => b.surface),
   );
   const actions = buildActions(
     captures
@@ -325,11 +335,20 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     branded: brandedUsable
       .filter((b) => b.usable.length)
       .map((b) => {
-        const rec = b.usable.find((c) => c.target_recommended) ?? b.usable[0]!;
+        const yes = endorses(b.usable);
+        // Quote a reading that agrees with the verdict. Quoting the one dissenting sample
+        // under a "recommends you" heading, or the reverse, is the contradiction the filter
+        // above exists to prevent, reproduced inside a single row.
+        const rec =
+          b.usable.find((c) => c.target_recommended === yes) ?? b.usable[0]!;
         return {
           surface: b.surface,
           label: surfaceLabel(b.surface),
-          recommended: b.usable.some((c) => c.target_recommended),
+          recommended: yes,
+          readings: {
+            recommended: b.usable.filter((c) => c.target_recommended).length,
+            of: b.usable.length,
+          },
           excerpt: firstSentences(rec.answer_text, 2),
         };
       })
@@ -483,6 +502,40 @@ function firstSentences(text: string | null, count: number): string | null {
   const clean = text.replace(/\s+/g, ' ').replace(/\[+\d*\]+\([^)]*\)/g, '').trim();
   const parts = clean.split(/(?<=[.!?])\s+/).slice(0, count).join(' ');
   return parts.length > 400 ? `${parts.slice(0, 397)}...` : parts;
+}
+
+/**
+ * DOES THIS SURFACE RECOMMEND THEM? One rule, used by the headline count, by the branded
+ * section and by the filter that stops the two contradicting each other.
+ *
+ * MAJORITY OF USABLE SAMPLES, and it used to be `.some()`, which is the defect the branded
+ * noise floor measurement exposed on 25 August 2026.
+ *
+ * Under `.some()` a single sample recommending promoted the whole surface to "recommends
+ * you". On Zapme's August run Gemini recommended them in ONE reading of three and was
+ * counted as a full endorsement, so the headline read 1 of 5 on the strength of a third of
+ * one surface. The bias is large and it is entirely in the flattering direction: at a true
+ * rate of one in three, `.some()` over three samples reports "recommends you" about 70% of
+ * the time, and a majority rule reports it about 26%.
+ *
+ * It also contradicted the build's own mixing rule, which says repeated samples average into
+ * one surface-question unit rather than multiplying its weight. share.ts had it right all
+ * along - `usable.filter(rec).length / usable.length` - and the headline was using the other
+ * rule. Two rules for one question, and the headline was on the wrong one.
+ *
+ * A fraction cannot be the answer here, because the headline is a count out of five and the
+ * method page says in as many words that it carries no decimal place. Majority is the
+ * discretisation of the same idea: it asks what this surface typically does. Ties go to NOT
+ * endorsed, which only arises on an even number of usable samples, and which is the direction
+ * this product fails in by policy.
+ *
+ * The split is not thrown away. It is printed next to the verdict, so a subscriber sees
+ * "recommended you in one reading of three" rather than a word that hides it.
+ */
+function endorses(usable: CaptureRecord[]): boolean {
+  if (!usable.length) return false;
+  const yes = usable.filter((c) => c.target_recommended).length;
+  return yes * 2 > usable.length;
 }
 
 /** Attach a delta by comparing against the previous comparable run for this scope. */

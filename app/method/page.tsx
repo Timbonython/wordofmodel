@@ -20,13 +20,16 @@ export const metadata: Metadata = {
  * numbers, not softened - the positioning doc is right that they do the work - but the ones
  * we measured say so and the ones we cite name their source.
  *
- * THE NO-ARROW RULE IS A PRECAUTION, NOT A BOUNDED CLAIM. The draft says "on a five point
- * scale, one surface flipping sits comfortably inside the drift we measured". The drift we
- * measured is NAMING, on UNBRANDED questions (lib/metric.ts). The headline is how many
- * surfaces RECOMMEND you on the BRANDED question. Nobody has measured how far that verdict
- * moves on its own, so citing the 4-of-10 figure to justify suppressing an arrow on it is
- * measurement A standing in for metric B. Said plainly instead, which is a stronger sentence
- * and one nobody can knock down.
+ * THE NO-ARROW RULE IS NOW MEASURED ON THE METRIC IT DEFENDS. The briefed draft justified it
+ * with the naming drift, which was measurement A standing in for metric B: the table measures
+ * NAMING on UNBRANDED questions and the headline is RECOMMENDING on the BRANDED one. That gap
+ * was published as a gap on 24 Aug and closed on 25 Aug by measuring it - ten readings of the
+ * branded question on all five surfaces. One surface in five changes its verdict on its own.
+ * The claim on this page is now the right measurement rather than a nearby one.
+ *
+ * The extractor was measured separately and is not the source of it: fifteen re-reads of
+ * identical text, no disagreement. Worth publishing, because "the drift is theirs, not ours"
+ * is only credible from somebody who checked.
  *
  * CLAUDE AND COPILOT ARE QUARTERLY HERE BECAUSE THEY ARE QUARTERLY IN THE CODE. The Session 6
  * decision - hand captures in the first report for every new subscriber, then quarterly - is
@@ -173,8 +176,14 @@ export default function MethodPage() {
             between them is usually the story.
           </p>
           <p>
-            It&apos;s a status, not a trend. There&apos;s no arrow on it, ever, and that&apos;s
-            deliberate. Read on.
+            Where a surface is asked three times, it counts as recommending you if most of those
+            readings did, not if any one of them did. One reading in three saying yes is not a
+            surface that recommends you, and counting it that way would round every borderline
+            case in our favour.
+          </p>
+          <p>
+            It&apos;s a status, not a trend. There&apos;s no arrow on it, ever, and we measured
+            why. Read on.
           </p>
           <p>
             Underneath it we show presence, which is how often you were named at all across all
@@ -231,7 +240,7 @@ export default function MethodPage() {
               </tbody>
             </table>
           </div>
-          <p className="note">Measured by us, 23 August 2026.</p>
+          <p className="note">Measured by us, 23 August 2026. Naming, on questions that don&apos;t mention you.</p>
           <p>
             A brand sitting well outside the answer reports stably. Twice at zero out of ten. But
             a brand sitting near the edge of being mentioned is a coin flip, named four times out
@@ -248,23 +257,105 @@ export default function MethodPage() {
         </section>
 
         <section>
-          <h2>What we haven&apos;t measured</h2>
+          <h2>And the same test on the number at the top</h2>
           <p>
-            The table above counts whether a brand was <em>named</em>, on the questions that
-            don&apos;t mention you. The number on the front page is whether a surface{' '}
-            <em>recommends</em> you when somebody asks about you directly. Those are different
-            questions, and we have not yet measured how far the second one drifts on its own.
+            The table above counts whether a brand was <em>named</em>. The number on the front
+            page is whether a surface <em>recommends</em> you when somebody asks about you
+            directly. Those are different questions, so we ran the same test on the second one.
+            Ten readings, each surface, asked about a real brand by name, nothing altered in
+            between.
+          </p>
+          <div className="table-scroll">
+            <table className="drift">
+              <thead>
+                <tr>
+                  <th />
+                  <th>answered</th>
+                  <th>named you</th>
+                  <th>recommended you</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>ChatGPT</td>
+                  <td>9 of 10</td>
+                  <td>9 of 9</td>
+                  <td>0 of 9</td>
+                </tr>
+                <tr>
+                  <td>Gemini</td>
+                  <td>10 of 10</td>
+                  <td>10 of 10</td>
+                  <td>
+                    <strong>8 of 10</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Grok</td>
+                  <td>10 of 10</td>
+                  <td>10 of 10</td>
+                  <td>0 of 10</td>
+                </tr>
+                <tr>
+                  <td>Perplexity</td>
+                  <td>10 of 10</td>
+                  <td>10 of 10</td>
+                  <td>0 of 10</td>
+                </tr>
+                <tr>
+                  <td>Google AI Overviews</td>
+                  <td>10 of 10</td>
+                  <td>10 of 10</td>
+                  <td>0 of 10</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="note">Measured by us, 25 August 2026. Recommending, on the question that names you.</p>
+          <p>
+            <strong>One surface in five changes its verdict on its own.</strong> That is a fifth
+            of the number on your front page moving with nothing happening in your market, which
+            is why it never carries an arrow. Four of the five said the same thing ten times out
+            of ten.
           </p>
           <p>
-            So the headline carries no arrow, and that is a precaution rather than a bounded
-            claim. On a five point scale one surface changing its mind moves the number twenty
-            points, and until we have measured how often that happens by itself we are not going
-            to draw an arrow on it and let you read it as progress.
+            It is the same shape as the naming result. A brand sitting firmly outside the
+            recommendation gets a stable no. The one surface near the boundary is the coin flip.
+            Which means a business whose score is 1 out of 5 may be resting that whole 1 on the
+            least reliable reading in the set, and nothing on the face of the number says so. So
+            we say it: where a surface didn&apos;t give the same verdict every time, your report
+            prints how the readings split.
+          </p>
+        </section>
+
+        <section>
+          <h2>How much of that drift is ours</h2>
+          <p>
+            What you read is the surface&apos;s answer plus our reading of it, and our reading is
+            a language model too. A model set to be as repeatable as possible is not the same as
+            one that is.
           </p>
           <p>
-            We also measured the drift on a national scope. Local answer sets are thinner and may
-            behave differently. Neither of these is hard to measure and both are on the list. When
-            they are done the numbers go on this page, whichever way they come out.
+            So we checked. We took the first answer from each surface and read it three times
+            over, unchanged. Fifteen readings of identical text, and not one disagreement.
+          </p>
+          <p>
+            The drift in the table above is the surfaces. If it had been ours, that would be a
+            defect for us to fix, not a floor for you to work around, and we would have said
+            that instead.
+          </p>
+        </section>
+
+        <section>
+          <h2>What we still haven&apos;t measured</h2>
+          <p>
+            Both tests were run on a national scope. If your buyers are in one town, the answer
+            sets are thinner and may drift further, or less. Nobody has measured that, including
+            us, so nothing on this page claims anything about it.
+          </p>
+          <p>
+            It is one command and a few dollars, and it will be here when it is done, whichever
+            way it comes out.
           </p>
         </section>
 

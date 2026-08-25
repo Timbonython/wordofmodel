@@ -23,9 +23,16 @@ import 'server-only';
  *      as a fraction of surface-question pairs that produced a usable answer.
  *   2  Recommendation Share. How many surfaces RECOMMEND the brand when asked about it
  *      directly, as a count out of the surfaces that answered the branded question. Presence
- *      survives as supporting detail and keeps its own figure.
+ *      survives as supporting detail and keeps its own figure. A surface counted as
+ *      recommending if ANY of its samples did.
+ *   3  The same number, with a surface counted as recommending only if a MAJORITY of its
+ *      usable samples did. Not a redefinition of what the number means, but a correction to
+ *      how it was computed, and it moves real figures downward: Zapme's August headline goes
+ *      from 1 of 5 to 0 of 5, because its single endorsement was Gemini recommending them in
+ *      one reading of three. Declared as a break rather than applied quietly, because a
+ *      subscriber comparing months must never be shown a fall that is only a rule change.
  */
-export const METRIC_VERSION = 2;
+export const METRIC_VERSION = 3;
 
 /**
  * THE NOISE FLOOR, MEASURED RATHER THAN ASSUMED. 23 August 2026.
@@ -63,28 +70,50 @@ export const METRIC_VERSION = 2;
 export const NOISE_FLOOR_PAIRS = 1;
 
 /**
- * WHAT THE FLOOR WAS MEASURED ON, WHICH IS NARROWER THAN WHERE IT IS APPLIED. Two gaps, both
- * stated here rather than left for somebody to assume away.
+ * THE FLOOR UNDER THE HEADLINE, MEASURED 25 AUGUST 2026. Ten readings of the BRANDED question
+ * on every monthly surface, back to back, nothing altered in between, extracted by the real
+ * pipeline at v5.
  *
- * FIRST, IT MEASURES NAMING, NOT RECOMMENDING. All three ten-run measurements counted whether
- * the brand was NAMED, on UNBRANDED questions. The headline is Recommendation Share: how many
- * surfaces RECOMMEND the brand on the BRANDED question. Nobody has measured how far that
- * verdict drifts on its own. So the rule that the headline carries no arrow is a PRECAUTION
- * taken in the absence of a measured floor, and the method page has to say that rather than
- * implying the 4-of-10 figure bounds it. Citing a measurement of one thing to justify a
- * decision about another is the failure this whole file exists to avoid.
+ *   chatgpt      9 of 10 answered   recommended in 0 of 9
+ *   gemini      10 of 10 answered   recommended in 8 of 10     <- the only one that moved
+ *   grok        10 of 10 answered   recommended in 0 of 10
+ *   perplexity  10 of 10 answered   recommended in 0 of 10
+ *   google_aio  10 of 10 answered   recommended in 0 of 10
  *
- * Measuring it is one command per surface - scripts/noise-floor.mjs already takes a slot -
- * plus counting the recommendation verdict rather than the mention. Roughly USD 5.70 for all
- * five at ten runs each, at the per-answer costs recorded on 20 Aug.
+ * ONE SURFACE IN FIVE CHANGES ITS VERDICT ON ITS OWN, which is twenty points of a five point
+ * scale moving with nothing happening in the market. That is why the headline carries no
+ * arrow, and it is now a measured statement about the metric we actually print rather than a
+ * naming measurement standing in for it.
  *
- * SECOND, IT WAS MEASURED ON A NATIONAL SCOPE. Local answer sets are thinner and may drift
- * further, or less. Until one local scope has been through the same ten runs, no claim about
- * local delta reliability is backed by anything, and the floor stays at one pair because that
- * is the most conservative reading available.
+ * The shape repeats the naming result exactly: four surfaces sitting firmly at "no" report
+ * stably at "no", and the one surface near the boundary is the coin flip. Zapme's whole
+ * Recommendation Share of 1 was Gemini, and Gemini is the one that flips - within their own
+ * August run it split one reading of three. A subscriber's headline can rest entirely on the
+ * least reliable reading in it, and nothing on the surface of the number says so.
+ *
+ * OUR OWN READING IS NOT THE PROBLEM, AND THAT HAD TO BE CHECKED SEPARATELY. The verdict a
+ * subscriber sees is the surface's answer plus our extraction of it, and the extractor is an
+ * LLM at temperature zero, which is not the same as deterministic. The first answer from each
+ * surface was re-read three times: five surfaces, fifteen reads, not one disagreement. The
+ * drift above is the surfaces. If it had been ours it would have been a defect, not a floor.
+ *
+ * Cost USD 4.06 in reported capture costs, plus SerpApi requests and the extraction calls.
+ * One transient ChatGPT 520 accounts for the missing tenth reading; in production the retry
+ * machinery covers that and it is not a refusal.
+ *
+ * STILL NOT MEASURED, and the method page says so: all of this is a NATIONAL scope. Local
+ * answer sets are thinner and may drift further or less. Until one local scope has been
+ * through the same ten readings, no claim about local delta reliability is backed by anything.
  */
-export const FLOOR_MEASURED_ON =
-  'naming, on unbranded questions, on a national scope';
+export const BRANDED_FLOOR = {
+  measured: '2026-08-25',
+  surfacesThatMoved: 1,
+  surfacesMeasured: 5,
+  extractorDisagreements: 0,
+} as const;
+
+/** Kept for anything that wants the one-line version of what the naming floor covers. */
+export const FLOOR_MEASURED_ON = 'naming and recommending, on a national scope';
 
 /** Rounding to match the fractional pair arithmetic in share.ts and delta.ts. */
 const round = (n: number) => Math.round(n * 10000) / 10000;
@@ -121,4 +150,9 @@ export const NOISE_FLOOR_NOTE =
   'another, and the sources cited overlapped by less than a third between runs. So a change ' +
   'smaller than one whole reading is not reported as movement: it cannot be told apart from ' +
   'the surface changing its mind. That is why the number at the top of this report is a count ' +
-  'of surfaces rather than a percentage with a decimal place on it.';
+  'of surfaces rather than a percentage with a decimal place on it. ' +
+  'We measured the same thing for the number at the top. Asked ten times about a brand by ' +
+  'name, four of the five surfaces gave the same verdict every single time, and one changed ' +
+  'its mind twice. One surface in five is a fifth of that number moving on its own, which is ' +
+  'why it never carries an arrow. Our own reading of an identical answer was checked fifteen ' +
+  'times and never disagreed with itself, so what moves is the surfaces rather than us.';

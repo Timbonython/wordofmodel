@@ -135,6 +135,26 @@ function sectionPair(r: ReportData): string {
 }
 
 // 3 --------------------------------- what they said when asked about you by name
+/**
+ * A surface that did not say the same thing every time it was asked.
+ *
+ * Printed whenever the readings disagreed, and it is the honest half of a verdict that is
+ * otherwise one word. Gemini recommending a brand in one reading of three and a surface doing
+ * it in three of three are different facts, and the headline flattens them to the same word by
+ * design, because a count out of five cannot carry a fraction. This line carries it instead.
+ *
+ * Measured 25 Aug 2026: one surface in five changes its verdict on its own across ten
+ * identical readings. So this line is not a rare footnote, it is the expected case for
+ * whichever surface sits near the boundary.
+ */
+function split(b: ReportData['branded'][number]): string {
+  if (b.readings.of < 2 || b.readings.recommended === 0 || b.readings.recommended === b.readings.of) {
+    return '';
+  }
+  const word = (n: number) => ['no', 'one', 'two', 'three'][n] ?? String(n);
+  return `<p class="note">It did not say the same thing every time. Recommended you in ${word(b.readings.recommended)} of ${word(b.readings.of)} readings, which is why the verdict above follows the majority rather than the single reading that suited us best.</p>`;
+}
+
 function sectionBranded(r: ReportData): string {
   if (!r.branded.length) return '';
   const yes = r.branded.filter((b) => b.recommended).length;
@@ -142,13 +162,20 @@ function sectionBranded(r: ReportData): string {
     .map(
       (b) => `      <li>
         <div class="who">${esc(b.label)} &middot; <span class="${b.recommended ? 'yes' : 'no'}">${b.recommended ? 'recommends you' : 'stops short of recommending you'}</span></div>
+        ${split(b)}
         ${b.excerpt ? `<p class="quote">${esc(b.excerpt)}</p>` : ''}
       </li>`,
     )
     .join('\n');
   return `  <section>
     <div class="eyebrow">Asked about you by name</div>
-    <h2>${yes === 1 ? 'One of them will recommend you' : `${yes} of ${r.branded.length} will recommend you`}</h2>
+    <h2>${
+      yes === 0
+        ? 'None of them will recommend you'
+        : yes === 1
+          ? 'One of them will recommend you'
+          : `${yes} of ${r.branded.length} will recommend you`
+    }</h2>
     <p class="lede">Every surface was asked directly whether you are any good. This is the question they are most likely to answer, and what they say here is what a buyer sees the moment somebody passes on your name.</p>
     <ul class="said-list">
 ${items}
