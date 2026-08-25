@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ABN, ENTITY, CONTACT_EMAIL, LAST_UPDATED } from '@/lib/legal';
+import { metaMode } from '@/lib/meta';
 
 export const metadata: Metadata = {
   title: 'Privacy - Word of Model',
@@ -22,6 +23,15 @@ export const metadata: Metadata = {
  * visitors at all - stricter, cheaper, and impossible to get subtly wrong. See lib/meta.ts,
  * where the country list lives, and app/layout.tsx, where the decision is made server side so
  * nothing in a browser can default it to true.
+ *
+ * THE ADVERTISING PARAGRAPH READS THE RUNNING CONFIGURATION rather than describing an
+ * intention. From 25 Aug 2026 the Conversions API is off - Meta will not issue a token for a
+ * pixel on a personal ad account - so the page must not keep promising a server-side purchase
+ * confirmation that is never sent. The drift is in the harmless direction, over-disclosing
+ * rather than under-disclosing, and it is still drift: this page is a statement somebody
+ * relied on, and "we send Meta your hashed email when you buy" is a sentence a reader might
+ * reasonably decide something about. metaMode() decides which sentence renders, so turning
+ * the token on later changes the page in the same deploy as it changes the behaviour.
  *
  * If any of this changes, this page changes in the same commit. That is not a style rule: a
  * privacy policy that drifts from the code is a statement somebody relied on.
@@ -127,10 +137,22 @@ export default function PrivacyPage() {
           </p>
           <p>
             What it does elsewhere: reports that a scan finished, that somebody reached the setup
-            page, and that a checkout started. When a subscription is paid we send Meta a
-            confirmation from our server, including your email address hashed so that it cannot
-            be read back into an address. We never send Meta the results of your scan or anything
-            in your report.
+            page, and that a checkout started.{' '}
+            {metaMode() === 'full' ? (
+              <>
+                When a subscription is paid we send Meta a confirmation from our server,
+                including your email address hashed so that it cannot be read back into an
+                address.
+              </>
+            ) : (
+              <>
+                <strong>We do not tell Meta when somebody buys.</strong> Sending that needs a
+                kind of access we do not have on this account, so we have not built a
+                workaround: your email address is never sent to Meta in any form, hashed or
+                otherwise, and no purchase of yours is reported to them.
+              </>
+            )}{' '}
+            We never send Meta the results of your scan or anything in your report.
           </p>
           <p>
             Alongside it we keep our own count, tied to the scan rather than to a cookie, so we
