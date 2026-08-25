@@ -1,5 +1,5 @@
 /**
- * Create the cohort coupon and a batch of codes to hand out.
+ * Create the cohort coupon and a batch of codes to hand out. USD 69 a month, three months.
  *
  *   npm run discount:setup                 report what exists
  *   npm run discount:setup -- --create     create the coupon and ten codes
@@ -14,7 +14,7 @@
  * which conversation it came from.
  *
  * So every code here is capped at a SINGLE redemption. DISCOUNT-CODES-BRIEF.md worries about
- * a code reaching a deals site and a hundred people taking USD 49; a per-person code with
+ * a code reaching a deals site and a hundred people taking USD 69; a per-person code with
  * max_redemptions of one makes that arithmetic impossible rather than merely bounded.
  *
  * The codes are also the reason lib/checkout.ts applies `{ promotion_code }` and never
@@ -34,8 +34,15 @@ const { DISCOUNT_OFF_CENTS, DISCOUNT_MONTHS, COUPON_NAME, COHORT_PRICE_USD } = a
   join(here, '../lib/discount.ts')
 );
 
-/** Stable id, so re-running finds the same coupon rather than making a second one. */
-const COUPON_ID = 'local_cohort_49_3mo';
+/**
+ * Stable id, so re-running finds the same coupon rather than making a second one.
+ *
+ * THE PRICE IS IN THE ID ON PURPOSE. A Stripe coupon's amount_off cannot be edited after
+ * creation, so changing the cohort price means a new coupon, and a new coupon needs a new id
+ * or retrieve() returns the old one and every assertion below fails with no obvious cause.
+ * The 49 version existed in test mode only and was never minted live.
+ */
+const COUPON_ID = 'local_cohort_69_3mo';
 
 /** Ninety days. Long enough for a slow conversation, short enough that a leak expires. */
 const VALID_DAYS = 90;
@@ -49,7 +56,7 @@ const count = Number(args.find((a) => /^\d+$/.test(a)) ?? 10);
  * live key the way checkout:check does. It refuses to do it BY ACCIDENT.
  *
  * The failure to design against is running this against whichever key happens to be in
- * .env.local, in a terminal opened yesterday, and discovering later that ten USD 49 codes
+ * .env.local, in a terminal opened yesterday, and discovering later that ten USD 69 codes
  * exist in live mode and one has been redeemed. Reading the mode out loud and requiring
  * --live to write in it costs one flag.
  */
@@ -124,7 +131,7 @@ if (!create) {
 const expiresAt = Math.floor(Date.now() / 1000) + VALID_DAYS * 86_400;
 const minted = [];
 for (let i = 0; i < count; i++) {
-  const code = `LOCAL49-${suffix()}`;
+  const code = `LOCAL69-${suffix()}`;
   const promo = await stripe().promotionCodes.create({
     // `promotion: { type, coupon }`, not a bare `coupon`. Changed in API version
     // 2026-07-29.dahlia, which lib/stripe.ts pins deliberately so a package bump cannot

@@ -1,8 +1,8 @@
 /**
- * The USD 49 local cohort code, validated here and applied by the server.
+ * The USD 69 local cohort code, validated here and applied by the server.
  *
  * WHY NOT allow_promotion_codes. A code entered inside Stripe's own Checkout page means the
- * pricing block said 249 and Stripe charges 49, and the customer sees one number and is
+ * pricing block said 249 and Stripe charges 69, and the customer sees one number and is
  * charged another. checkout:check exists to make that unrepresentable. So the code goes in
  * the wizard, the page re-renders with the real number, and the session is created carrying
  * the discount that number was calculated from.
@@ -12,7 +12,7 @@
  * promotion code rather than the coupon, and then leaves out the consequence: Stripe accepts
  * either object in `discounts`, and passing the COUPON applies the coupon's own limits and
  * ignores the promotion code entirely. The cap the brief calls the only thing standing
- * between us and a hundred USD 49 subscriptions would not have been in the request. Every
+ * between us and a hundred USD 69 subscriptions would not have been in the request. Every
  * code in this build is applied as `{ promotion_code }`.
  *
  * THE DISCOUNT SITS ON THE STANDARD PRICE, NOT THE FOUNDING ONE. The brief does not say
@@ -32,15 +32,30 @@ import type Stripe from 'stripe';
 import { stripe } from './stripe';
 import { PRICE_USD } from './scope';
 
-/** USD 249 less USD 200. The cents are what Stripe carries; the dollars are what prints. */
-export const DISCOUNT_OFF_CENTS = 20_000;
+/**
+ * USD 249 less USD 180. The cents are what Stripe carries; the dollars are what prints.
+ *
+ * Moved from 200 off (USD 49) to 180 off (USD 69) on 25 Aug 2026, before any code was minted
+ * in live mode. The amount on a Stripe coupon cannot be edited, so this is a NEW coupon id
+ * rather than a change to the old one - see scripts/discount-setup.mjs. Any code minted
+ * against the old one is refused by the amount check below rather than honoured quietly at
+ * the old price, which is the behaviour to want: a stale code fails loudly on our side and
+ * the customer is told to email us.
+ */
+export const DISCOUNT_OFF_CENTS = 18_000;
 export const DISCOUNT_MONTHS = 3;
 
 /** What the page prints for a valid code. Derived, so it cannot drift from the coupon. */
 export const COHORT_PRICE_USD = PRICE_USD.standard_monthly - DISCOUNT_OFF_CENTS / 100;
 
 /** The coupon every cohort code must point at. Created by scripts/discount-setup.mjs. */
-export const COUPON_NAME = 'Local cohort - USD 49 for three months';
+export const COUPON_NAME = 'Local cohort - USD 69 for three months';
+
+/**
+ * 0016 says USD 49 in its comments and names LOCAL49 as the example code. It is left alone
+ * deliberately: it has been applied, and an applied migration is a record of what ran rather
+ * than a document to keep current. This file is where the price lives.
+ */
 
 export interface ValidDiscount {
   /** Stripe promotion code id, `promo_...`. This is what goes in the session. */

@@ -18,7 +18,7 @@
  * Runs in TEST MODE ONLY. It refuses a live key: creating sessions against live to check a
  * number is not worth the chance of one being paid.
  *
- * DISCOUNTED. Added 24 Aug 2026 with the USD 49 cohort, and DISCOUNT-CODES-BRIEF.md is wrong
+ * DISCOUNTED. Added 24 Aug 2026 with the local cohort, and DISCOUNT-CODES-BRIEF.md is wrong
  * about this half. It says the parity assertion "compares the displayed price to the line
  * item, so it still holds". It did not: the assertion compared PRICE_USD, a hardcoded
  * catalogue constant, to the line item, and a line item's amount_total is net of discounts.
