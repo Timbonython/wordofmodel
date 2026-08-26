@@ -90,6 +90,19 @@ export function metaMode(): MetaMode {
  * logs. This is the same rule the ops alerts follow: record the outcome of anything allowed
  * to fail quietly.
  *
+ * IT SAYS ONLY WHAT THIS PROCESS CAN OBSERVE, and it did not until 26 Aug 2026. The line read
+ * "Browser funnel events are served", which was never a fact this server could know: browser
+ * events are fired by a browser, on a visitor's machine, and reach Meta or do not without any
+ * of it passing through here. For a fortnight that sentence was treated as verification while
+ * three named events reached Meta zero times, and it was the more serious of the two defects,
+ * because it is the one that stopped anybody looking.
+ *
+ * The rule it broke is the one this file already states about alerts and the one CLAUDE.md
+ * states about guards: assert a guarantee only where the code enforces it. A log line about
+ * something happening in another process, on another machine, enforces nothing. So it now
+ * reports what is configured, says plainly that delivery is not observable from here, and
+ * names the thing that can observe it.
+ *
  * Module scope, so it runs on cold start of each server instance. The flag keeps it to one
  * line per process rather than one per import.
  *
@@ -111,13 +124,18 @@ function announceMetaMode(): void {
   }
   if (mode === 'pixel_only') {
     console.log(
-      'Meta: PIXEL ONLY. Browser funnel events are served; the server-side Purchase is not ' +
-        'sent and is not substituted with a browser one. Purchases are recorded against the ' +
-        'scan id in our own attribution table. Set META_CAPI_TOKEN to enable the Purchase.',
+      'Meta: PIXEL ONLY. The pixel is served to trackable visitors; the server-side Purchase ' +
+        'is not sent and is not substituted with a browser one. Purchases are recorded ' +
+        'against the scan id in our own attribution table. Set META_CAPI_TOKEN to enable the ' +
+        'Purchase. This server cannot see whether a browser event actually reached Meta - ' +
+        'check Events Manager, or run npm run pixel:check.',
     );
     return;
   }
-  console.log('Meta: full. Browser funnel events plus the server-side Purchase.');
+  console.log(
+    'Meta: full. The pixel is served to trackable visitors, plus the server-side Purchase. ' +
+      'Whether a browser event reached Meta is not observable from here - see Events Manager.',
+  );
 }
 announceMetaMode();
 
