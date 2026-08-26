@@ -195,7 +195,13 @@ export async function sendPurchaseEvent(input: {
   // The buyer's country here is the one Stripe billed, not a header, and an unknown one is
   // treated the same way as an unknown visitor: not sent. Said out loud for the same reason
   // as above - a deliberate omission and a broken integration must never look alike.
-  if (!metaAllowedFor(input.country ?? 'US')) {
+  //
+  // No `?? 'US'`, and that was a real defect until 26 Aug 2026. Defaulting an unknown country
+  // to a tracked one made the comment above false: a buyer whose country Stripe did not report
+  // was tracked, and if they were in the UK or the EEA that contradicts the privacy policy
+  // published on 22 Aug. It also made the log line below unreachable for the one case it names.
+  // metaAllowedFor() already treats null as untrackable; the caller must not undo it.
+  if (!metaAllowedFor(input.country)) {
     console.log(
       `Meta purchase not sent for ${input.eventId}: ${input.country ?? 'unknown'} is not tracked.`,
     );
