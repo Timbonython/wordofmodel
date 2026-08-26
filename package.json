@@ -21,7 +21,8 @@
     "funnel": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/funnel.mjs",
     "requeue": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/requeue-capture.mjs",
     "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs",
-    "pixel:check": "node scripts/pixel-check.mjs"
+    "pixel:check": "node scripts/pixel-check.mjs",
+    "pixel": "node scripts/pixel-probe.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
