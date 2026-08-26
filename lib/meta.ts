@@ -40,11 +40,30 @@
  * Purchase, and the server event carries the Stripe session id as its event_id, which means a
  * browser event added later collapses into it rather than adding to it.
  *
- * TWO: NOBODY IN THE UK OR THE EEA IS TRACKED AT ALL. The privacy policy published on 22 Aug
- * says advertising trackers would be disclosed here before they started and that UK and EEA
- * visitors would be asked first. Asking properly means a consent banner, a stored preference
- * and a way to withdraw it; not tracking them is simpler, cheaper, stronger, and impossible to
- * get subtly wrong. Traffic is targeted at the US regardless. See metaAllowedFor().
+ * TWO: NOBODY IN THE UK, THE EEA OR SWITZERLAND IS TRACKED AT ALL. The privacy policy published
+ * on 22 Aug says advertising trackers would be disclosed here before they started and that UK
+ * and EEA visitors would be asked first. Asking properly means a consent banner, a stored
+ * preference and a way to withdraw it; not tracking them is simpler, cheaper, stronger, and
+ * impossible to get subtly wrong.
+ *
+ * THE EXCLUSION IS NOT THE CAMPAIGN SETTING. Those visitors are excluded by NO_TRACK below, on
+ * every single request, whatever the ads are set to and whether or not any ads are running at
+ * all. That is what makes the absence of a consent banner defensible: a visitor from Dublin is
+ * not tracked because this code will not track them, not because we believe our targeting kept
+ * them away. Targeting is a setting in somebody else's dashboard. It is not a control we
+ * enforce, it says nothing about organic, referral or direct traffic, and anybody with access
+ * to the ad account can change it without touching this repository.
+ *
+ * SO DO NOT DELETE NO_TRACK ON THE ARGUMENT THAT TARGETING ALREADY KEEPS THOSE VISITORS AWAY.
+ * On 26 Aug 2026 targeting went from the United States to Australian metros in a single
+ * afternoon. Every sentence in this file that described where the traffic came from was false
+ * by the end of that afternoon, including the one that used to sit here. NO_TRACK is the part
+ * that survived unchanged, because it never depended on the answer. The next change will be
+ * just as quick and will not arrive with a reminder to come and re-read this comment.
+ *
+ * Advertising INTO the UK or the EEA is a different decision and not a comment edit: consent
+ * banner, stored preference, a way to withdraw it, and the policy updated, all before the first
+ * impression. See metaAllowedFor().
  */
 
 import 'server-only';
