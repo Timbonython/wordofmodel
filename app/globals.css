@@ -1248,7 +1248,11 @@ footer .wrap {
 .legal ul.plain { list-style: none; padding: 0; margin: 0 0 16px; max-width: 68ch; }
 .legal ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--rule); line-height: 1.65; }
 .legal ul.plain li:last-child { border-bottom: 0; }
-.legal a { color: inherit; }
+/* Links in legal prose take the body colour rather than being styled. The exclusion matters:
+   `.legal a` is more specific than `.button`, so without it this rule won the colour on every
+   button inside a .legal page and painted the label in --ink on an --ink background. Two of
+   them, on /method and on the scan not-found page, rendered as solid dark rectangles. */
+.legal a:not(.button) { color: inherit; }
 
 /* The drift table. It is the most important thing on the method page and it is the one
    element that will be screenshotted, so it gets the report's own typographic treatment

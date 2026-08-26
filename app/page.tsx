@@ -274,7 +274,7 @@ export default async function Page() {
             If what you want is a number that updates every week, there are good tools that do exactly that from about
             $99 a month, and some of our subscribers run both.
           </p>
-          <p>Here's the difference, stated plainly.</p>
+          <p>Here's the difference.</p>
           <p className="punch">They count how often you get mentioned. We read what got said.</p>
           <p>
             A count would not have caught a model inventing customer reviews. A count doesn't tell you that your one
@@ -479,8 +479,9 @@ export default async function Page() {
             <summary>Who's behind it?</summary>
             <div className="body">
               <p>
-                Word of Model was built by a marketer with thirty years in digital and creative, who got tired of
-                clients asking what AI says about them and having no honest way to answer.
+                Word of Model was built by a marketer with thirty years in digital and creative, who went looking for
+                what the models were saying about a handful of real businesses and found one of them inventing customer
+                reviews that had never existed. That was enough to keep going.
               </p>
             </div>
           </details>
