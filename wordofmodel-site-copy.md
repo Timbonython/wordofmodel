@@ -18,6 +18,16 @@ Positioning line, for the hero and for every ad:
 
 ---
 
+> **Amended 27 Aug 2026: "about a minute" is now "about two minutes".** Measured, not
+> estimated. Ten completed scans ran 41s to 139s with a median of 91s, and a driven scan on
+> production took 166s when ChatGPT was slow. The original figure was true only at the fast
+> end, and it is read by somebody who then sits and waits. Under-promising against the 41s
+> case is the safe direction; the reverse is the site doing the one thing its brand is built
+> on not doing.
+>
+> **THE ADS STILL SAY "about a minute" AND ARE NOT IN THIS REPO.** Until they are changed in
+> Meta, the ad and the page disagree, and the ad is the one that is wrong.
+
 # 1. HERO
 
 ### Your buyers stopped Googling. They started asking.
@@ -26,7 +36,7 @@ And when they ask, something answers on your behalf. It names a handful of compa
 
 Nobody told you whether you were in that list.
 
-**Find out in about a minute. Free.**
+**Find out in about two minutes. Free.**
 
 *[ Enter your website ]* → *[ Show me ]*
 
@@ -203,7 +213,7 @@ No. If you can describe what you sell, you can use this.
 
 # 10. CLOSE
 
-### One question. Two engines. About a minute.
+### One question. Two engines. About two minutes.
 
 Worst case, you find out you're doing fine.
 

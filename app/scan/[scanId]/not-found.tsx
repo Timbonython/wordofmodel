@@ -26,7 +26,7 @@ export default function ScanNotFound() {
           <h1>That scan has gone.</h1>
           <p className="lede">
             The link is wrong, or the scan was run long enough ago that we no longer hold it.
-            Running another takes about a minute.
+            Running another takes about two minutes.
           </p>
           <p>
             <Link className="button" href="/#scan">

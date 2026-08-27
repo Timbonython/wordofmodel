@@ -92,7 +92,11 @@ export default async function Page({
             your behalf. It names a handful of companies in your category, recommends one, and moves on.
           </p>
           <p className="lede">Nobody told you whether you were in that list.</p>
-          <p className="hero-cta">Find out in about a minute. Free.</p>
+          {/* "About two minutes", measured, not guessed. Ten completed scans: min 41s,
+              median 91s, max 139s, and one drive at 166s when ChatGPT was slow. "About a
+              minute" was true only at the fast end, and this line is read by somebody who
+              then waits. Under-promising against the 41s case is the safe direction. */}
+          <p className="hero-cta">Find out in about two minutes. Free.</p>
 
           <div id="scan">
             <ScanPanel wizardLive={wizardLive} />
@@ -548,7 +552,7 @@ export default async function Page({
         {/* ============ 10. CLOSE ============ */}
         <section className="close">
           <div className="eyebrow">One last thing</div>
-          <h2>One question. Two engines. About a minute.</h2>
+          <h2>One question. Two engines. About two minutes.</h2>
           <p>Worst case, you find out you're doing fine.</p>
           <a className="button" href="#scan">
             Enter your website
