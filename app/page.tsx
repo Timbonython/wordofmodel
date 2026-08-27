@@ -84,10 +84,12 @@ export default async function Page({
             Your buyers stopped Googling.
             <br />
             They started asking.
+            <br />
+            ChatGPT.
           </h1>
           <p className="lede">
-            And when they ask, something answers on your behalf. It names a handful of companies in your category,
-            recommends one, and moves on.
+            And when they ask - ChatGPT, Gemini, Grok, Perplexity or Google's own AI answers - something answers on
+            your behalf. It names a handful of companies in your category, recommends one, and moves on.
           </p>
           <p className="lede">Nobody told you whether you were in that list.</p>
           <p className="hero-cta">Find out in about a minute. Free.</p>
