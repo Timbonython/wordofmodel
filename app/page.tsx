@@ -361,7 +361,12 @@ export default async function Page() {
             )}
             {wizardLive ? (
               <>
-                <Link className="button" href="/start">
+                {/* prefetch={false} is load-bearing, not a tidy-up. /start is force-dynamic, so
+                    next/link prefetching it when this button scrolls into view runs a real
+                    server render AND a real funnel_events insert for somebody who never
+                    clicked: 1030 rows in the 48 hours to 27 Aug 2026, against 2 scans. The bad
+                    data was the smaller half of it. */}
+                <Link className="button" href="/start" prefetch={false}>
                   Set up my report
                 </Link>
                 <p className="note" style={{ marginTop: 14 }}>
