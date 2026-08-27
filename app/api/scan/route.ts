@@ -4,7 +4,16 @@ import { completeScan, createScan, failScan, findCachedScan } from '@/lib/db';
 import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { askChatGpt } from '@/lib/openai';
 import { askPerplexity } from '@/lib/perplexity';
-import { checkRateLimit, clientIp, hashIp, recordAttempt } from '@/lib/ratelimit';
+import {
+  CAPS,
+  checkGlobalScanCap,
+  checkRateLimit,
+  clientIp,
+  hashIp,
+  noteGlobalCapTripped,
+  recordAttempt,
+} from '@/lib/ratelimit';
+import { sendOpsAlert } from '@/lib/billing-mail';
 import { scoreAnswer } from '@/lib/score';
 import { ndjson } from '@/lib/stream';
 import { buildVerdict } from '@/lib/verdict';
@@ -71,6 +80,31 @@ export async function POST(request: Request) {
         cached: true,
         run_at: cached.created_at,
       });
+      return;
+    }
+
+    // THE GLOBAL CEILING FIRST, and before any provider is called. Per-IP limits shape one
+    // visitor's behaviour; this is the one that bounds the bill, because an IP is free and a
+    // script can have thousands. It fails closed - see checkGlobalScanCap.
+    const global = await checkGlobalScanCap();
+    if (!global.ok) {
+      if (await noteGlobalCapTripped()) {
+        await sendOpsAlert({
+          subject: 'The free scan daily cap has tripped',
+          lines: [
+            'No further scans will start today. Visitors are being told so plainly and offered',
+            'the waitlist; nothing is erroring.',
+            '',
+            `Cap:      ${CAPS.scanPerDay} scans per UTC day`,
+            'Change:   SCAN_CAP_GLOBAL_DAY in Vercel, no deploy needed',
+            '',
+            'Worth knowing which this is before raising it: a real surge from the campaign, or',
+            'somebody looping an unauthenticated endpoint that costs us money per call.',
+            'funnel_events by utm_content, and rate_events by ip_hash, separate the two.',
+          ],
+        });
+      }
+      emit({ type: 'error', message: global.message ?? 'We cannot start new scans just now.' });
       return;
     }
 

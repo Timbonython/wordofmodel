@@ -1,7 +1,15 @@
 import { attachEmail, getScan, markEmailed } from '@/lib/db';
 import { validEmail } from '@/lib/email';
 import { sendScanEmail } from '@/lib/mail';
-import { checkRateLimit, clientIp, hashIp, recordAttempt } from '@/lib/ratelimit';
+import {
+  checkEmailRateLimit,
+  checkRateLimit,
+  clientIp,
+  hashEmail,
+  hashIp,
+  recordAttempt,
+  recordEmailAttempt,
+} from '@/lib/ratelimit';
 import { buildGated } from '@/lib/verdict';
 import type { Capture } from '@/lib/types';
 
@@ -31,12 +39,20 @@ export async function POST(request: Request) {
   const limit = await checkRateLimit(ipHash, 'reveal');
   if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
 
+  // Per address as well as per IP. This one sends an email on every success, so an address
+  // submitted over and over is the shape that turns our sending domain into a complaint,
+  // and it is not bounded by an IP limit when the requests come from many of them.
+  const emailHash = hashEmail(email);
+  const perEmail = await checkEmailRateLimit(emailHash, 'reveal');
+  if (!perEmail.ok) return Response.json({ error: perEmail.message }, { status: 429 });
+
   const scan = await getScan(scanId);
   if (!scan || scan.status !== 'complete' || !scan.captures || !scan.result || !scan.question) {
     return Response.json({ error: 'That scan is not ready yet.' }, { status: 404 });
   }
 
   await recordAttempt(ipHash, 'reveal');
+  await recordEmailAttempt(emailHash, 'reveal');
   await attachEmail(scanId, email);
 
   const brandName = scan.brand_name ?? scan.domain;
