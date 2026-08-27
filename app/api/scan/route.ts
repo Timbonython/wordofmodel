@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       userAgent,
       touch,
     });
-    await recordFunnel({ event: 'scan_started', scanId, utmSource: touch.utm_source });
+    await recordFunnel({ event: 'scan_started', scanId, touch });
 
     try {
       // ---- step 4: both engines at once ----
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
       // ONLY HERE. Not on page load, not on an errored scan, not on an empty one: the two
       // failure paths above call failScan and record nothing. A scan that failed is not a scan
       // that happened, and counting it would flatter the ad that produced it.
-      await recordFunnel({ event: 'scan_completed', scanId, utmSource: touch.utm_source });
+      await recordFunnel({ event: 'scan_completed', scanId, touch });
 
       emit({
         type: 'result',

@@ -66,30 +66,49 @@ export async function recordFunnel(input: {
   event: FunnelEvent;
   scanId?: string | null;
   accountId?: string | null;
-  utmSource?: string | null;
+  /**
+   * First touch for this step. Pass it wherever a URL is in hand; where it is not, a scanId
+   * lets the row inherit what the scan was tagged with.
+   *
+   * ALL FIVE, not just the source. utm_content is the one that separates hook A from hook C
+   * and static from video, so a four ad test is unreadable without it.
+   */
+  touch?: Partial<TouchParams> | null;
 }): Promise<void> {
   try {
-    const utmSource = input.utmSource ?? (input.scanId ? await sourceForScan(input.scanId) : null);
+    const supplied = input.touch ?? null;
+    const hasSupplied = supplied && Object.values(supplied).some((v) => v);
+    const touch = hasSupplied ? supplied : input.scanId ? await touchForScan(input.scanId) : null;
+
     const { error } = await db()
       .from('funnel_events')
       .insert({
         event: input.event,
         scan_id: input.scanId ?? null,
         account_id: input.accountId ?? null,
-        utm_source: utmSource,
+        utm_source: touch?.utm_source ?? null,
+        utm_medium: touch?.utm_medium ?? null,
+        utm_campaign: touch?.utm_campaign ?? null,
+        utm_content: touch?.utm_content ?? null,
+        fbclid: touch?.fbclid ?? null,
       });
-    // 23505 is the unique index doing its job on a reload. Anything else is worth a line.
+    // 23505 is the unique index doing its job on a reload of a scan-tagged step. Anything
+    // else is worth a line. Note it cannot fire for a null scan_id: see 0014 and 0017.
     if (error && error.code !== '23505') throw new Error(error.message);
   } catch (err) {
     console.error(`funnel: could not record ${input.event}`, err instanceof Error ? err.message : err);
   }
 }
 
-/** The source the scan was tagged with at first touch, so every later step inherits it. */
-async function sourceForScan(scanId: string): Promise<string | null> {
-  const { data, error } = await db().from('scans').select('utm_source').eq('id', scanId).maybeSingle();
-  if (error) return null;
-  return (data as { utm_source: string | null } | null)?.utm_source ?? null;
+/** What the scan was tagged with at first touch, so every later step inherits the whole set. */
+async function touchForScan(scanId: string): Promise<TouchParams | null> {
+  const { data, error } = await db()
+    .from('scans')
+    .select('utm_source, utm_medium, utm_campaign, utm_content, fbclid')
+    .eq('id', scanId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as TouchParams;
 }
 
 /**

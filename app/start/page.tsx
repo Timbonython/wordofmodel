@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { isSupportedMarket } from '@/lib/geo';
 import { iso2 } from '@/lib/domain';
 import { getScan } from '@/lib/db';
-import { recordFunnel } from '@/lib/funnel';
+import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { foundingDisplayOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
 
@@ -26,14 +26,29 @@ export const metadata: Metadata = {
 export default async function StartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scan?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { scan: scanId } = await searchParams;
+  const params = await searchParams;
+  const scanId = typeof params.scan === 'string' ? params.scan : undefined;
 
   // Reaching /start is the step between a scan and a card, and it is the one that tells the
-  // difference between a bad ad and a bad result page. Recorded once per scan by the unique
-  // index in 0014, so reloads cannot inflate it.
-  await recordFunnel({ event: 'wizard_started', scanId: scanId ?? null });
+  // difference between a bad ad and a bad result page.
+  //
+  // DEDUPLICATED ONLY WHEN A SCAN ID IS PRESENT. 0014's unique index is
+  // `where scan_id is not null`, so a cold open - no ?scan= - inserts a row every time, and
+  // that is most of this traffic rather than an edge case. Between 25 and 27 Aug 2026 it
+  // reached 1030 rows against 2 scans, because next/link prefetched /start from the home page
+  // and force-dynamic turned each prefetch into a real render and a real insert. The link now
+  // carries prefetch={false}; this comment no longer claims a guarantee the schema does not
+  // make. Read wizard_started as page renders, not as people, unless it carries a scan id.
+  await recordFunnel({
+    event: 'wizard_started',
+    scanId: scanId ?? null,
+    // The whole set, so a step can be attributed to a creative and not just to a channel.
+    // A cold open with no scan behind it has nothing to inherit, so the URL is the only
+    // place this can come from.
+    touch: touchFrom(params as Record<string, unknown>),
+  });
 
   let prefill: WizardProfileInput | null = null;
   let prefillEmail: string | null = null;
