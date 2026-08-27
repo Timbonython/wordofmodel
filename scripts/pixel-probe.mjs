@@ -41,6 +41,8 @@ const TARGET = arg('url', 'https://wordofmodel.ai');
 const COUNTRY = arg('country', 'AU');
 const KEEP_OPEN = process.argv.includes('--headed');
 const ALL_NET = process.argv.includes('--all');
+/** Watch only. Do not fire anything ourselves, so what appears is what the PAGE sent. */
+const OBSERVE_ONLY = process.argv.includes('--observe');
 
 const isLocal = /localhost|127\.0\.0\.1/.test(TARGET);
 
@@ -261,7 +263,7 @@ const state = await cdp('Runtime.evaluate', {
 console.log(`  pixel state                ${JSON.stringify(state.result?.value)}`);
 
 // Fire the three the browser is allowed to send, exactly as metaTrack() does.
-if (hasFbq) {
+if (hasFbq && !OBSERVE_ONLY) {
   for (const ev of ['ViewContent', 'Lead', 'InitiateCheckout']) {
     await cdp('Runtime.evaluate', { expression: `window.fbq('track', ${JSON.stringify(ev)})` });
     await new Promise((r) => setTimeout(r, 900));

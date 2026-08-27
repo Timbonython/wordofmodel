@@ -5,7 +5,7 @@ import { SLOT_LABEL, QUESTION_SLOTS, priceLabel, type QuestionSlot } from '@/lib
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
-import { metaTrack, useMetaEvent } from '@/components/MetaPixel';
+import { metaTrack } from '@/components/MetaPixel';
 
 /**
  * The onboarding wizard.
@@ -117,8 +117,16 @@ export default function Wizard({
   /** Carried into the Checkout session so a paying customer traces back to the ad. */
   scanId: string | null;
 }) {
-  // Reaching the wizard is the step that separates a bad ad from a bad result page.
-  useMetaEvent('Lead');
+  // NO Meta event fires here any more. Reaching the wizard is still recorded, server side, as
+  // wizard_started in app/start/page.tsx - the drop-off between a scan and a card is exactly
+  // what that step is for, and it is unaffected by this.
+  //
+  // What moved on 27 Aug 2026 is the Lead, to the reveal in components/scan/ScanResult.tsx.
+  // On mount it was ungated: no scan, no email, no state of any kind, just "this component
+  // rendered". Every reload and every client-side return re-fired it, nothing carried an
+  // eventID so Meta could not deduplicate, and next/link prefetch of a force-dynamic /start
+  // meant the page rendered for people who never clicked. A campaign optimising against that
+  // is learning from page renders.
 
   const [step, setStep] = useState<Step>('business');
   const [domain, setDomain] = useState(prefill?.website ?? '');

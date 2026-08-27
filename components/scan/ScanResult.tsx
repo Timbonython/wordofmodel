@@ -80,6 +80,12 @@ export function ScanResult({
       // A genuine result, on screen. Not a page load and not a failed scan: this line is
       // inside the success branch for the same reason scan_completed is.
       metaTrack('ViewContent');
+      // LEAD LIVES HERE, moved from the wizard on 27 Aug 2026. It sat on Wizard mount, which
+      // meant a Lead was "somebody loaded /start" - ungated, once per mount, and inflated by
+      // next/link prefetching the page from the home page. Meta was being asked to optimise
+      // toward page renders. Here it means a person gave us a working address and got a result
+      // back, which is the cheapest thing on the site that costs a stranger something real.
+      metaTrack('Lead');
       setGated(body.gated);
       setBrandName(body.brandName || 'you');
       setEmailed(body.emailed !== false);
