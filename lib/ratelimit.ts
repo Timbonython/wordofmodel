@@ -63,8 +63,19 @@ export const CAPS = {
    * This is the only one that actually bounds the bill. An IP costs an abuser nothing and a
    * script can have thousands, so a per-IP limit shapes behaviour without capping spend.
    */
+  /**
+   * Fifty, lowered from 150 on 27 Aug 2026 once the cost was measured rather than guessed.
+   *
+   * Measured from `scans.captures[].tokens` across seven real free scans: a mean of 71,150
+   * ChatGPT tokens and a peak of 98,612, priced through the same table the paid pipeline uses
+   * (lib/cost.ts, gpt-5.5 at USD 5.00/M in and 30.00/M out). That is roughly USD 0.49 a scan
+   * at the mean and USD 0.65 at the peak, plus about USD 0.007 Perplexity reports.
+   *
+   * So 50 is about USD 25 in a day and 150 was about USD 74. The earlier figure of "$0.30"
+   * quoted when this cap was written was an estimate, and it was low.
+   */
   get scanPerDay() {
-    return num('SCAN_CAP_GLOBAL_DAY', 150);
+    return num('SCAN_CAP_GLOBAL_DAY', 50);
   },
   /** Reveals per address per day: one person, one scan result, a few retries. */
   get revealPerEmailDay() {
