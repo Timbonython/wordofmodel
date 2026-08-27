@@ -14,6 +14,7 @@ import {
   recordAttempt,
 } from '@/lib/ratelimit';
 import { sendOpsAlert } from '@/lib/billing-mail';
+import { notifyScanCompleted } from '@/lib/notify';
 import { scoreAnswer } from '@/lib/score';
 import { ndjson } from '@/lib/stream';
 import { buildVerdict } from '@/lib/verdict';
@@ -242,6 +243,23 @@ export async function POST(request: Request) {
       // failure paths above call failScan and record nothing. A scan that failed is not a scan
       // that happened, and counting it would flatter the ad that produced it.
       await recordFunnel({ event: 'scan_completed', scanId, touch });
+
+      // Same branch, same reasoning: a completed scan is a prospect worth seeing the morning
+      // it arrives. Behind NOTIFY_SCAN_COMPLETED because this one scales with traffic, and it
+      // never throws, so it cannot cost the visitor the result they are waiting on.
+      await notifyScanCompleted({
+        scanId,
+        domain,
+        brandName: profile.brand_name,
+        categoryTerm: profile.category_term,
+        country: profile.country,
+        verdictKind: free.kind,
+        competitorCount: free.competitor_count,
+        topRecommendation: free.top_recommendation,
+        utmSource: touch.utm_source,
+        utmCampaign: touch.utm_campaign,
+        utmContent: touch.utm_content,
+      });
 
       emit({
         type: 'result',

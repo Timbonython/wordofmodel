@@ -14,6 +14,7 @@ import {
   upsertSubscription,
 } from '@/lib/billing';
 import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
+import { notifyNewSubscriber } from '@/lib/notify';
 import { ensureBaselineRun } from '@/lib/run';
 import { convertClaim, releaseClaimBySession } from '@/lib/founding';
 import { recordFunnel } from '@/lib/funnel';
@@ -178,6 +179,21 @@ async function onCheckoutCompleted(
     accountId,
     scopeId,
     email: session.customer_details?.email ?? null,
+  });
+
+  // Tell Tim. AFTER the receipt, because the subscriber being told is what matters and this is
+  // only what tells us. It never throws, so it cannot cost the receipt or release the event
+  // claim; and it is here rather than in onSubscriptionChanged because this is the branch that
+  // means money actually moved - customer.subscription.created arrives with status
+  // 'incomplete' when the first charge has not cleared.
+  await notifyNewSubscriber({
+    subscriptionId: sub.id,
+    accountId,
+    scopeId,
+    priceKey: priceKeyOf(sub),
+    email: session.customer_details?.email ?? null,
+    scanId,
+    reportDay: row.report_day ?? null,
   });
 
   await openFirstRun(scopeId, sub.id);
