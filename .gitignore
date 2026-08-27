@@ -5,3 +5,9 @@ node_modules
 .vercel
 .DS_Store
 *.tsbuildinfo
+
+# Claude Code local state: a live git worktree and machine-local settings.
+# Neither belongs in the repo, and an unignored worktree means `git add -A`
+# sweeps a second checkout of this repo into a commit.
+.claude/worktrees/
+.claude/settings.local.json
