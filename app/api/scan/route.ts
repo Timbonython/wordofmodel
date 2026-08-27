@@ -148,7 +148,7 @@ export async function POST(request: Request) {
         citations: Awaited<ReturnType<typeof askChatGpt>>['citations'];
         ms: number;
         cost: number | null;
-        tokens: number | null;
+        usage: Awaited<ReturnType<typeof askChatGpt>>['usage'] | null;
       }
 
       const ask = async (
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
           citations: Answer['citations'];
           model: string;
           cost?: number | null;
-          tokens?: number | null;
+          usage?: Answer['usage'];
         }>,
       ): Promise<Answer | null> => {
         emit({ type: 'engine_started', engine, label: ENGINE_LABEL[engine] });
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
             citations: a.citations,
             ms,
             cost: a.cost ?? null,
-            tokens: a.tokens ?? null,
+            usage: a.usage ?? null,
           };
         } catch (err) {
           emit({
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
               citations: a.citations,
               ms: a.ms,
               cost: a.cost,
-              tokens: a.tokens,
+              usage: a.usage,
             }).catch(() => null),
           ),
         )

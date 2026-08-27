@@ -1,6 +1,6 @@
 import 'server-only';
 import { env, MODELS } from './env';
-import type { Citation } from './types';
+import type { CaptureUsage, Citation } from './types';
 import { domainOf } from './domain';
 
 const ENDPOINT = 'https://api.openai.com/v1/responses';
@@ -15,7 +15,12 @@ interface ResponsesEnvelope {
       annotations?: Array<{ type: string; url?: string; title?: string }>;
     }>;
   }>;
-  usage?: { total_tokens?: number };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+    input_tokens_details?: { cached_tokens?: number };
+  };
   error?: { message?: string };
 }
 
@@ -84,7 +89,7 @@ async function post(body: unknown, timeoutMs: number, label: string): Promise<Re
 export async function askChatGpt(
   question: string,
   countryIso2: string | null,
-): Promise<{ text: string; citations: Citation[]; model: string; tokens: number | null }> {
+): Promise<{ text: string; citations: Citation[]; model: string; usage: CaptureUsage }> {
   const tool: Record<string, unknown> = { type: 'web_search' };
   if (countryIso2) tool.user_location = { type: 'approximate', country: countryIso2 };
 
@@ -94,10 +99,21 @@ export async function askChatGpt(
   const j = await post({ model: MODELS.answer, input: question, tools: [tool] }, 240_000, 'ChatGPT');
   const { text, citations } = readEnvelope(j);
   if (!text) throw new Error('ChatGPT returned an empty answer');
-  // OpenAI reports no cost, only tokens. Stored so the real cost per scan can be
-  // worked out later: a web search answer runs to tens of thousands of input
-  // tokens, so the Perplexity figure alone understates a scan badly.
-  return { text, citations, model: j.model || MODELS.answer, tokens: j.usage?.total_tokens ?? null };
+  // OpenAI reports no cost, only tokens, so the split is what makes a scan's cost a
+  // measurement rather than an inference. Input and output differ by six times on gpt-5.5
+  // and a search-backed answer is mostly input, so a total alone cannot be priced without
+  // assuming a ratio. cached is a tenth of uncached input and is counted separately.
+  return {
+    text,
+    citations,
+    model: j.model || MODELS.answer,
+    usage: {
+      input: j.usage?.input_tokens ?? null,
+      output: j.usage?.output_tokens ?? null,
+      cached: j.usage?.input_tokens_details?.cached_tokens ?? null,
+      total: j.usage?.total_tokens ?? null,
+    },
+  };
 }
 
 /** Utility calls: detect, question writing, scoring. */

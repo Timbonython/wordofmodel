@@ -38,6 +38,19 @@ export interface Score {
   domains_cited: string[];
 }
 
+/**
+ * Tokens as the provider counted them, not as we inferred them.
+ *
+ * cached matters: on gpt-5.5 a cached input token is a tenth the price of an uncached one, and
+ * a search-backed answer is mostly input.
+ */
+export interface CaptureUsage {
+  input: number | null;
+  output: number | null;
+  cached: number | null;
+  total: number | null;
+}
+
 /** One engine's answer, scored. */
 export interface Capture {
   engine: EngineId;
@@ -49,9 +62,24 @@ export interface Capture {
   /** Cited domains: engine citation data unioned with what the scorer read out of the text. */
   domains: string[];
   ms: number;
-  /** Perplexity reports a cost; OpenAI reports only tokens. Both are kept. */
+  /**
+   * What the capture cost, and whether that is the provider's figure or our arithmetic.
+   *
+   * Perplexity invoices in the response, so its number is `reported`. OpenAI returns tokens
+   * only, so its number is `computed` through lib/cost.ts - the same table and the same
+   * distinction the paid pipeline records on every capture.
+   */
   cost_usd: number | null;
-  tokens: number | null;
+  cost_source: 'reported' | 'computed' | null;
+  /**
+   * The token split, from 27 Aug 2026.
+   *
+   * Captures written before that date carry a plain `tokens` total instead, and nothing
+   * back-fills them: input and output differ by six times on gpt-5.5, so a total alone cannot
+   * be priced without assuming a ratio, and assuming one is what made the first cost figure an
+   * estimate rather than a measurement.
+   */
+  usage: CaptureUsage | null;
 }
 
 /**

@@ -1,7 +1,8 @@
 import 'server-only';
 import { askJson } from './openai';
 import { scorePrompt } from './prompts';
-import type { Capture, Citation, EngineId, Score } from './types';
+import { computedCost, reportedCost } from './cost';
+import type { Capture, CaptureUsage, Citation, EngineId, Score } from './types';
 
 const SCORE_SCHEMA = {
   type: 'object',
@@ -49,14 +50,28 @@ export async function scoreAnswer(input: {
   answer: string;
   citations: Citation[];
   ms: number;
+  /** Perplexity's own figure, when the provider gave us one. */
   cost: number | null;
-  tokens: number | null;
+  /** OpenAI's token counts, when it gave us those instead. */
+  usage: CaptureUsage | null;
 }): Promise<Capture> {
   const raw = await askJson<Score>(
     scorePrompt({ brand_name: input.brand_name, question: input.question, answer: input.answer }),
     'answer_score',
     SCORE_SCHEMA,
   );
+
+  // The provider's invoice if there is one, our arithmetic if there is not, and a record of
+  // which. Computed here rather than left for later: the token counts are in hand exactly
+  // once, and a cost worked out afterwards from a stored total has to assume an input/output
+  // ratio, which is what made the first per-scan figure an estimate.
+  const cost = input.cost !== null
+    ? reportedCost(input.cost)
+    : computedCost(input.model, {
+        in: input.usage?.input ?? null,
+        out: input.usage?.output ?? null,
+        cachedIn: input.usage?.cached ?? null,
+      });
 
   const brands_named = dedupeBrands(raw.brands_named || []);
 
@@ -84,8 +99,9 @@ export async function scoreAnswer(input: {
     citations: input.citations,
     domains,
     ms: input.ms,
-    cost_usd: input.cost,
-    tokens: input.tokens,
+    cost_usd: cost.usd,
+    cost_source: cost.source,
+    usage: input.usage,
     score: {
       target_mentioned: mentioned,
       target_recommended: recommended,
