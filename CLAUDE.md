@@ -667,6 +667,35 @@ cost nothing. `env.ipHashSalt` is now `required()`: a missing salt takes the sca
 is recoverable in a minute. Changing the value has the same orphaning effect, so set it once and
 leave it.
 
+## The attribution gate on the home page landing event (27 Aug 2026)
+
+`/` records a `landed` funnel event, and **only for attributed visits**: a `utm_source`,
+`utm_content` or `fbclid` on the URL, and not from a Meta crawler user-agent. Everything else
+records nothing.
+
+**Organic and direct landings are therefore invisible in `funnel_events` by design.** That is a
+deliberate trade, not an oversight, and it was made on evidence: `/start` recorded every server
+render and accumulated **1030 rows against 2 scans** in 48 hours, because a crawler and a person
+are the same thing to a server. The home page is linked and crawled far more than `/start`, so
+recording every render there would have repeated that defect at a larger scale on the page the
+ads land on. A crawler does not append `utm_content`; an ad click always does.
+
+**REVISIT THIS WHEN THE CONTENT PLAN STARTS PRODUCING NON-AD TRAFFIC.** The moment organic
+arrivals matter - the first article, the first ranking page, the first referral worth counting -
+this gate stops being the right trade and starts being a blind spot that flatters paid. A funnel
+that can only see the traffic it paid for will report that paid is the only thing that works.
+
+What would replace it, when that day comes: count every landing but separate humans from
+crawlers properly, which means either a client-side beacon (a real browser executing JS is a
+much better proxy for a person) or a bot-UA list maintained as a list rather than three names.
+Neither is worth building for ad-only traffic, and both are worth building before judging a
+content plan.
+
+Related: `/` carries `export const dynamic = 'force-dynamic'` for this reason. It was already
+rendering dynamically, but only because `app/layout.tsx` calls `headers()` for the Meta pixel
+country gate - an unrelated line that will be edited when the Business Portfolio lands, silently
+taking `searchParams` and this measurement with it.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

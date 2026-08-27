@@ -21,6 +21,8 @@ import 'server-only';
 import { db } from './db';
 
 export type FunnelEvent =
+  /** An attributed visit to the home page. Only ever recorded for ad traffic - see 0019. */
+  | 'landed'
   | 'scan_started'
   | 'scan_completed'
   | 'wizard_started'
@@ -123,6 +125,8 @@ async function touchForScan(scanId: string): Promise<TouchParams | null> {
 export interface FunnelRow {
   day: string;
   source: string;
+  /** Attributed home page landings. Ad traffic only, by design - see 0019. */
+  landed: number;
   scan_started: number;
   scan_completed: number;
   wizard_started: number;
@@ -152,6 +156,7 @@ export async function funnelTable(days = 30): Promise<FunnelRow[]> {
         .set(key, {
           day,
           source,
+          landed: 0,
           scan_started: 0,
           scan_completed: 0,
           wizard_started: 0,

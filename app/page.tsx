@@ -3,12 +3,39 @@ import { ScanPanel } from '@/components/scan/ScanPanel';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { foundingDisplayOrNull } from '@/lib/billing';
 import { priceLabel } from '@/lib/scope';
+import { headers } from 'next/headers';
 import { env } from '@/lib/env';
+import { recordFunnel, touchFrom } from '@/lib/funnel';
 
-// The founding count changes at most twenty times, ever. A minute of cache
-// keeps the number honest and keeps the front page off the database on every
-// visit: it is the growth engine, and it was prerendered before this.
-export const revalidate = 60;
+/**
+ * DYNAMIC ON PURPOSE, declared here rather than inherited.
+ *
+ * This page was already rendering dynamically, but only as a side effect: app/layout.tsx reads
+ * headers() for the Meta pixel country gate, which opts the whole route out of static
+ * rendering. That line was written for something else entirely and will be edited by somebody
+ * working on the pixel - and the day it changes, this page silently goes static, searchParams
+ * stops resolving, and the landing event stops recording with nothing failing.
+ *
+ * A measurement must not depend on an unrelated line staying the way it is. `revalidate = 60`
+ * used to sit here and had been dead for the same reason.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
+ * Meta fetches the exact ad URL, parameters and all, to build the link preview. That request is
+ * attributed and is not a person, so gating on utm alone would leave a fixed inflation in the
+ * one number the ad test is read from - and a known wrong number is still a number somebody has
+ * to remember to subtract.
+ *
+ * Matched loosely and case-insensitively because Meta runs several and renames them:
+ * facebookexternalhit is the long-standing one, meta-externalagent and facebookcatalog are the
+ * others seen in the wild. Narrow this if a real browser is ever caught by it.
+ */
+function isMetaCrawler(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return ua.includes('facebookexternalhit') || ua.includes('meta-externalagent') || ua.includes('facebookcatalog');
+}
 
 /**
  * One page, sections 1 to 10 of wordofmodel-site-copy.md. The scan is the hero:
@@ -18,9 +45,26 @@ export const revalidate = 60;
  * places left, and it has to stay the real number: if it is real it is
  * persuasive, and if it is not, somebody will screenshot it.
  */
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const founding = await foundingDisplayOrNull();
   const wizardLive = env.wizardLive;
+
+  // ---- the top of the funnel, for ad traffic only ----
+  //
+  // ATTRIBUTED VISITS ONLY. An organic or direct visitor records nothing here, and that is a
+  // trade rather than an oversight: /start recorded every server render on 27 Aug 2026 and
+  // produced 1030 rows against 2 scans, because a crawler and a person look identical to a
+  // server. The home page is linked and crawled far more than /start. A crawler does not append
+  // utm_content; an ad click always does. See 0019 and CLAUDE.md.
+  const touch = touchFrom(await searchParams);
+  const attributed = Boolean(touch.utm_source || touch.utm_content || touch.fbclid);
+  if (attributed && !isMetaCrawler((await headers()).get('user-agent'))) {
+    await recordFunnel({ event: 'landed', touch });
+  }
   return (
     <>
       <header className="masthead">
