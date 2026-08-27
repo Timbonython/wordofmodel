@@ -30,8 +30,25 @@ const mono = IBM_Plex_Mono({
 });
 
 const title = 'Word of Model - what AI actually says about your business';
+/**
+ * Feeds the meta description, OpenGraph and Twitter, so it is both the search result and the
+ * link preview Meta renders when it scrapes an ad URL - read by somebody who has just been
+ * promised "free, about a minute, no account".
+ *
+ * NAMES THE OBJECT, like the hero does. "They started asking." on its own made the reader
+ * supply what was being asked, and this string carried that weakness for a fortnight after
+ * being written alongside the old two-line headline.
+ *
+ * The two-line form, not the hero's three-line drop: that drop is typography and depends on
+ * line breaks a meta description does not have. Inline, "They started asking ChatGPT." is the
+ * sentence the drop is built from.
+ *
+ * 149 characters. Google truncates around 160, and this is measured rather than eyeballed -
+ * naming ChatGPT also gives the later "it" an antecedent, so the string got shorter and more
+ * concrete at the same time.
+ */
 const description =
-  'Your buyers stopped Googling. They started asking. Find out whether AI names you when it recommends companies in your category. One question, two engines, free.';
+  'Your buyers stopped Googling. They started asking ChatGPT. Find out whether it names you when buyers ask who to use. One question, two engines, free.';
 
 export const metadata: Metadata = {
   // Same resolution as every other absolute URL in the build, so a preview
