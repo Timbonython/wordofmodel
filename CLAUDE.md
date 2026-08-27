@@ -667,6 +667,47 @@ cost nothing. `env.ipHashSalt` is now `required()`: a missing salt takes the sca
 is recoverable in a minute. Changing the value has the same orphaning effect, so set it once and
 leave it.
 
+## A discovered competitor set needs entity resolution, not brandKey (27 Aug 2026)
+
+**Do not design the Consideration Set as if `brandKey` is sufficient.** It folds case and
+punctuation and nothing else. It has no concept of identity.
+
+Every aggregation shipped today escapes this, because it iterates the **configured** competitor
+list and matches into `captures.brands_named` (`lib/share.ts`, `lib/delta.ts`). A discovered set
+inverts the direction: it reads names out of the data, so it is the first consumer that has to
+decide whether two strings are one company.
+
+Three different problems, and they do not have one answer:
+
+- **Aliasing.** `Optus` / `Singtel Optus`. Same entity, two naming forms. Always merge.
+- **Hierarchy.** `Telstra` / `Telstra Business`. Whether a sub-brand is the same competitor is a
+  judgment about the market, not the string. In eSIM they are arguably one rival; in enterprise
+  telco they are different buyers.
+- **Ambiguity.** `Boost` / `Boost Mobile`. `Boost` alone may be a different company in another
+  category, so merging on prefix is least safe exactly where it looks safest.
+
+The third is why a purely automatic resolver is wrong. Any rule aggressive enough to catch
+`Singtel Optus` also catches things that are not the same company, and **the failure is silent**:
+a wrongly merged pair produces one confident row rather than two visibly odd ones. A split pair
+is visible and halves both directional ratios; a bad merge is invisible and invents a rival.
+
+**Two constraints for whoever builds it.**
+
+The subscriber knows their market better than we do, and they already approve competitors and
+questions in the wizard. A discovered set **proposed rather than asserted** fits the approval
+mechanic that exists, rather than inventing a new one. `competitors.source` is already
+`proposed | subscriber_added` (0002) and is the obvious place for a third value.
+
+A human review step **collides with the 24 hour delivery promise**. The first report ships about
+twenty minutes after payment, so review cannot be a blocking gate unless something gives: either
+the discovered set enters the report labelled as unreviewed, or it waits for month two. That is a
+product decision with a copy consequence, not an implementation detail, and it is Tim's.
+
+Related, and the same shape one level up: 0002 already warns that a competitor added or removed
+mid-span is a **configuration change and must be reported as its own line, never as movement**. A
+resolution decision that merges two names between months is the same kind of change and needs the
+same treatment.
+
 ## The attribution gate on the home page landing event (27 Aug 2026)
 
 `/` records a `landed` funnel event, and **only for attributed visits**: a `utm_source`,
