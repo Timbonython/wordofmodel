@@ -4,6 +4,7 @@ import { env } from './env';
 import { db } from './db';
 import type { PriceKey } from './stripe';
 import { MONTHLY_SURFACES, QUARTERLY_SURFACES, SURFACES } from './accounts';
+import { BRAND } from './brand';
 
 /**
  * The two emails the billing side sends: the receipt a new subscriber goes
@@ -15,12 +16,13 @@ import { MONTHLY_SURFACES, QUARTERLY_SURFACES, SURFACES } from './accounts';
  * and has nothing to show for it.
  */
 
+/** Read from lib/brand.ts, not typed out. See the note at the top of that file. */
 const PALETTE = {
-  paper: '#F7F6F2',
-  card: '#FFFFFF',
-  ink: '#15171C',
-  inkSoft: '#5C5F68',
-  rule: '#DEDCD4',
+  paper: BRAND.paper,
+  card: BRAND.card,
+  ink: BRAND.ink,
+  inkSoft: BRAND.soft,
+  rule: BRAND.line,
 };
 
 /**
@@ -76,11 +78,11 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
   // started opening a baseline run on the day of payment. A subscriber was being told to
   // wait a month for something arriving overnight.
   const when = 'within 24 hours';
-  const price = input.priceKey === 'founding_monthly' ? 'USD 149' : 'USD 249';
+  const price = input.priceKey === 'founding_monthly' ? 'US$149' : 'US$249';
   const foundingLine =
     input.priceKey === 'founding_monthly'
-      ? `You took a founding place, so that is USD 149 a month, locked for twelve months.`
-      : `That is USD 249 a month. Cancel any time, no contract.`;
+      ? `You took a founding place, so that is US$149 a month, locked for twelve months.`
+      : `That is US$249 a month. Cancel any time, no contract.`;
 
   const text = [
     `WORD OF MODEL`,

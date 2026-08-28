@@ -708,18 +708,64 @@ mid-span is a **configuration change and must be reported as its own line, never
 resolution decision that merges two names between months is the same kind of change and needs the
 same treatment.
 
-## The attribution gate on the home page landing event (27 Aug 2026)
+## The attribution gate on the home page landing event (27 Aug 2026, corrected 28 Aug 2026)
 
-`/` records a `landed` funnel event, and **only for attributed visits**: a `utm_source`,
-`utm_content` or `fbclid` on the URL, and not from a Meta crawler user-agent. Everything else
-records nothing.
+**The 27 August version of this section was wrong, and the correction is the whole point of
+reading it.** It is left standing rather than deleted because the mistake is the lesson.
 
-**Organic and direct landings are therefore invisible in `funnel_events` by design.** That is a
+`/` records a `landed` funnel event, and **only when a click id is on the URL**: `fbclid`,
+`gclid`, `ttclid`, `li_fat_id` or `msclkid`. One row per click id, enforced by the unique index
+in `0020_landed_click_id.sql`. Everything else records nothing.
+
+### What was wrong
+
+The original gate accepted `utm_source` **or** `utm_content` or `fbclid`, and rested on this
+premise, which was stated here and in `0019_landed_event.sql`:
+
+> ~~A crawler does not append `utm_content`; an ad click always does.~~
+
+The second half is true. **The first half is false.** utm parameters are baked into the ad URL
+and are inherited by anything that fetches it, crawlers included. Only a click id is minted at
+click time. A crawler does not *append* a utm - it *inherits* one, which arrives at the same
+place by a different road. So the gate built to exclude crawler noise instead defined crawler
+noise as attributed traffic.
+
+Observed 28 August 2026: 69 landings against 25 reported link clicks. 28 rows carried a real
+`fbclid`; **41 carried no click id at all**. 29 of those arrived in 88 seconds with gaps of 0.0s
+and 0.1s, walking across two ad URLs, and `outburst-video` took 22 landings that day with no
+observed click behind any of them.
+
+The `facebookexternalhit` exclusion **did ship** (commit `63e3066`) and **does work** - verified
+against production, a request with that user-agent writes no row. It simply knew three strings,
+and every other crawler walked past it. A blocklist of names was never going to hold, which is
+why the click id is now the gate and the user-agent is only recorded.
+
+### What that costs, accepted deliberately
+
+Privacy browsers strip click ids, so those clicks vanish from this table. **Undercounting is the
+safe direction**: a number that errs low can be trusted when it rises. The old rule erred high,
+which is the direction that cannot be trusted at all.
+
+### The cutover, and why history is not restated
+
+The 129 rows written between 2026-08-27T12:05Z and the 0020 deploy stay exactly as they are.
+They cannot be corrected - **the user-agent was never stored**, so there is no way to separate
+crawler from human beyond the `fbclid` proxy. Any series spanning 2026-08-28 shows a step down
+that is a **definition change, not a drop in traffic**, and `npm run funnel` prints that line
+above the table so nobody has to remember it.
+
+`funnel_events.user_agent` now exists for exactly this reason. It is **recorded and never
+filtered on** - filtering on a name list is precisely what failed here. It exists so the next
+version of this question is answerable from the data.
+
+### The original reasoning, still standing
+
+**Organic and direct landings are invisible in `funnel_events` by design.** That is a
 deliberate trade, not an oversight, and it was made on evidence: `/start` recorded every server
 render and accumulated **1030 rows against 2 scans** in 48 hours, because a crawler and a person
 are the same thing to a server. The home page is linked and crawled far more than `/start`, so
 recording every render there would have repeated that defect at a larger scale on the page the
-ads land on. A crawler does not append `utm_content`; an ad click always does.
+ads land on - and it did, until 0020.
 
 **REVISIT THIS WHEN THE CONTENT PLAN STARTS PRODUCING NON-AD TRAFFIC.** The moment organic
 arrivals matter - the first article, the first ranking page, the first referral worth counting -
@@ -727,8 +773,9 @@ this gate stops being the right trade and starts being a blind spot that flatter
 that can only see the traffic it paid for will report that paid is the only thing that works.
 
 What would replace it, when that day comes: count every landing but separate humans from
-crawlers properly, which means either a client-side beacon (a real browser executing JS is a
-much better proxy for a person) or a bot-UA list maintained as a list rather than three names.
+crawlers properly. **Not a bot-UA list** - that idea is what 0019 tried and what 0020 removed.
+A client-side beacon is the remaining candidate, because a real browser executing JS is a much
+better proxy for a person than any string it claims to be.
 Neither is worth building for ad-only traffic, and both are worth building before judging a
 content plan.
 

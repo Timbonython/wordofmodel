@@ -142,6 +142,10 @@ async function onCheckoutCompleted(
     event: 'subscription_active',
     scanId,
     accountId: session.metadata?.account_id ?? null,
+    // A MARKER, NOT A BROWSER STRING. There is no visitor on this request - Stripe's server is
+    // calling us - so recording Stripe's own agent would suggest a browser was involved. The
+    // column exists to answer "what wrote this row", and for this step the answer is this.
+    userAgent: 'server:stripe-webhook',
   });
 
   // The only Purchase event, and it is sent from here. event_id is the session id, so a

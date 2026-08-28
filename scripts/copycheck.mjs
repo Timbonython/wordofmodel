@@ -33,6 +33,18 @@ const RULES = [
     pattern: /noreply@/gi,
     hint: 'It filters harder and reads as a machine.',
   },
+  {
+    // §4 of the pricing plan. An Australian who reads "$69" and is charged A$106 has been
+    // surprised; one who reads "US$69" has not. The two-character prefix is the whole guard,
+    // so it is checked rather than remembered - the site was rendering "USD 149" in seven
+    // places on 28 Aug 2026, which is neither the bare sign this forbids nor the prefix it
+    // requires. Matches a bare $ before a digit, and the "USD 149" spelling.
+    name: 'prices render as US$, never a bare $ or "USD 149"',
+    // Two or more digits: `$1` and `$2` in a String.replace are backreferences, not prices,
+    // and lib/markup.ts is full of them. No price on this site is a single digit.
+    pattern: /(?<!US)\$\s?\d{2,}|\bUSD\s?\d/g,
+    hint: 'Write US$69. A bare dollar sign to an Australian reader is a promise the card statement breaks.',
+  },
 ];
 
 /** Comments are working notes, not copy. Only user-facing text is checked. */

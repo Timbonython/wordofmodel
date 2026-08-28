@@ -5,6 +5,7 @@ import { env } from '@/lib/env';
 import { metaAllowedFor } from '@/lib/meta';
 import { MetaPixel } from '@/components/MetaPixel';
 import './globals.css';
+import { BRAND } from '@/lib/brand';
 
 // The report template's type stack, self hosted by next/font so the site and the
 // report render identically without a call out to Google on every page view.
@@ -70,7 +71,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F7F6F2',
+  // lib/brand.ts, the same value app/manifest.ts reads. See the note there.
+  themeColor: BRAND.paper,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -58,6 +58,8 @@ export async function createCheckout(input: {
    * value arrives from a browser. The price the session charges is decided by THIS read.
    */
   discountCode?: string | null;
+  /** The requesting browser, recorded on the funnel row. Never used to decide anything. */
+  userAgent?: string | null;
 }): Promise<{ url: string; priceKey: PriceKey; discount: ValidDiscount | null }> {
   // THE SEAT IS CLAIMED HERE, AND THIS IS THE READ THAT DECIDES THE PRICE.
   //
@@ -168,6 +170,7 @@ export async function createCheckout(input: {
     event: 'checkout_started',
     scanId: input.scanId ?? null,
     accountId: input.account.id,
+    userAgent: input.userAgent ?? null,
   });
 
   return { url: session.url, priceKey, discount };

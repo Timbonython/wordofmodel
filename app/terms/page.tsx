@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ABN, CONTACT_EMAIL, ENTITY, JURISDICTION, LAST_UPDATED } from '@/lib/legal';
 import { FOUNDING_SEATS_PUBLIC as FOUNDING_SEATS, PRICE_USD } from '@/lib/scope';
+import { SiteNav } from '@/components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Terms - Word of Model',
@@ -23,14 +24,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">Terms</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue="Terms" />
 
       <main className="wrap legal">
         <section>
@@ -96,7 +90,7 @@ export default function TermsPage() {
         <section>
           <h2>Price, billing and the founding rate</h2>
           <p>
-            USD {PRICE_USD.standard_monthly} a month, billed monthly in advance, renewing automatically
+            US${PRICE_USD.standard_monthly} a month, billed monthly in advance, renewing automatically
             until you cancel. The first {FOUNDING_SEATS} subscribers pay a founding rate of USD{' '}
             {PRICE_USD.founding_monthly} a month, held for twelve months from when you subscribe.
           </p>

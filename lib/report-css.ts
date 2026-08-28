@@ -11,22 +11,29 @@
  * presence and endorsement pair, the branded quotes, and the suppression note.
  *
  * Regenerate rather than hand-edit if the template changes.
+ *
+ * THE PALETTE COMES FROM lib/brand.ts AND IS NOT TYPED OUT HERE. Until 28 Aug 2026 it was one
+ * of eight hand-kept copies. `String.raw` became a plain template literal to allow the
+ * interpolation; there is not a single backslash in this stylesheet, so nothing changed but
+ * the ability to substitute.
  */
-export const REPORT_CSS = String.raw`
+import { BRAND, FONT } from './brand';
+
+export const REPORT_CSS = `
 :root{
-    --paper:#F7F6F2;
-    --card:#FFFFFF;
-    --ink:#15171C;
-    --ink-soft:#5C5F68;
-    --ink-faint:#8E9199;
-    --rule:#DEDCD4;
-    --mark:#FFE566;        /* highlighter: a competitor */
-    --mark-you:#9BDBFF;    /* highlighter: the client */
-    --pen:#C8332B;         /* red pen: annotation and absence */
-    --good:#2E7D5B;
-    --sans:"IBM Plex Sans",system-ui,sans-serif;
-    --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
-    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --paper:${BRAND.paper};
+    --card:${BRAND.card};
+    --ink:${BRAND.ink};
+    --ink-soft:${BRAND.soft};
+    --ink-faint:${BRAND.faint};
+    --rule:${BRAND.line};
+    --mark:${BRAND.mark};        /* highlighter: a competitor */
+    --mark-you:${BRAND.markYou}; /* highlighter: the client */
+    --pen:${BRAND.pen};          /* red pen: annotation and absence */
+    --good:${BRAND.green};
+    --sans:${FONT.sans};
+    --cond:${FONT.cond};
+    --mono:${FONT.mono};
     --wrap:940px;
   }
   *{box-sizing:border-box}
@@ -38,6 +45,19 @@ export const REPORT_CSS = String.raw`
   }
   .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
 
+  /* ---------- the specimen banner ----------
+     Sticky, high contrast, and it does not scroll away. A reader arriving mid-document from a
+     shared link has to meet it, and no screenshot of any part of this page may read as a real
+     business's competitive position. */
+  .specimen-banner{
+    position:sticky;top:0;z-index:50;
+    background:var(--ink);color:var(--paper);
+    font-family:var(--mono);font-size:12.5px;line-height:1.5;letter-spacing:.02em;
+    padding:11px 24px;
+  }
+  .specimen-banner strong{color:var(--paper);letter-spacing:.06em;text-transform:uppercase}
+  @media print{ .specimen-banner{position:static} }
+
   /* ---------- masthead ---------- */
   .masthead{border-bottom:2px solid var(--ink);padding:20px 0 14px;margin-bottom:56px}
   .masthead .wrap{display:flex;justify-content:space-between;align-items:baseline;gap:24px;flex-wrap:wrap}
@@ -45,7 +65,11 @@ export const REPORT_CSS = String.raw`
     font-family:var(--cond);font-weight:700;font-size:15px;
     letter-spacing:.16em;text-transform:uppercase;
   }
-  .wordmark span{color:var(--ink-faint)}
+  /* The suffix only, not every span inside the masthead: the lockup adds wrappers. Same
+     correction as app/globals.css - see the note there. */
+  .wordmark .lockup-suffix{color:var(--ink-faint);margin-left:.35em}
+  .lockup{display:inline-flex;align-items:center;gap:9px}
+  .lockup-text{font-family:var(--cond);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
   .issue{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.04em}
 
   /* ---------- section furniture ---------- */
@@ -119,7 +143,7 @@ export const REPORT_CSS = String.raw`
   }
   .board th.num,.board td.num{text-align:right;width:1%;white-space:nowrap}
   .board td{padding:11px 12px 11px 0;border-bottom:1px solid var(--rule);vertical-align:middle}
-  .board tr.self td{background:rgba(155,219,255,.22);font-weight:600}
+  .board tr.self td{background:${BRAND.markYou}38;font-weight:600}
   .board .bar{display:block;height:8px;background:var(--ink);opacity:.16;min-width:2px}
   .board .bar.rec{background:var(--ink);opacity:.85;margin-top:3px}
   .board .zero{color:var(--pen);font-weight:600}
@@ -166,7 +190,7 @@ export const REPORT_CSS = String.raw`
   }
   .sources .dom{font-family:var(--mono);font-size:14px}
   .sources .ct{font-family:var(--mono);font-size:13px;color:var(--ink-soft)}
-  .sources li.self{background:rgba(155,219,255,.22);padding-left:10px;padding-right:10px}
+  .sources li.self{background:${BRAND.markYou}38;padding-left:10px;padding-right:10px}
 
   /* ---------- appendix ---------- */
   details{border-top:1px solid var(--rule)}
@@ -195,7 +219,7 @@ export const REPORT_CSS = String.raw`
     .board th.barcell{display:none}
   }
   @media print{
-    body{background:#fff}
+    body{background:${BRAND.card}}
     .sweep{animation:none;background-size:100% 100%}
     details{display:block}
     details .body{display:block!important}

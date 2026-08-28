@@ -37,6 +37,7 @@ import { SLOT_LABEL } from './scope';
 import { countWord } from './actions';
 import { BELOW_FLOOR_NOTE } from './metric';
 import type { GridState, ReportData } from './report';
+import { markSvg } from './brand';
 
 function esc(s: string): string {
   return s
@@ -55,22 +56,26 @@ const monthName = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export function renderReport(r: ReportData): string {
-  const period = monthName(r.run.periodStart);
+  // A SPECIMEN CARRIES NO DATE AND NO RUN ID. Both would imply an execution that never
+  // happened, and the whole value of the page is that a reader can trust what it says about
+  // itself. See ReportData.specimen.
+  const period = r.specimen ? 'Specimen' : monthName(r.run.periodStart);
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Word of Model - ${esc(r.scope.brandName)} - ${esc(period)}</title>
+<meta name="robots" content="${r.specimen ? 'index, follow' : 'noindex'}">
+<title>${r.specimen ? 'Word of Model - sample report (specimen)' : `Word of Model - ${esc(r.scope.brandName)} - ${esc(period)}`}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>${REPORT_CSS}</style>
 </head>
 <body>
+${r.specimen ? specimenBanner() : ''}
 <header class="masthead"><div class="wrap">
-  <div class="wordmark">Word of Model&trade;<span>.ai</span></div>
+  <div class="wordmark"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></div>
   <div class="issue">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
 </div></header>
 
@@ -89,7 +94,7 @@ ${sectionMethod(r)}
 </main>
 
 <footer><div class="wrap note">
-  Word of Model&trade; &middot; ${esc(period)} &middot; run ${esc(r.run.id.slice(0, 8))} &middot;
+  Word of Model&trade; &middot; ${r.specimen ? 'specimen, not a real run' : `${esc(period)} &middot; run ${esc(r.run.id.slice(0, 8))}`} &middot;
   headline v${r.versions.metric} &middot; thresholds v${r.versions.threshold} &middot; reading v${r.versions.extraction}
 </div></footer>
 </body>
@@ -461,4 +466,24 @@ function sectionMethod(r: ReportData): string {
     <h2>The method, in full</h2>
     <div class="method">${esc(r.method.join('\n'))}</div>
   </section>`;
+}
+
+
+/**
+ * The specimen banner. PERSISTENT AND UNMISSABLE, not a footnote.
+ *
+ * It is sticky rather than a block at the top, because a block scrolls away and a reader who
+ * lands mid-document from a shared link would never see it. Somebody must not be able to
+ * screenshot any part of this page and have it read as a real business's position.
+ *
+ * IT SAYS BOTH HALVES. What is invented (the business, the competitors, the answers) and what
+ * is not (the format, the questions, the method). Only saying the first half would make the
+ * page useless as evidence; only saying the second would make it a lie.
+ */
+function specimenBanner(): string {
+  return `<div class="specimen-banner">
+  <strong>Sample report.</strong> The business and every competitor named here are invented, and
+  so are the answers. The format, the five questions and the method are exactly what a subscriber
+  receives.
+</div>`;
 }

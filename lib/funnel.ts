@@ -21,7 +21,14 @@ import 'server-only';
 import { db } from './db';
 
 export type FunnelEvent =
-  /** An attributed visit to the home page. Only ever recorded for ad traffic - see 0019. */
+  /**
+   * A CLICK on an ad that landed on the home page. One row per click id, enforced by the
+   * unique index in 0020.
+   *
+   * CHANGED MEANING ON 2026-08-28. Before that date this counted attributed server renders,
+   * which included every crawler fetch of an ad URL - see 0020. Do not compare across the
+   * boundary; the step down is a definition change, not a drop in traffic.
+   */
   | 'landed'
   | 'scan_started'
   | 'scan_completed'
@@ -29,13 +36,35 @@ export type FunnelEvent =
   | 'checkout_started'
   | 'subscription_active';
 
-/** First-touch parameters, exactly the ones Meta needs and nothing else. */
+/**
+ * The click-time identifiers, in the order they are looked for.
+ *
+ * ANY VENDOR, NOT JUST META. Hard-coding fbclid would make the next paid channel invisible and
+ * nobody would remember why. These five are the click-time parameters of the platforms this
+ * business could plausibly buy from: Meta, Google, TikTok, LinkedIn, Microsoft.
+ *
+ * WHAT MAKES THIS DIFFERENT FROM A UTM. A utm is baked into the ad's destination URL, so
+ * anything that fetches that URL carries it - crawlers included. A click id is minted at click
+ * time by the platform, so it is the only parameter on the URL that is evidence a person
+ * clicked. See 0020 for the 41 rows that proved it.
+ */
+export const CLICK_ID_PARAMS = ['fbclid', 'gclid', 'ttclid', 'li_fat_id', 'msclkid'] as const;
+export type ClickIdParam = (typeof CLICK_ID_PARAMS)[number];
+
+/** The date landed changed meaning. Printed wherever the series is read. */
+export const LANDED_CUTOVER = '2026-08-28';
+
+/** First-touch parameters: the ad tagging, plus the one parameter that evidences a click. */
 export interface TouchParams {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
   utm_content: string | null;
   fbclid: string | null;
+  /** The click-time id, whichever vendor minted it. Null means nothing clicked. */
+  click_id: string | null;
+  /** Which of CLICK_ID_PARAMS it came from, so a channel is legible without parsing utm_source. */
+  click_id_param: ClickIdParam | null;
 }
 
 /** Trimmed, length-capped, and null when empty. These arrive from a URL a stranger controls. */
@@ -48,21 +77,46 @@ function clean(value: unknown): string | null {
 export function touchFrom(source: Record<string, unknown> | URLSearchParams): TouchParams {
   const get = (k: string) =>
     source instanceof URLSearchParams ? source.get(k) : (source[k] as unknown);
+  // First one present wins. A URL carrying two click ids is a tagging mistake, not two clicks.
+  let click_id: string | null = null;
+  let click_id_param: ClickIdParam | null = null;
+  for (const param of CLICK_ID_PARAMS) {
+    const value = clean(get(param));
+    if (value) {
+      click_id = value;
+      click_id_param = param;
+      break;
+    }
+  }
+
   return {
     utm_source: clean(get('utm_source')),
     utm_medium: clean(get('utm_medium')),
     utm_campaign: clean(get('utm_campaign')),
     utm_content: clean(get('utm_content')),
     fbclid: clean(get('fbclid')),
+    click_id,
+    click_id_param,
   };
+}
+
+/**
+ * Did a person click an ad to get here?
+ *
+ * THE ONLY QUESTION THE LANDING GATE MAY ASK. A utm proves an ad URL was fetched; a click id
+ * proves it was clicked. 0019 gated on the former and counted crawlers as people.
+ */
+export function isClick(touch: Partial<TouchParams> | null | undefined): boolean {
+  return Boolean(touch?.click_id);
 }
 
 /**
  * Record one step.
  *
- * Idempotent per scan by the unique index in 0014: a subscriber who reloads /start four times
- * started the wizard once, and a funnel that counts reloads reports a conversion rate that
- * flatters the page it is measuring. A conflict is the ordinary case, not an error.
+ * Idempotent per scan by the unique index in 0014, and per click id by the one in 0020: a
+ * subscriber who reloads /start four times started the wizard once, and somebody who reloads
+ * the home page four times clicked one ad. A funnel that counts reloads reports a conversion
+ * rate that flatters the page it is measuring. A conflict is the ordinary case, not an error.
  */
 export async function recordFunnel(input: {
   event: FunnelEvent;
@@ -72,10 +126,20 @@ export async function recordFunnel(input: {
    * First touch for this step. Pass it wherever a URL is in hand; where it is not, a scanId
    * lets the row inherit what the scan was tagged with.
    *
-   * ALL FIVE, not just the source. utm_content is the one that separates hook A from hook C
-   * and static from video, so a four ad test is unreadable without it.
+   * ALL OF THEM, not just the source. utm_content is the one that separates hook A from hook C
+   * and static from video, so a four ad test is unreadable without it, and click_id is what
+   * separates a person from a crawler.
    */
   touch?: Partial<TouchParams> | null;
+  /**
+   * The requesting user-agent, where there is a request.
+   *
+   * STORED, NEVER FILTERED ON. 0019 tried to keep crawlers out with a list of three Meta
+   * user-agent strings. It shipped, it worked, and every other crawler on the internet walked
+   * past it. This column exists so that the next time these numbers look wrong the answer is
+   * in the data - the 129 rows written before 0020 cannot be restated because nobody stored it.
+   */
+  userAgent?: string | null;
 }): Promise<void> {
   try {
     const supplied = input.touch ?? null;
@@ -93,9 +157,13 @@ export async function recordFunnel(input: {
         utm_campaign: touch?.utm_campaign ?? null,
         utm_content: touch?.utm_content ?? null,
         fbclid: touch?.fbclid ?? null,
+        click_id: touch?.click_id ?? null,
+        click_id_param: touch?.click_id_param ?? null,
+        user_agent: input.userAgent?.slice(0, 400) ?? null,
       });
-    // 23505 is the unique index doing its job on a reload of a scan-tagged step. Anything
-    // else is worth a line. Note it cannot fire for a null scan_id: see 0014 and 0017.
+    // 23505 is a unique index doing its job: a reload of a scan-tagged step (0014), or a second
+    // render carrying a click id already recorded (0020). Both are the ordinary case. Anything
+    // else is worth a line.
     if (error && error.code !== '23505') throw new Error(error.message);
   } catch (err) {
     console.error(`funnel: could not record ${input.event}`, err instanceof Error ? err.message : err);
@@ -110,7 +178,11 @@ async function touchForScan(scanId: string): Promise<TouchParams | null> {
     .eq('id', scanId)
     .maybeSingle();
   if (error || !data) return null;
-  return data as TouchParams;
+  const row = data as Omit<TouchParams, 'click_id' | 'click_id_param'>;
+  // NULL ON PURPOSE, not an oversight. The click id belongs to the landing, and 0020's unique
+  // index is scoped to landed rows only - inheriting it onto scan_started would make a scan
+  // collide with the click that produced it. Later steps are deduplicated by scan_id instead.
+  return { ...row, click_id: null, click_id_param: null };
 }
 
 /**
@@ -125,7 +197,7 @@ async function touchForScan(scanId: string): Promise<TouchParams | null> {
 export interface FunnelRow {
   day: string;
   source: string;
-  /** Attributed home page landings. Ad traffic only, by design - see 0019. */
+  /** Ad CLICKS that landed, one per click id. Meaning changed 2026-08-28 - see 0020. */
   landed: number;
   scan_started: number;
   scan_completed: number;

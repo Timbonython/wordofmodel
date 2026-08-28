@@ -49,7 +49,15 @@ export const DISCOUNT_MONTHS = 3;
 export const COHORT_PRICE_USD = PRICE_USD.standard_monthly - DISCOUNT_OFF_CENTS / 100;
 
 /** The coupon every cohort code must point at. Created by scripts/discount-setup.mjs. */
-export const COUPON_NAME = 'Local cohort - USD 69 for three months';
+/**
+ * Shown to the customer on Checkout and on every invoice, so it follows the US$ rule.
+ *
+ * SAFE TO CHANGE, unlike the amount. COUPON_ID is stable (`local_cohort_69_3mo`) and a coupon's
+ * `name` is editable in Stripe where `amount_off` is not, so this does not mint a second
+ * coupon. But `discount-setup.mjs` only sets the name at CREATION - an existing coupon keeps
+ * the old name until somebody updates it, in test and in live.
+ */
+export const COUPON_NAME = 'Local cohort - US$69 for three months';
 
 /**
  * 0016 says USD 49 in its comments and names LOCAL49 as the example code. It is left alone
@@ -178,7 +186,7 @@ export async function validateDiscount(raw: string): Promise<ValidDiscount> {
 export function discountLine(d: ValidDiscount): string {
   const net = (d.netCents / 100).toFixed(0);
   return (
-    `Code ${d.code} applied: USD ${net} a month for ${d.months} months, then ` +
-    `USD ${PRICE_USD.standard_monthly}. Cancel any time.`
+    `Code ${d.code} applied: US$${net} a month for ${d.months} months, then ` +
+    `US$${PRICE_USD.standard_monthly}. Cancel any time.`
   );
 }

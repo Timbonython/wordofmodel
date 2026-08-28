@@ -6,6 +6,7 @@ import { buildGated, buildVerdict } from '@/lib/verdict';
 import { ScanResult } from '@/components/scan/ScanResult';
 import { env } from '@/lib/env';
 import type { Capture } from '@/lib/types';
+import { SiteNav } from '@/components/SiteNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,14 +48,7 @@ export default async function ScanPermalink({
 
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">{brandName}</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue={brandName} />
 
       <main className="wrap">
         <ScanResult

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SiteNav } from '@/components/SiteNav';
 
 /**
  * A scan that is not there, reported as not there.
@@ -11,14 +12,7 @@ import Link from 'next/link';
 export default function ScanNotFound() {
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">Scan</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue="Scan" />
 
       <main className="wrap legal">
         <section>
@@ -26,7 +20,7 @@ export default function ScanNotFound() {
           <h1>That scan has gone.</h1>
           <p className="lede">
             The link is wrong, or the scan was run long enough ago that we no longer hold it.
-            Running another takes about two minutes.
+            Running another takes about three minutes.
           </p>
           <p>
             <Link className="button" href="/#scan">

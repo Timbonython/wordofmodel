@@ -75,13 +75,57 @@ export const PRICE_USD = {
 } as const;
 
 /**
+ * THE PRODUCT CATALOGUE. Everything that renders a tier reads this; nothing retypes one.
+ *
+ * WHY IT IS A LIST AND NOT PARAGRAPHS OF COPY. §5 of the brand brief and §1 of the pricing
+ * plan describe a two-tier ladder - Monitoring at US$69 and Monitoring + Review at US$249 -
+ * and today only one of those exists in Stripe. A hardcoded strip would have to be rewritten
+ * the day the second price is created, and the person creating the price is not the person
+ * who remembers the strip exists. Adding a tier here is the whole change: the home page, and
+ * every later surface that reads this, pick it up with no edit.
+ *
+ * A TIER IS ONLY LISTED WHEN ITS PRICE EXISTS. `key` must be a real member of PRICE_USD, so
+ * the type system refuses a tier the checkout could not honour. That is the same defect as an
+ * ad promising a minute against a product that takes three, and it is the reason the US$69
+ * line is absent rather than commented out with a hopeful date on it.
+ */
+export interface Tier {
+  /** The price this tier charges. Must exist in PRICE_USD, which is what Stripe is checked against. */
+  key: keyof typeof PRICE_USD;
+  name: string;
+  /** One line. §4 of the brand brief: the tiers as one line each, not a feature table. */
+  line: string;
+}
+
+export const TIERS: readonly Tier[] = [
+  {
+    key: 'standard_monthly',
+    name: 'Monitoring + Review',
+    line:
+      'Five questions, five AI surfaces, twenty five answers captured word for word every month, ' +
+      'plus a quarterly deep read that adds Claude and Copilot by hand.',
+  },
+  // GATE 4 ADDS 'Monitoring' HERE at main_monthly, once that price exists in PRICE_USD and in
+  // Stripe. Order is display order, cheapest first.
+];
+
+/**
  * How many founding places there are, for copy. lib/stripe.ts owns the number the claim
  * function is given; this is the same value where the browser can read it, and stripe.ts
  * throws at load if they ever drift.
  */
 export const FOUNDING_SEATS_PUBLIC = 20;
 
-/** "USD 149" - the form every price on the site takes. */
+/**
+ * "US$149" - the form every price on the site takes.
+ *
+ * THE TWO-CHARACTER PREFIX IS THE WHOLE GUARD, and it is not a style preference. An Australian
+ * who reads "$149" and is charged A$228 has been surprised; one who reads "US$149" has not, and
+ * Australian small businesses buy USD software constantly. §4 of the pricing plan.
+ *
+ * This used to render "USD 149", which is neither the bare dollar sign the rule forbids nor the
+ * prefix it requires. Corrected 28 Aug 2026.
+ */
 export function priceLabel(key: keyof typeof PRICE_USD): string {
-  return `USD ${PRICE_USD[key]}`;
+  return `US$${PRICE_USD[key]}`;
 }

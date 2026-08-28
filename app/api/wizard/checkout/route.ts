@@ -85,6 +85,7 @@ export async function POST(request: Request) {
 
   try {
     const { url, priceKey, discount } = await createCheckout({
+      userAgent: request.headers.get('user-agent'),
       account: approved.account,
       scope: approved.scope,
       scanId,

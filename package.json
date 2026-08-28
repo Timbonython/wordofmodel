@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "copycheck": "node scripts/copycheck.mjs",
-    "check": "npm run typecheck && npm run copycheck",
+    "brandcheck": "node --conditions=react-server --import ./scripts/ts-register.mjs scripts/brandcheck.mjs",
+    "check": "npm run typecheck && npm run copycheck && npm run brandcheck",
     "smoke": "node --env-file=.env.local scripts/smoke.mjs",
     "stripe:setup": "node --env-file=.env.local scripts/stripe-setup.mjs",
     "bakeoff": "node --env-file=.env.local scripts/serp-bakeoff.mjs",
@@ -21,6 +22,7 @@
     "funnel": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/funnel.mjs",
     "requeue": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/requeue-capture.mjs",
     "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs",
+    "favicon": "node scripts/make-favicon.mjs",
     "pixel:check": "node scripts/pixel-check.mjs",
     "pixel": "node scripts/pixel-probe.mjs"
   },

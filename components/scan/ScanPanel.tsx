@@ -286,10 +286,16 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
         </form>
       ) : null}
 
+      {/* The reassurance strip, §4 of the brand brief: it sits UNDER the field, not above it,
+          and it is part of the fold budget rather than decoration below it.
+
+          "ABOUT THREE MINUTES", AND THE DIRECTION MATTERS. The verified run took 2m 46s. The
+          site said two. A promise that runs slightly ahead of the product is the same defect
+          that cost two days of ad spend last week, in a smaller dose - so this under-promises
+          and lets people be pleasantly surprised. The ads still say "about a minute" and have
+          to be changed in Meta to match; that is queued and is not code. */}
       {phase === 'idle' ? (
-        <p className="note" style={{ marginTop: 14 }}>
-          No account. No card. One question, two AI engines, your actual result.
-        </p>
+        <p className="reassure">Free &middot; about three minutes &middot; no account, no card</p>
       ) : null}
 
       {/* ---------- the show ---------- */}

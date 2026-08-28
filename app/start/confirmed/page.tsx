@@ -4,6 +4,7 @@ import { stripe, idOf } from '@/lib/stripe';
 import { getSubscriptionByStripeId } from '@/lib/billing';
 import { getScope } from '@/lib/onboarding';
 import { monthlySurfaceList, ordinal, quarterlySurfaceList } from '@/lib/billing-mail';
+import { SiteNav } from '@/components/SiteNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,14 +58,7 @@ export default async function ConfirmedPage({
 
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">Confirmed</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue="Confirmed" />
 
       <main className="wrap">
         <section className="wizard-step">
@@ -84,7 +78,7 @@ export default async function ConfirmedPage({
           </p>
           {founding && (
             <p className="founding">
-              You took a founding place. USD 149 a month, locked for twelve months.
+              You took a founding place. US$149 a month, locked for twelve months.
             </p>
           )}
           <p className="punch">Nothing needed from you in the meantime.</p>

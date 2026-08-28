@@ -212,7 +212,7 @@ export default function Wizard({
   // Formatted from the same constants Stripe charges, never typed. The two literals that
   // used to be here were the fourth and fifth copies of a number that lives in lib/stripe.ts.
   const listPrice = founding ? priceLabel('founding_monthly') : priceLabel('standard_monthly');
-  const price = discount ? `USD ${discount.priceUsd}` : listPrice;
+  const price = discount ? `US$${discount.priceUsd}` : listPrice;
 
   const applyDiscount = () =>
     run('Checking your code', async () => {

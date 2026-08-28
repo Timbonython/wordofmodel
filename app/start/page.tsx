@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { isSupportedMarket } from '@/lib/geo';
 import { iso2 } from '@/lib/domain';
@@ -6,6 +7,7 @@ import { getScan } from '@/lib/db';
 import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { foundingDisplayOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
+import { SiteNav } from '@/components/SiteNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +50,9 @@ export default async function StartPage({
     // A cold open with no scan behind it has nothing to inherit, so the URL is the only
     // place this can come from.
     touch: touchFrom(params as Record<string, unknown>),
+    // Recorded, never filtered on. This page is the one that produced 1030 rows against 2
+    // scans, and the reason that could not be diagnosed from the data is this column.
+    userAgent: (await headers()).get('user-agent'),
   });
 
   let prefill: WizardProfileInput | null = null;
@@ -80,14 +85,7 @@ export default async function StartPage({
 
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">Setup</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue="Setup" />
 
       <main className="wrap">
         <Wizard

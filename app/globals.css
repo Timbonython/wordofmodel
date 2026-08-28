@@ -1,19 +1,31 @@
 /* Word of Model — site design system.
-   Palette, type stack and markup device taken from wordofmodel-report-template.html
-   unchanged, so a scan result on the site and a page of the monthly report read as
-   the same product. */
+   Palette, type stack and markup device taken from wordofmodel-report-template.html,
+   so a scan result on the site and a page of the monthly report read as the same product.
+
+   THESE VALUES ARE MIRRORED IN lib/brand.ts, WHICH IS THE SOURCE OF TRUTH.
+   A stylesheet cannot import TypeScript, so this block is a second copy by necessity. It is
+   checked rather than trusted: `npm run brandcheck` parses this :root block and fails if one
+   value disagrees with lib/brand.ts. Change a colour there, run the check, paste it here.
+
+   Before 28 Aug 2026 this palette was hand-copied into eight files. */
 
 :root {
-  --paper: #f7f6f2;
+  /* ---- §2 of the brand brief. Eight tokens, and the names are the brief's. ---- */
+  --ink: #15171c; /* page ground on dark, primary type on light */
+  --paper: #f7f6f2; /* page ground on light, primary type on dark */
+  --green: #2e7d5b; /* the single accent. one cell, one rule, one link colour */
+  --soft: #5c5f68; /* secondary type on paper */
+  --mute: #a9acb4; /* secondary type on ink */
+  --faint: #8e9199; /* tertiary: timestamps, captions */
+  --line: #dedcd4; /* hairlines, and inactive cells on paper */
+  --cell-dark: #3a3d45; /* inactive cells on ink */
+
+  /* ---- beyond the eight: the report's markup device, not brand accents ---- */
   --card: #ffffff;
-  --ink: #15171c;
-  --ink-soft: #5c5f68;
-  --ink-faint: #8e9199;
-  --rule: #dedcd4;
   --mark: #ffe566; /* highlighter: a competitor */
   --mark-you: #9bdbff; /* highlighter: the client */
   --pen: #c8332b; /* red pen: annotation and absence */
-  --good: #2e7d5b;
+
   --wrap: 940px;
 }
 
@@ -70,14 +82,42 @@ body {
   text-transform: uppercase;
 }
 
-.wordmark span {
-  color: var(--ink-faint);
+/* The lockup: mark + wordmark, per §1 of the brand brief. The mark is optically centred on the
+   cap height rather than the baseline, which is what `align-items: center` on a flex row gives
+   once the text box is the same height as the mark. */
+.lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.lockup-text {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.lockup-suffix {
+  color: var(--faint);
+  margin-left: 0.35em;
+}
+
+
+/* The suffix only - ".ai", "/ free scan" - not every span inside the masthead.
+   This was `.wordmark span`, which was correct while the markup was one text node and one
+   span. The lockup put a <span class="lockup"> wrapper inside .wordmark, so the descendant
+   selector caught the whole wordmark and turned it grey. Caught by looking at a screenshot,
+   which is the only way that class of mistake ever surfaces. */
+.wordmark .lockup-suffix,
+.wordmark > span:not(.lockup) {
+  color: var(--faint);
 }
 
 .issue {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: var(--soft);
   letter-spacing: 0.04em;
 }
 
@@ -92,7 +132,7 @@ section {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -103,7 +143,7 @@ section {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--rule);
+  background: var(--line);
 }
 
 h1 {
@@ -139,13 +179,13 @@ p {
 .lede {
   font-size: 19px;
   line-height: 1.55;
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .note {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12px;
-  color: var(--ink-faint);
+  color: var(--faint);
   line-height: 1.5;
 }
 
@@ -208,7 +248,7 @@ mark.you {
 
 .excerpt {
   background: var(--card);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   padding: 32px 34px;
   position: relative;
 }
@@ -218,7 +258,7 @@ mark.you {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
   margin-bottom: 18px;
 }
 
@@ -245,8 +285,8 @@ mark.you {
 }
 
 .penmark.good {
-  color: var(--good);
-  border-top-color: var(--good);
+  color: var(--green);
+  border-top-color: var(--green);
 }
 
 /* ---------- numbers ---------- */
@@ -254,8 +294,8 @@ mark.you {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
+  background: var(--line);
+  border: 1px solid var(--line);
 }
 
 .stat {
@@ -268,7 +308,7 @@ mark.you {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .stat .v {
@@ -283,7 +323,7 @@ mark.you {
 .stat .d {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .stat .d.down {
@@ -291,19 +331,19 @@ mark.you {
 }
 
 .stat .d.up {
-  color: var(--good);
+  color: var(--green);
 }
 
 .stat .src {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
-  color: var(--ink-faint);
+  color: var(--faint);
   margin-top: 10px;
   display: block;
 }
 
 .stat .src a {
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 /* ---------- buttons and fields ---------- */
@@ -347,7 +387,7 @@ mark.you {
 }
 
 .field::placeholder {
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 /* The market selector on the wizard's first screen. It uses .field so it sits in the
@@ -366,7 +406,7 @@ select.field {
 
 .field:disabled {
   background: var(--paper);
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .inline-form {
@@ -400,7 +440,7 @@ select.field {
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 .steps li {
@@ -408,7 +448,7 @@ select.field {
   display: flex;
   gap: 22px;
   padding: 20px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .steps li::before {
@@ -417,7 +457,7 @@ select.field {
   font-weight: 700;
   font-size: 30px;
   line-height: 1;
-  color: var(--ink-faint);
+  color: var(--faint);
   flex: none;
   width: 30px;
 }
@@ -431,12 +471,16 @@ select.field {
 }
 
 /* ---------- what you get ---------- */
+/* THREE COLUMNS, because there are now three items. The grid was `repeat(2, 1fr)` when the
+   section carried seven; with three, the fourth cell of the second row had no .get in it and
+   the container's own --line background showed through as a grey rectangle. A gap-as-hairline
+   grid only works when the items fill the rows. Caught in a full-page screenshot. */
 .gets {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
+  background: var(--line);
+  border: 1px solid var(--line);
 }
 
 .get {
@@ -455,13 +499,13 @@ select.field {
 .get p {
   margin: 0;
   font-size: 15px;
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 /* ---------- pricing ---------- */
 .price {
   background: var(--card);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-left: 3px solid var(--ink);
   padding: 34px 36px;
 }
@@ -483,11 +527,11 @@ select.field {
 
 /* ---------- faq ---------- */
 details.faq {
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 details.faq:last-of-type {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 details.faq summary {
@@ -508,7 +552,7 @@ details.faq summary::-webkit-details-marker {
 details.faq summary::after {
   content: '+';
   font-family: var(--font-mono), ui-monospace, monospace;
-  color: var(--ink-faint);
+  color: var(--faint);
   flex: none;
 }
 
@@ -537,7 +581,7 @@ footer .wrap {
   flex-wrap: wrap;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11.5px;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 /* ---------- responsive ---------- */
@@ -643,7 +687,7 @@ footer .wrap {
   list-style: none;
   padding: 0;
   margin: 28px 0 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 .progress-row {
@@ -651,17 +695,17 @@ footer .wrap {
   align-items: baseline;
   gap: 14px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 13.5px;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .progress-cell {
   flex: none;
   width: 14px;
   height: 14px;
-  border: 1.5px solid var(--rule);
+  border: 1.5px solid var(--line);
   align-self: center;
 }
 
@@ -676,7 +720,7 @@ footer .wrap {
 }
 
 .progress-row.done {
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .progress-row.done .progress-cell {
@@ -699,7 +743,7 @@ footer .wrap {
 
 .progress-detail {
   flex: none;
-  color: var(--ink-faint);
+  color: var(--faint);
   font-size: 12px;
 }
 
@@ -740,7 +784,7 @@ footer .wrap {
 .confirm {
   margin-top: 34px;
   background: var(--card);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-left: 3px solid var(--ink);
   padding: 28px 30px;
 }
@@ -769,7 +813,7 @@ footer .wrap {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .confirm-field .field {
@@ -798,7 +842,7 @@ footer .wrap {
 .verdict-line {
   font-size: 19px;
   line-height: 1.5;
-  color: var(--ink-soft);
+  color: var(--soft);
   margin-bottom: 10px;
 }
 
@@ -820,7 +864,7 @@ footer .wrap {
 
 .gate-list li {
   padding: 9px 0 9px 26px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   position: relative;
   font-size: 15.5px;
 }
@@ -832,7 +876,7 @@ footer .wrap {
   top: 15px;
   width: 12px;
   height: 12px;
-  border: 1.5px solid var(--rule);
+  border: 1.5px solid var(--line);
 }
 
 .revealed {
@@ -861,7 +905,7 @@ footer .wrap {
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 .sources li {
@@ -870,7 +914,7 @@ footer .wrap {
   gap: 16px;
   align-items: baseline;
   padding: 11px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   font-size: 15px;
 }
 
@@ -882,7 +926,7 @@ footer .wrap {
 .sources .ct {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .sources li.self {
@@ -922,7 +966,7 @@ footer .wrap {
 }
 
 .scan-quote p {
-  font-family: var(--mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 15px;
   line-height: 1.75;
   margin: 0;
@@ -932,12 +976,12 @@ footer .wrap {
 .scan-quote cite {
   display: block;
   margin-top: 10px;
-  font-family: var(--mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-style: normal;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 /* Who you are, and the way out, above everything else on the account page. */
@@ -947,12 +991,12 @@ footer .wrap {
   gap: 12px;
   align-items: baseline;
   justify-content: space-between;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   padding-bottom: 12px;
   margin-bottom: 22px;
-  font-family: var(--mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 /* A button that reads as a link, because it is a form post rather than an anchor: a GET
@@ -961,7 +1005,7 @@ footer .wrap {
   background: none;
   border: 0;
   padding: 0;
-  font-family: var(--mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12.5px;
   color: var(--ink);
   text-decoration: underline;
@@ -969,7 +1013,7 @@ footer .wrap {
 }
 
 .waitlist-done {
-  border-left: 3px solid var(--good);
+  border-left: 3px solid var(--green);
   padding-left: 16px;
   font-size: 16px;
   max-width: 60ch;
@@ -1005,13 +1049,13 @@ footer .wrap {
   list-style: none;
   padding: 0 0 24px;
   margin: 0 0 40px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   font-family: var(--font-cond), var(--font-sans), sans-serif;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .wizard-nav li {
@@ -1035,13 +1079,13 @@ footer .wrap {
 }
 
 .wizard-nav li.done {
-  color: var(--ink-soft);
+  color: var(--soft);
 }
 
 .wizard-nav li.done .n {
-  background: var(--ink-soft);
+  background: var(--soft);
   color: var(--paper);
-  border-color: var(--ink-soft);
+  border-color: var(--soft);
 }
 
 .wizard-step {
@@ -1075,7 +1119,7 @@ footer .wrap {
 .wizard-field .h {
   display: block;
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--soft);
   margin-bottom: 8px;
 }
 
@@ -1092,7 +1136,7 @@ footer .wrap {
   padding: 0;
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 14px;
-  color: var(--ink-soft);
+  color: var(--soft);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -1127,11 +1171,11 @@ footer .wrap {
 
 .question-list li {
   padding: 22px 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 .question-list li:last-child {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .question-list .slot {
@@ -1140,7 +1184,7 @@ footer .wrap {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
   margin-bottom: 10px;
 }
 
@@ -1153,7 +1197,7 @@ footer .wrap {
 
 .account-facts {
   margin: 28px 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 
 .account-facts > div {
@@ -1161,7 +1205,7 @@ footer .wrap {
   justify-content: space-between;
   gap: 24px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .account-facts dt {
@@ -1170,7 +1214,7 @@ footer .wrap {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .account-facts dd {
@@ -1198,7 +1242,7 @@ footer .wrap {
   flex: 0 0 auto;
   background: transparent;
   color: var(--ink);
-  border: 1px solid var(--rule, #d9d4c7);
+  border: 1px solid var(--line);
   padding: 0 16px;
 }
 
@@ -1210,13 +1254,16 @@ footer .wrap {
   padding: 10px 12px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--ink-soft);
-  background: var(--paper-2, #f6f4ef);
-  border-left: 2px solid var(--rule, #d9d4c7);
+  color: var(--soft);
+  /* NO BACKGROUND. This was `var(--paper-inset)`, #F6F4EF, which is three units from the page
+     ground - a panel nobody could see. The left hairline was doing all the work and still is.
+     A token that renders indistinguishably from the surface under it is a leftover, not a
+     decision. Removed 28 Aug 2026. */
+  border-left: 2px solid var(--line);
 }
 
 .wizard-field .h.note-warn {
-  color: var(--red, #c0392b);
+  color: var(--pen);
   margin-top: 6px;
 }
 
@@ -1233,7 +1280,7 @@ footer .wrap {
 .competitor-list .competitor-concern {
   display: block;
   font-size: 13px;
-  color: var(--red, #c0392b);
+  color: var(--pen);
   margin-top: 4px;
   max-width: 52ch;
 }
@@ -1246,7 +1293,7 @@ footer .wrap {
 .legal h3 { margin-top: 22px; }
 .legal p { max-width: 68ch; }
 .legal ul.plain { list-style: none; padding: 0; margin: 0 0 16px; max-width: 68ch; }
-.legal ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--rule); line-height: 1.65; }
+.legal ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--line); line-height: 1.65; }
 .legal ul.plain li:last-child { border-bottom: 0; }
 /* Links in legal prose take the body colour rather than being styled. The exclusion matters:
    `.legal a` is more specific than `.button`, so without it this rule won the colour on every
@@ -1263,14 +1310,14 @@ footer .wrap {
 .legal table.drift td {
   text-align: left;
   padding: 10px 14px 10px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 .legal table.drift thead th {
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--soft);
   font-weight: 500;
 }
 .legal table.drift tbody td:first-child { font-weight: 600; }
@@ -1280,8 +1327,333 @@ footer .wrap {
 .legal ul.cited { list-style: none; padding: 0; margin: 0 0 16px; max-width: 68ch; }
 .legal ul.cited li {
   padding: 12px 0 12px 16px;
-  border-left: 2px solid var(--rule);
+  border-left: 2px solid var(--line);
   margin-bottom: 10px;
   line-height: 1.65;
 }
 .footer-links a { color: inherit; }
+
+
+/* ============================================================================
+   THE SITE BAR — §3 of the brand brief. Reference is Xero: a normal SaaS bar,
+   because a product asking for a subscription should look like one.
+
+   COMPACT ON PURPOSE. The masthead this replaced was 128px tall on a 390px
+   phone, measured, and every one of those pixels came out of the space the
+   scan input needed to be above the fold. §4's acceptance test is an
+   observation, so the bar's height is a budget item rather than a taste one.
+   ============================================================================ */
+.sitenav {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  margin-bottom: 26px;
+}
+
+.sitenav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.sitenav-brand {
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.sitenav-links {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
+
+.sitenav-links a {
+  color: var(--soft);
+  text-decoration: none;
+}
+
+.sitenav-links a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The one green thing in the bar. Green is a scalpel: one accent per view. */
+.button-green {
+  background: var(--green);
+  color: var(--paper);
+  border: 0;
+  padding: 9px 16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* SPECIFICITY, not a repeat. `.sitenav-links a` is (0,1,1) and `.button-green` is (0,1,0), so
+   the link colour was winning and the button rendered soft grey on green - unreadable, and
+   caught in the 390px screenshot rather than by any check. The base state has to be stated at
+   the same weight as the rule overriding it. */
+.sitenav-links a.button-green {
+  color: var(--paper);
+}
+
+.sitenav-links a.button-green:hover {
+  color: var(--paper);
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+/* On a phone the links wrap under the brand and the caption is dropped entirely:
+   at 390px the bar is competing with the scan field for the fold, and the field wins. */
+@media (max-width: 640px) {
+  .sitenav {
+    padding: 10px 0;
+    margin-bottom: 16px;
+  }
+  .sitenav-inner {
+    gap: 10px;
+  }
+  .sitenav-links {
+    gap: 16px;
+    font-size: 12px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .sitenav .issue {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- the footer */
+.sitefooter {
+  border-top: 1px solid var(--line);
+  margin-top: 72px;
+  padding: 26px 0 48px;
+}
+
+.sitefooter-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
+
+.sitefooter-links a {
+  color: var(--soft);
+  text-decoration: none;
+}
+
+.sitefooter-links a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sitefooter-legal {
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--faint);
+  max-width: 60ch;
+}
+
+/* ---- the reassurance strip under the scan field. §4: "Free · about three
+   minutes · no account, no card". Mono, because it is a label not prose. ---- */
+.reassure {
+  margin: 14px 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--soft);
+}
+
+/* ---- the redacted answer, §4 block 3. The device from the rival ad creative, which is the
+   most persuasive thing in the campaign and existed only inside an ad until now.
+
+   THE BAR IS INK, NOT AN IMAGE. A redaction that is a picture of a redaction reads as a
+   mockup; a solid block of the page's own ink reads as something withheld. ---- */
+.redacted-q {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--soft);
+  margin: 0 0 20px;
+}
+
+.redacted {
+  list-style: none;
+  counter-reset: rank;
+  margin: 0 0 20px;
+  padding: 0;
+  max-width: 30rem;
+}
+
+.redacted li {
+  counter-increment: rank;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.redacted li::before {
+  content: counter(rank);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--faint);
+  min-width: 1.2em;
+}
+
+.redacted-bar {
+  flex: 1 1 auto;
+  height: 17px;
+  background: var(--ink);
+}
+
+.redacted li:nth-child(2) .redacted-bar { max-width: 68%; }
+.redacted li:nth-child(3) .redacted-bar { max-width: 54%; }
+
+.redacted-tag {
+  flex: 0 0 auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+.redacted-verdict {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 0;
+}
+
+/* ---- "what we don't claim": three lines, no bullets, hairline separated ---- */
+.nots {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  max-width: 62ch;
+}
+
+.nots li {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--soft);
+}
+
+.nots li:first-child { border-top: 1px solid var(--line); }
+
+/* ============================================================================
+   THE FOLD BUDGET — §4 of the brand brief.
+
+   The acceptance test is an observation, not an opinion: on a 390px phone the
+   scan input, its button and the reassurance strip under it must all be inside
+   the first viewport. Measured, not eyeballed.
+
+   844px is the iPhone 14/15 Pro LOGICAL viewport and no real phone shows all
+   of it - Safari's chrome takes it to about 734, and a smaller handset with
+   chrome lands near 664. Passing at 844 and failing at 664 is passing the test
+   on a phone nobody is holding, so the target here is 664.
+
+   §4 settles the trade in advance: "if the headline has to shrink to make room,
+   it shrinks". These are the pixels, measured before and after:
+
+     panel bottom   931 -> 617
+
+   Measured at 390px after the change, strip bottom 617 throughout:
+     390 x 844  PASS, 227px headroom      390 x 664  PASS, 47px headroom
+     390 x 734  PASS, 117px headroom      390 x 628  PASS, 11px headroom
+   ============================================================================ */
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 22px;
+  }
+
+  /* The clamp's 7vw floor is 38px at this width and the headline is three lines,
+     so this is the single biggest item in the budget after the lede. */
+  h1 {
+    font-size: 33px;
+    line-height: 1.02;
+    margin: 0 0 14px;
+  }
+
+  .hero .eyebrow {
+    font-size: 10.5px;
+    margin-bottom: 12px;
+  }
+
+  .hero .lede {
+    font-size: 16.5px;
+    line-height: 1.5;
+    margin: 0 0 16px;
+  }
+
+  /* The field stack is the thing being protected, so it does not shrink. */
+  #scan .reassure {
+    margin-top: 12px;
+  }
+}
+
+/* One column on a phone, so the hairline grid still has full rows. */
+@media (max-width: 720px) {
+  .gets {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- the pricing strip. §4: the tiers as one line each, not a feature table. The list is
+   generated from TIERS in lib/scope.ts, so a second tier lays itself out. ---- */
+.tiers {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.tiers li {
+  background: var(--card);
+  padding: 20px 22px;
+  display: grid;
+  gap: 6px;
+}
+
+.tier-name {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+}
+
+.tier-price {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--green);
+}
+
+.tier-line {
+  color: var(--soft);
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+/* Two tiers sit side by side once there are two. One fills the width. */
+@media (min-width: 721px) {
+  .tiers:has(li + li) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

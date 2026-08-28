@@ -134,7 +134,7 @@ export async function POST(request: Request) {
       userAgent,
       touch,
     });
-    await recordFunnel({ event: 'scan_started', scanId, touch });
+    await recordFunnel({ event: 'scan_started', scanId, touch, userAgent });
 
     try {
       // ---- step 4: both engines at once ----
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
       // ONLY HERE. Not on page load, not on an errored scan, not on an empty one: the two
       // failure paths above call failScan and record nothing. A scan that failed is not a scan
       // that happened, and counting it would flatter the ad that produced it.
-      await recordFunnel({ event: 'scan_completed', scanId, touch });
+      await recordFunnel({ event: 'scan_completed', scanId, touch, userAgent });
 
       // Same branch, same reasoning: a completed scan is a prospect worth seeing the morning
       // it arrives. Behind NOTIFY_SCAN_COMPLETED because this one scales with traffic, and it

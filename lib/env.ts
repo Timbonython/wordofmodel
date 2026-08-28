@@ -174,6 +174,18 @@ export const env = {
     return process.env.WIZARD_LIVE === 'true';
   },
   /**
+   * The run behind the public /sample page. Unset means nothing is published.
+   *
+   * DELIBERATELY NOT DEFAULTED. Exactly one real run exists, and putting a named company's
+   * competitive position on a permanent public URL is the business's decision rather than a
+   * fallback this file gets to pick. Unset and "permission granted" must not render the same,
+   * which is the same rule the founding cap is held to.
+   */
+  get sampleRunId(): string | null {
+    const v = process.env.SAMPLE_RUN_ID?.trim();
+    return v ? v : null;
+  },
+  /**
    * Where failed payments, held reports and every other ops alert get reported.
    *
    * IT MUST NOT BE ON THE SENDING DOMAIN, and that is not a style preference. It was

@@ -30,22 +30,27 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { env } from './env';
+import { BRAND, FONT } from './brand';
 import { surfaceLabel } from './report';
 import type { ReportData } from './report';
 
-/** The report's palette, inlined. A stylesheet is not dependable in an inbox. */
+/**
+ * The report's palette, inlined. A stylesheet is not dependable in an inbox, so the hex has to
+ * reach the markup - but it is READ from lib/brand.ts rather than typed out here, which is the
+ * one thing that stopped this from being a ninth copy.
+ */
 const C = {
-  paper: '#F7F6F2',
-  card: '#FFFFFF',
-  ink: '#15171C',
-  inkSoft: '#5C5F68',
-  inkFaint: '#8E9199',
-  rule: '#DEDCD4',
-  pen: '#C8332B',
+  paper: BRAND.paper,
+  card: BRAND.card,
+  ink: BRAND.ink,
+  inkSoft: BRAND.soft,
+  inkFaint: BRAND.faint,
+  rule: BRAND.line,
+  pen: BRAND.pen,
 };
 
-const SANS = `"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif`;
-const MONO = `"IBM Plex Mono",ui-monospace,Consolas,"Courier New",monospace`;
+const SANS = FONT.sans;
+const MONO = FONT.mono;
 
 const monthName = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' });

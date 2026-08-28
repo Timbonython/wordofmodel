@@ -7,6 +7,7 @@ import { formatReportDate } from '@/lib/billing-mail';
 import { priceLabel } from '@/lib/scope';
 import SignIn from '@/components/wizard/SignIn';
 import PortalButton from '@/components/wizard/PortalButton';
+import { SiteNav } from '@/components/SiteNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,14 +166,7 @@ function statusLine(status: string, cancelling: boolean): string {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" className="wordmark">
-            Word of Model&trade;<span>.ai</span>
-          </Link>
-          <div className="issue">Account</div>
-        </div>
-      </header>
+      <SiteNav sampleLive issue="Account" />
       <main className="wrap">{children}</main>
     </>
   );

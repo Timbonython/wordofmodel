@@ -24,7 +24,13 @@ alter table public.funnel_events add constraint funnel_events_event_check check 
 -- render and accumulated 1030 rows against 2 scans, because a crawler and a person are the same
 -- thing to a server. The home page is linked and crawled far more than /start, so recording
 -- every render there would repeat that defect at a larger scale on the page the ads now land on.
--- A crawler does not append utm_content; an ad click always does.
+--
+-- WRONG, AND CORRECTED BY 0020 ON 28 AUG 2026. This section originally read "a crawler does not
+-- append utm_content; an ad click always does". The second half is true and the first half is
+-- false: utm parameters are baked into the ad URL and are inherited by anything that fetches it, crawlers included. Only a click id is minted at click time.
+-- A crawler does not append a utm, it INHERITS one, which arrives at the same place by a
+-- different road - so this gate admitted every automated fetch of an ad URL as a human visit.
+-- It recorded 41 crawler fetches against 28 real clicks in a single day. See 0020.
 --
 -- The cost is that organic landings are invisible here by design. When the content plan starts
 -- producing non-ad traffic, this stops being the right trade - see CLAUDE.md.

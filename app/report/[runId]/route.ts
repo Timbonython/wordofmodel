@@ -20,6 +20,7 @@ import { attachDelta, buildReport } from '@/lib/report';
 import { renderReport } from '@/lib/report-html';
 import { asIssued, saveReport } from '@/lib/reports';
 import { env } from '@/lib/env';
+import { BRAND, FONT, markSvg } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,21 +85,23 @@ function notice(title: string, body: string): string {
 <meta name="robots" content="noindex">
 <title>Word of Model - ${title}</title>
 <style>
-  body{margin:0;background:#F7F6F2;color:#15171C;font-family:"IBM Plex Sans",system-ui,sans-serif;
+  body{margin:0;background:${BRAND.paper};color:${BRAND.ink};font-family:${FONT.sans};
     display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
   .box{max-width:34rem}
-  .wordmark{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-weight:700;font-size:15px;
+  .wordmark{font-family:${FONT.cond};font-weight:700;font-size:15px;
     letter-spacing:.16em;text-transform:uppercase;margin-bottom:28px}
-  .wordmark span{color:#8E9199}
+  .wordmark .lockup-suffix{color:${BRAND.faint};margin-left:.35em}
+  .lockup{display:inline-flex;align-items:center;gap:9px}
+  .lockup-text{font-family:${FONT.cond};font-weight:700;text-transform:uppercase;letter-spacing:.02em}
   h1{font-size:30px;line-height:1.2;margin:0 0 14px}
-  p{color:#5C5F68;line-height:1.65;margin:0 0 18px}
-  a.cta{display:inline-block;background:#15171C;color:#F7F6F2;text-decoration:none;
-    font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.06em;padding:13px 22px}
+  p{color:${BRAND.soft};line-height:1.65;margin:0 0 18px}
+  a.cta{display:inline-block;background:${BRAND.ink};color:${BRAND.paper};text-decoration:none;
+    font-family:${FONT.mono};font-size:13px;letter-spacing:.06em;padding:13px 22px}
 </style>
 </head>
 <body>
   <div class="box">
-    <div class="wordmark">Word of Model&trade;<span>.ai</span></div>
+    <div class="wordmark"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></div>
     <h1>${title}</h1>
     ${body}
   </div>

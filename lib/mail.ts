@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { env } from './env';
 import { priceLabel } from './scope';
 import type { FreeResult } from './types';
+import { BRAND, FONT } from './brand';
 
 /**
  * The free scan email. Short, one idea, one thing to click.
@@ -22,18 +23,19 @@ import type { FreeResult } from './types';
  * once.
  */
 
+/** Read from lib/brand.ts, not typed out. An inbox needs inline hex; it does not need a copy. */
 const PALETTE = {
-  paper: '#F7F6F2',
-  card: '#FFFFFF',
-  ink: '#15171C',
-  inkSoft: '#5C5F68',
-  inkFaint: '#8E9199',
-  rule: '#DEDCD4',
-  pen: '#C8332B',
+  paper: BRAND.paper,
+  card: BRAND.card,
+  ink: BRAND.ink,
+  inkSoft: BRAND.soft,
+  inkFaint: BRAND.faint,
+  rule: BRAND.line,
+  pen: BRAND.pen,
 };
 
-const SANS = `'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif`;
-const MONO = `'IBM Plex Mono',Consolas,'Courier New',monospace`;
+const SANS = FONT.sans;
+const MONO = FONT.mono;
 
 function escapeHtml(s: string): string {
   return s

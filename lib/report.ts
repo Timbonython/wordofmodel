@@ -139,6 +139,20 @@ export interface ReportData {
 
   method: string[];
   delta: DeltaReport | null;
+
+  /**
+   * Set only on the published specimen at /sample. Never on a subscriber's report.
+   *
+   * WHAT IT CHANGES, and it is deliberately not cosmetic: it prints a standing banner saying
+   * the business and its competitors are invented, it removes the month and the run id from
+   * the masthead and colophon so nothing implies a real execution, and it lets the page be
+   * indexed - every real report is noindex and private to its account.
+   *
+   * THE STRUCTURE, THE QUESTIONS AND THE METHOD ARE NOT CHANGED BY IT. That is the point of
+   * the page: a reader has to be able to trust that the shape of what they are looking at is
+   * exactly the shape of what they would receive.
+   */
+  specimen?: boolean;
 }
 
 export async function buildReport(run: RunRow): Promise<ReportData> {
