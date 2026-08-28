@@ -303,8 +303,27 @@ export async function runsAwaitingReport(withinDays = 45, limit = 25): Promise<R
  * never ready, so it is never delivered, and nothing says so. Waiting for a report that
  * will never come is exactly the silence this build keeps refusing.
  *
- * So the daily pass stops delivering and starts noticing. Anything complete, unsent and
- * older than `hours` is something a person should look at.
+ * So the daily pass stops delivering and starts noticing. Anything complete, unsent, older
+ * than `hours` AND belonging to somebody who is waiting for it is something a person should
+ * look at.
+ *
+ * ONLY RUNS SOMEBODY IS WAITING FOR, and that qualifier was added on 28 Aug 2026 after this
+ * check spent a day flagging a run that was working exactly as intended.
+ *
+ * The original asked "is there a complete run whose report has not gone out?" and never asked
+ * WHO IS WAITING. The promise it protects is to a paying subscriber - "your first report lands
+ * within 24 hours" - so a run on a scope with no live subscription has nobody to disappoint.
+ * The Zapme run from Session 3 is a test run on Tim's own account with no subscription behind
+ * it, and it would have raised this alert every day forever.
+ *
+ * That is not a harmless false positive. It is how a real one gets missed: you learn the daily
+ * alert is the test run and stop reading it. Same failure as the founding-count alert firing
+ * once per page render, on a slower clock.
+ *
+ * THE NARROWING IS REAL AND WORTH SAYING. A subscriber who cancels while a run is mid-flight
+ * is no longer flagged. That is the intended reading - they have cancelled, nobody is waiting -
+ * but it does mean this alert answers "is a CUSTOMER waiting" rather than "is a run stuck".
+ * Anything wanting the second question has to ask it separately.
  */
 export async function runsStuckAwaitingReport(hours = 6): Promise<RunRow[]> {
   const cutoff = new Date(Date.now() - hours * 3_600_000).toISOString();
@@ -319,7 +338,30 @@ export async function runsStuckAwaitingReport(hours = 6): Promise<RunRow[]> {
   if (error) throw new Error(`Could not list complete runs: ${error.message}`);
 
   const candidates = (runs ?? []) as RunRow[];
-  return candidates.length ? withoutSentReport(candidates) : [];
+  if (!candidates.length) return [];
+
+  const awaited = await onScopesWithALiveSubscriber(candidates);
+  return awaited.length ? withoutSentReport(awaited) : [];
+}
+
+/**
+ * The runs among these whose scope has somebody paying for it right now.
+ *
+ * past_due counts, for the same reason it counts in LIVE_STATUSES: Smart Retries are still
+ * running and a first failed card is not a cancellation. Somebody in that state is still
+ * waiting for their report and would still be let down by a stuck one.
+ */
+async function onScopesWithALiveSubscriber(candidates: RunRow[]): Promise<RunRow[]> {
+  const scopeIds = [...new Set(candidates.map((r) => r.scope_id))];
+  const { data, error } = await db()
+    .from('subscriptions')
+    .select('scope_id')
+    .in('scope_id', scopeIds)
+    .in('status', LIVE_STATUSES);
+  if (error) throw new Error(`Could not list live subscriptions: ${error.message}`);
+
+  const live = new Set((data ?? []).map((r) => (r as { scope_id: string }).scope_id));
+  return candidates.filter((r) => live.has(r.scope_id));
 }
 
 /** The runs among these whose report has not gone out. */
