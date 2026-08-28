@@ -1267,13 +1267,24 @@ footer .wrap {
   letter-spacing: 0.02em;
 }
 
+/* UPPERCASE, because §2 already says so. "PlexMono 500 - eyebrows, labels, URLs, data.
+   Uppercase, letter-spacing .14em." Nav items are labels, and sentence case here was the one
+   place the bar departed from the system it documents. Set in caps the row rhymes with the
+   RECOMMENDATION SHARE caption beneath it and the bar reads as one instrument.
+
+   .11em RATHER THAN THE .14em §2 SPECIFIES, and that is a deliberate departure. .14em is
+   written for eyebrows - short, on their own line. At nav length it is wide enough to hurt
+   scanning, and it is what costs the width: caps at .14em made the row 367px against 342px of
+   space at 390, where sentence case fit in 323px. .11em keeps the character and buys most of
+   that back. */
 .sitenav-links {
   display: flex;
   align-items: center;
   gap: 22px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
 }
 
 .sitenav-links a {
@@ -1304,8 +1315,14 @@ footer .wrap {
    the link colour was winning and the button rendered soft grey on green - unreadable, and
    caught in the 390px screenshot rather than by any check. The base state has to be stated at
    the same weight as the rule overriding it. */
+/* THE CTA STAYS SENTENCE CASE, on purpose. With the links in caps, a capitalised button
+   becomes a fourth label and the eye stops separating things to read from the thing to click.
+   Same logic as one lit cell in the mark: the exception is what carries the meaning. */
 .sitenav-links a.button-green {
   color: var(--paper);
+  text-transform: none;
+  letter-spacing: 0.03em;
+  font-size: 12.5px;
 }
 
 .sitenav-links a.button-green:hover {
@@ -1334,8 +1351,8 @@ footer .wrap {
      rather than the words. */
   .sitenav-links {
     gap: 10px 14px;
-    font-size: 11.5px;
-    letter-spacing: 0.02em;
+    font-size: 11px;
+    letter-spacing: 0.08em;
     width: 100%;
     justify-content: flex-start;
     /* WRAP THE ROW, NOT THE WORDS. nowrap on the items keeps each label whole; flex-wrap on
