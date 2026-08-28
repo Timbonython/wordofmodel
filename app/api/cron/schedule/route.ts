@@ -27,6 +27,7 @@ import { runsStuckAwaitingReport } from '@/lib/reports';
 import { sendOpsAlert } from '@/lib/billing-mail';
 import { LIVE_STATUSES } from '@/lib/billing';
 import { db } from '@/lib/db';
+import { proveStripeMode } from '@/lib/stripe';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -114,6 +115,48 @@ async function handle(req: Request): Promise<Response> {
     });
   }
 
+  // WHICH STRIPE MODE IS THIS ACTUALLY TALKING TO?
+  //
+  // A COUNT CANNOT ANSWER THAT QUESTION ABOUT ITSELF. "Zero founding places taken" reads
+  // identically whether it is a correct zero or a query pointed at the other mode's data, and
+  // the two have opposite consequences: one means twenty places are open, the other means the
+  // cap is blind and every visitor is being handed a permanent discount nobody is counting.
+  //
+  // Written after 28 Aug 2026, when production had been running STRIPE_MODE=live for over a
+  // week while the build session assumed test throughout. Nothing was wrong; nothing said so
+  // either, and every check that existed would have read the same in both cases.
+  //
+  // So the environment is proved rather than inferred, by retrieving a price id that exists in
+  // one mode and not the other. Daily, not on the five minute sweep - this is a configuration
+  // fact, and 288 alerts a day is how an alert channel gets muted.
+  const mode = await proveStripeMode();
+  if (!mode.resolved) {
+    await sendOpsAlert({
+      subject: `Stripe mode could not be proved: STRIPE_MODE says ${mode.mode}`,
+      lines: [
+        `This build believes it is in ${mode.mode} mode, and could not confirm it.`,
+        '',
+        mode.detail,
+        '',
+        'Three things do this, and they are not equally bad:',
+        '',
+        '  1. STRIPE_MODE and STRIPE_SECRET_KEY point at a different account than expected.',
+        '     Anything counting subscriptions is then counting the wrong ledger, silently.',
+        '     This is the one that costs money. Check both in Vercel.',
+        '',
+        `  2. The sentinel price ${mode.sentinel} was recreated or archived. A price's`,
+        '     amount cannot be edited, so replacing one makes a new id. If that is what',
+        '     happened, update MODE_SENTINEL in lib/stripe.ts - a false alarm nobody can',
+        '     silence is an alert that gets ignored.',
+        '',
+        '  3. Stripe was unreachable when the cron ran. Harmless, and it will clear itself',
+        '     tomorrow. If this alert does not repeat, it was this.',
+        '',
+        'Run `npm run stripe:mode` against the environment in question to see it directly.',
+      ],
+    });
+  }
+
   const pending = await dueJobCount();
   const kicked = pending > 0 ? await kickChains(Math.min(CHAINS, pending)) : 0;
 
@@ -124,6 +167,10 @@ async function handle(req: Request): Promise<Response> {
     opened,
     baselines,
     stuck: stuck.map((r) => r.id),
+    // Reported on every run, not only on failure: a manual GET of this route is the quickest
+    // way to ask production which Stripe ledger it is on, and the answer should not require
+    // something to be broken first.
+    stripe: { mode: mode.mode, proved: mode.resolved, livemode: mode.livemode, detail: mode.detail },
     failed,
     pending,
     kicked,
