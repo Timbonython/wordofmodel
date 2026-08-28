@@ -103,7 +103,6 @@ body {
   margin-left: 0.35em;
 }
 
-
 /* The suffix only - ".ai", "/ free scan" - not every span inside the masthead.
    This was `.wordmark span`, which was correct while the markup was one text node and one
    span. The lockup put a <span class="lockup"> wrapper inside .wordmark, so the descendant
@@ -287,63 +286,6 @@ mark.you {
 .penmark.good {
   color: var(--green);
   border-top-color: var(--green);
-}
-
-/* ---------- numbers ---------- */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-}
-
-.stat {
-  background: var(--card);
-  padding: 26px 24px;
-}
-
-.stat .k {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-.stat .v {
-  font-family: var(--font-cond), var(--font-sans), sans-serif;
-  font-weight: 700;
-  font-size: 52px;
-  line-height: 1;
-  margin: 10px 0 6px;
-  letter-spacing: -0.02em;
-}
-
-.stat .d {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--soft);
-}
-
-.stat .d.down {
-  color: var(--pen);
-}
-
-.stat .d.up {
-  color: var(--green);
-}
-
-.stat .src {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
-  color: var(--faint);
-  margin-top: 10px;
-  display: block;
-}
-
-.stat .src a {
-  color: var(--faint);
 }
 
 /* ---------- buttons and fields ---------- */
@@ -596,14 +538,6 @@ footer .wrap {
     margin-bottom: 64px;
   }
 
-  .stats {
-    grid-template-columns: 1fr;
-  }
-
-  .stat .v {
-    font-size: 44px;
-  }
-
   .excerpt {
     padding: 24px 20px;
   }
@@ -643,26 +577,6 @@ footer .wrap {
   max-width: 620px;
 }
 
-.hero-cta {
-  font-family: var(--font-cond), var(--font-sans), sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.01em;
-  margin: 28px 0 18px;
-}
-
-.stats-head {
-  font-family: var(--font-cond), var(--font-sans), sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 48px 0 18px;
-}
-
-.after-stats {
-  margin-top: 20px;
-}
-
 .punch {
   font-family: var(--font-cond), var(--font-sans), sans-serif;
   font-weight: 700;
@@ -670,11 +584,6 @@ footer .wrap {
   line-height: 1.1;
   letter-spacing: -0.015em;
   margin: 26px 0;
-}
-
-.close {
-  border-top: 2px solid var(--ink);
-  padding-top: 40px;
 }
 
 /* ---------- the scan ---------- */
@@ -1331,8 +1240,6 @@ footer .wrap {
   margin-bottom: 10px;
   line-height: 1.65;
 }
-.footer-links a { color: inherit; }
-
 
 /* ============================================================================
    THE SITE BAR — §3 of the brand brief. Reference is Xero: a normal SaaS bar,
