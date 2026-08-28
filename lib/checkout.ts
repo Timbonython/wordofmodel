@@ -4,8 +4,9 @@ import { db } from './db';
 import { env } from './env';
 import { assertOneInterval, assertPrice, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
-import { validateDiscount, type ValidDiscount } from './discount';
+import { DiscountError, validateDiscount, type ValidDiscount } from './discount';
 import { recordFunnel } from './funnel';
+import { FOUNDING_TIER, TIER_BASE_PRICE, type PlanTier } from './scope';
 import type { AccountRow, ScopeRow } from './accounts';
 
 /**
@@ -58,6 +59,12 @@ export async function createCheckout(input: {
    * value arrives from a browser. The price the session charges is decided by THIS read.
    */
   discountCode?: string | null;
+  /**
+   * Which plan they chose. Defaults to premium, which is what this checkout sold exclusively
+   * until 29 Aug 2026 - so an absent or malformed value can only ever resolve to the plan that
+   * was already being charged, never quietly downgrade a purchase.
+   */
+  tier?: PlanTier;
   /** The requesting browser, recorded on the funnel row. Never used to decide anything. */
   userAgent?: string | null;
 }): Promise<{ url: string; priceKey: PriceKey; discount: ValidDiscount | null }> {
@@ -77,11 +84,31 @@ export async function createCheckout(input: {
   // standard price, so the subscription is written price_key 'premium_monthly' and
   // foundingDisplay() cannot see it: the public counter stays a count of people who paid
   // 149 rather than a count of giveaways.
+  const tier: PlanTier = input.tier ?? 'premium';
+
+  // THE CODE BOX IS A PREMIUM OFFER TOO. The only discount in circulation is the local cohort
+  // coupon, whose whole shape - US$180 off, three months, then US$249 - is written against the
+  // premium price. Applied to Monitoring at US$69 it would floor the invoice at zero and then
+  // "revert" to a price the customer was never quoted. Refused with a sentence they can act on
+  // rather than silently ignored, because a code that vanishes reads as a bug.
+  if (tier !== 'premium' && input.discountCode) {
+    throw new DiscountError(
+      'That code applies to Monitoring + Review. Choose that plan to use it, or continue on ' +
+        'Monitoring at the standard price.',
+    );
+  }
+
   const discount = input.discountCode ? await validateDiscount(input.discountCode) : null;
 
+  // FOUNDING IS PREMIUM ONLY, and Monitoring must not consume one of the twenty: the place is
+  // capped by Tim's calendar and what it buys is the quarterly hour, which is premium's.
+  // A Monitoring checkout therefore never calls claimFoundingSeat at all - there is no window
+  // in which a place is held by somebody who was never eligible for it.
   const { claimId, priceKey } = discount
     ? { claimId: null as string | null, priceKey: 'premium_monthly' as PriceKey }
-    : await claimFoundingSeat(input.account.id);
+    : tier === FOUNDING_TIER
+      ? await claimFoundingSeat(input.account.id)
+      : { claimId: null as string | null, priceKey: TIER_BASE_PRICE[tier] as PriceKey };
   await assertPrice(priceKey);
 
   const customer = await customerFor(input.account);

@@ -21,7 +21,7 @@ type Billing = 'monthly' | 'annual';
 
 const money = (usd: number) => `US$${usd.toLocaleString('en-US')}`;
 
-export function PricingCards({ tiers }: { tiers: readonly Tier[] }) {
+export function PricingCards({ tiers, wizardLive = false }: { tiers: readonly Tier[]; wizardLive?: boolean }) {
   const [billing, setBilling] = useState<Billing>('monthly');
   const [locations, setLocations] = useState(0);
 
@@ -78,6 +78,12 @@ export function PricingCards({ tiers }: { tiers: readonly Tier[] }) {
 
               {/* EVERY SHARED LINE IS REPEATED, not abbreviated to "everything in Monitoring".
                   Both cards map the same MAIN_FEATURES array, so they cannot diverge. */}
+              {wizardLive ? (
+                <a className={`button plan-cta${isPremium ? '' : ' ghost'}`} href={`/start?plan=${tier.tier}`}>
+                  Choose {tier.name}
+                </a>
+              ) : null}
+
               <ul className="features">
                 {MAIN_FEATURES.map((f) => (
                   <li key={f}>{f}</li>

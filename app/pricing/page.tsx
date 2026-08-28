@@ -48,7 +48,7 @@ export default async function PricingPage() {
           </p>
         </section>
 
-        <PricingCards tiers={TIERS} />
+        <PricingCards tiers={TIERS} wizardLive={wizardLive} />
 
         {founding !== null && (
           <section className="founding-block">
@@ -69,7 +69,7 @@ export default async function PricingPage() {
                   : `${founding.remaining} places left.`}
             </p>
             {wizardLive ? (
-              <Link className="button" href="/start" prefetch={false}>
+              <Link className="button" href="/start?plan=premium" prefetch={false}>
                 Take a founding place
               </Link>
             ) : null}

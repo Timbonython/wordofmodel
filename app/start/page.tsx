@@ -8,6 +8,7 @@ import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { foundingOfferOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
 import { SiteNav } from '@/components/SiteNav';
+import { planTierFrom } from '@/lib/scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,7 @@ export default async function StartPage({
           prefill={prefill}
           prefillEmail={prefillEmail}
           foundingRemaining={founding?.remaining ?? null}
+          initialTier={planTierFrom(params.plan)}
           scanId={scanId ?? null}
         />
       </main>

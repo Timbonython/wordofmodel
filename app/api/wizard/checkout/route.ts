@@ -2,6 +2,7 @@ import { approveOnboarding, ScopeLockedError } from '@/lib/onboarding';
 import { createCheckout } from '@/lib/checkout';
 import { DiscountError } from '@/lib/discount';
 import { validEmail } from '@/lib/email';
+import { planTierFrom, type PlanTier } from '@/lib/scope';
 import {
   InputError,
   parseCompetitors,
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
   let approved;
   let scanId: string | null = null;
   let discountCode: string | null = null;
+  let tier: PlanTier = 'premium';
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const email = validEmail(typeof body.email === 'string' ? body.email : '');
@@ -55,6 +57,9 @@ export async function POST(request: Request) {
       typeof body.discountCode === 'string' && body.discountCode.trim()
         ? body.discountCode.trim()
         : null;
+    // Anything that is not exactly 'main' resolves to premium. A malformed value must not be
+    // able to charge somebody less than the plan they chose, so the default is the dearer one.
+    tier = planTierFrom(body.tier);
 
     await recordAttempt(ipHash, 'wizard');
     approved = await approveOnboarding({ email, profile, competitors, questions });
@@ -86,6 +91,7 @@ export async function POST(request: Request) {
   try {
     const { url, priceKey, discount } = await createCheckout({
       userAgent: request.headers.get('user-agent'),
+      tier,
       account: approved.account,
       scope: approved.scope,
       scanId,

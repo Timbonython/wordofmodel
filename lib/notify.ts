@@ -73,6 +73,20 @@ async function creativeFor(scanId: string | null): Promise<string> {
  * one: it arrives with status 'incomplete' when the first charge has not cleared, so it would
  * announce subscribers who never pay.
  */
+/**
+ * What to call each plan in an ops alert. "Founding or else Standard" was true while premium
+ * was the only purchasable thing; a Monitoring subscriber would have been reported as
+ * "Standard" at US$69, which reads like a mispriced premium rather than a different plan.
+ */
+const PLAN_LABEL: Partial<Record<PriceKey, string>> = {
+  main_monthly: 'Monitoring',
+  main_annual: 'Monitoring, annual',
+  premium_monthly: 'Monitoring + Review',
+  premium_annual: 'Monitoring + Review, annual',
+  premium_founding_monthly: 'Founding',
+  premium_founding_annual: 'Founding, annual',
+};
+
 export async function notifyNewSubscriber(input: {
   subscriptionId: string;
   accountId: string;
@@ -116,7 +130,7 @@ export async function notifyNewSubscriber(input: {
       `Market:       ${market}`,
       `Locality:     ${locality}`,
       '',
-      `Plan:         ${input.priceKey === 'premium_founding_monthly' ? 'Founding' : 'Standard'}, ${priceLabel(input.priceKey)}/mo`,
+      `Plan:         ${PLAN_LABEL[input.priceKey] ?? input.priceKey}, ${priceLabel(input.priceKey)}/mo`,
       `Founding no:  ${cohort}`,
       '',
       `Scope:        ${input.scopeId}`,

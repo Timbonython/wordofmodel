@@ -1878,3 +1878,69 @@ footer .wrap {
    On a phone the forced break also costs a line the budget cannot spare, so the sentence
    flows instead. Measured after: 589, against folds of 844 / 734 / 664 / 628. */
 
+
+/* ---- the plan chooser on the wizard's pay step. Two options, generated from TIERS. ---- */
+.plan-choice {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-bottom: 26px;
+}
+
+@media (min-width: 721px) {
+  .plan-choice {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.plan-option {
+  background: var(--card);
+  border: 0;
+  text-align: left;
+  padding: 18px 20px;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  font: inherit;
+}
+
+/* The chosen one is reversed, which is the same device the thesis uses: the ground changes,
+   not the accent. Green stays on the one thing being clicked next. */
+.plan-option.on {
+  background: var(--ink);
+}
+
+.plan-option-name {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.plan-option-price {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--green);
+}
+
+.plan-option-line {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--soft);
+}
+
+.plan-option.on .plan-option-name {
+  color: var(--paper);
+}
+
+.plan-option.on .plan-option-line {
+  color: var(--mute);
+}
+
+.plan-cta {
+  margin: 4px 0 18px;
+  display: inline-block;
+}

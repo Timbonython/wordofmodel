@@ -1,7 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { SLOT_LABEL, QUESTION_SLOTS, priceLabel, type QuestionSlot } from '@/lib/scope';
+import {
+  SLOT_LABEL,
+  QUESTION_SLOTS,
+  TIERS,
+  TIER_BASE_PRICE,
+  priceLabel,
+  type PlanTier,
+  type QuestionSlot,
+} from '@/lib/scope';
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
@@ -109,11 +117,14 @@ export default function Wizard({
   prefill,
   prefillEmail,
   foundingRemaining,
+  initialTier = 'premium',
   scanId,
 }: {
   prefill: WizardProfileInput | null;
   prefillEmail: string | null;
   foundingRemaining: number | null;
+  /** From ?plan= on /start, so a pricing card's CTA carries the plan the buyer clicked. */
+  initialTier?: PlanTier;
   /** Carried into the Checkout session so a paying customer traces back to the ad. */
   scanId: string | null;
 }) {
@@ -211,7 +222,17 @@ export default function Wizard({
   const founding = foundingRemaining !== null && foundingRemaining > 0;
   // Formatted from the same constants Stripe charges, never typed. The two literals that
   // used to be here were the fourth and fifth copies of a number that lives in lib/stripe.ts.
-  const listPrice = founding ? priceLabel('premium_founding_monthly') : priceLabel('premium_monthly');
+  // THE PLAN, and until 29 Aug 2026 there was no choice to make: the wizard sold premium and
+  // nothing else, while the pricing page offered two cards. Seeded from ?plan= so a card's CTA
+  // carries the choice, and changeable here so somebody who arrived cold is not stuck with it.
+  const [tier, setTier] = useState<PlanTier>(initialTier);
+
+  // Founding is premium's offer. Choosing Monitoring must not consume one of the twenty.
+  const foundingApplies = tier === 'premium' && founding && !discount;
+
+  const listPrice = foundingApplies
+    ? priceLabel('premium_founding_monthly')
+    : priceLabel(TIER_BASE_PRICE[tier]);
   const price = discount ? `US$${discount.priceUsd}` : listPrice;
 
   const applyDiscount = () =>
@@ -344,6 +365,7 @@ export default function Wizard({
         // The validated code, not the raw box. If it stopped being valid in between, the
         // route says so rather than opening a session at a price nobody was shown.
         discountCode: discount?.code ?? null,
+        tier,
       });
       window.location.href = out.url;
     });
@@ -615,14 +637,40 @@ export default function Wizard({
 
       {step === 'pay' && (
         <section className="wizard-step">
+          {/* THE CHOICE, which did not exist until 29 Aug 2026. The pricing page has always
+              shown two cards and this step could only ever charge premium, so half the page was
+              describing something nobody could buy. Generated from TIERS so the card and the
+              checkout cannot disagree about what the plans are. */}
+          <div className="plan-choice" role="radiogroup" aria-label="Choose a plan">
+            {TIERS.map((t) => (
+              <button
+                key={t.tier}
+                type="button"
+                role="radio"
+                aria-checked={tier === t.tier}
+                className={`plan-option${tier === t.tier ? ' on' : ''}`}
+                onClick={() => setTier(t.tier)}
+                disabled={Boolean(busy)}
+              >
+                <span className="plan-option-name">{t.name}</span>
+                <span className="plan-option-price">
+                  {t.tier === 'premium' && founding && !discount
+                    ? `${priceLabel('premium_founding_monthly')} a month`
+                    : `${priceLabel(TIER_BASE_PRICE[t.tier])} a month`}
+                </span>
+                <span className="plan-option-line">{t.line}</span>
+              </button>
+            ))}
+          </div>
+
           <h2>{price} a month. Cancel any time.</h2>
           <p className="lede">
-            Five questions, five AI platforms, twenty five answers captured word for word, every
-            month, from fifty five readings. Four times a year we also read Claude and Microsoft
-            Copilot by hand.
+            {tier === 'premium'
+              ? 'Five questions, five AI platforms, twenty five answers captured word for word, every month, from fifty five readings. Four times a year we also read Claude and Microsoft Copilot by hand.'
+              : 'Five questions, five AI platforms, twenty five answers captured word for word, every month, from fifty five readings.'}
           </p>
 
-          {founding && !discount && (
+          {foundingApplies && (
             <p className="founding">
               Founding rate: {priceLabel('premium_founding_monthly')} a month, held at that price for
               as long as you stay.{' '}
@@ -645,6 +693,11 @@ export default function Wizard({
               onChange={setEmail}
               type="email"
             />
+            {/* THE CODE BOX ONLY WHERE A CODE CAN BE USED. Every discount in circulation is
+                written against the premium price - US$180 off, three months, then US$249 - so on
+                Monitoring the box could only ever reject what somebody typed into it. A field
+                that exists to say no is worse than no field. */}
+            {tier === 'premium' && (
             <label className="wizard-field">
               <span className="k">Got a code?</span>
               <span className="h">Optional. The price above changes before you pay, not after</span>
@@ -671,6 +724,7 @@ export default function Wizard({
               </span>
               {discountError && <span className="h note-warn">{discountError}</span>}
             </label>
+            )}
           </div>
 
           <div className="wizard-actions">

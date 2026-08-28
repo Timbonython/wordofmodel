@@ -122,6 +122,8 @@ for (const [key, monthly] of Object.entries(PRICE_USD)) {
 export interface Tier {
   /** The price this tier charges. Must exist in PRICE_USD, which is what Stripe is checked against. */
   key: keyof typeof PRICE_USD;
+  /** What the checkout is told to charge. The card's CTA carries this to /start. */
+  tier: PlanTier;
   name: string;
   /** One line. §4 of the brand brief: the tiers as one line each, not a feature table. */
   line: string;
@@ -130,6 +132,7 @@ export interface Tier {
 export const TIERS: readonly Tier[] = [
   {
     key: 'main_monthly',
+    tier: 'main',
     name: 'Monitoring',
     line:
       'Five questions, five AI surfaces, twenty five answers captured word for word every month, ' +
@@ -137,12 +140,42 @@ export const TIERS: readonly Tier[] = [
   },
   {
     key: 'premium_monthly',
+    tier: 'premium',
     name: 'Monitoring + Review',
     line:
       'Everything in Monitoring, every month, unchanged - plus a quarterly deep read from Tim ' +
       'that adds Claude and Microsoft Copilot by hand.',
   },
 ];
+
+/**
+ * Which plan a buyer chose. The wizard could only ever sell premium until 29 Aug 2026 - there
+ * was no tier selection at all, and createCheckout produced premium_monthly or
+ * premium_founding_monthly and nothing else. A page offering two cards and a checkout that can
+ * only charge one of them is the same defect as printing a price nothing can honour.
+ *
+ * PREMIUM IS THE DEFAULT, deliberately. An unrecognised or missing value resolves to the plan
+ * that was already being sold, so a malformed URL cannot quietly downgrade somebody's purchase.
+ */
+export type PlanTier = 'main' | 'premium';
+
+export function planTierFrom(value: unknown): PlanTier {
+  return value === 'main' ? 'main' : 'premium';
+}
+
+/** The base price a tier charges before any founding claim or discount is considered. */
+export const TIER_BASE_PRICE: Record<PlanTier, keyof typeof PRICE_USD> = {
+  main: 'main_monthly',
+  premium: 'premium_monthly',
+};
+
+/**
+ * FOUNDING IS A PREMIUM OFFER AND ONLY A PREMIUM OFFER. §3 of the pricing plan caps it because
+ * each place includes a quarterly hour of Tim's time, which is the thing premium buys. A
+ * Monitoring subscriber is not owed that hour, so a Monitoring checkout must not consume one of
+ * the twenty.
+ */
+export const FOUNDING_TIER: PlanTier = 'premium';
 
 /**
  * What each tier includes.
