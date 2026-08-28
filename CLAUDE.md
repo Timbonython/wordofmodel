@@ -111,9 +111,12 @@ RESEND_API_KEY=re_...
 
 **`wordofmodel.ai` is the canonical domain.** All specs, the site and the report template now use it.
 
-Tim owns wordofmodel .com, .com.au, .io and .ai. Point the other three at .ai with a 301 redirect
-rather than leaving them parked — .com is what people type from memory, and a redirect costs nothing.
-Vercel handles this natively: add each domain to the project and set it to redirect to the .ai apex.
+Tim owns wordofmodel **.com, .com.au and .ai**. Corrected 28 Aug 2026: this line previously said
+.io was owned too, and it is not registered. `https://wordofmodel.io` resolves to nothing, which is
+worth knowing before somebody prints it on something.
+
+.com and .com.au both 301 to the .ai apex, verified 28 Aug 2026 - .com is what people type from
+memory, and a redirect costs nothing. Vercel handles this natively.
 
 **Watch for:** a Resend sending domain was briefly set up on `shareofmodel.ai` by mistake. Remove it so
 it doesn't sit half-verified, and confirm the Cloudflare zone with the nameserver change is the one for
