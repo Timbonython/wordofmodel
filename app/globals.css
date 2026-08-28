@@ -1539,10 +1539,22 @@ footer .wrap {
     padding-top: 12px;
   }
 
-  /* 27px, not the clamp's 38px floor and not the 33px this was on 28 Aug. Worth more than the
-     6px suggests: at 27 "Your buyers stopped Googling." stops wrapping, so the block loses a
-     whole line rather than a little leading. 621px at 28 became 589px at 27. */
+  /* A PAGE TITLE ON A PHONE. The clamp's floor is 38px, which is a homepage-hero size on a
+     390px screen and too loud for /pricing, /method, /terms and /privacy. */
   h1 {
+    font-size: 30px;
+    line-height: 1.05;
+    margin: 0 0 12px;
+  }
+
+  /* THE HOMEPAGE HEADLINE ONLY, and the 27px is a FOLD decision rather than a headline one.
+     It is what the scan field costs on a 628px phone: at 27 "Your buyers stopped Googling."
+     stops wrapping, so the block loses a whole line rather than a little leading, and the
+     strip moved from 621 to 589.
+
+     Scoped to a class after shipping it globally and finding it had shrunk the h1 on five
+     other pages that have no field to protect and no reason to pay for one. */
+  .hero-headline {
     font-size: 27px;
     line-height: 1.02;
     margin: 0 0 10px;

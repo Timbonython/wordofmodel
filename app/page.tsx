@@ -116,7 +116,10 @@ export default async function Page({
             Word of mouth still decides who gets bought.<span className="thesis-break" />
             The mouth is just a <span className="thesis-lit">machine</span> now.
           </p>
-          <h1>
+          {/* Its own class because the mobile size is a FOLD decision, not a headline
+              decision. 27px is what the scan field costs on a 628px phone, and /pricing,
+              /method, /terms and /privacy have no field to protect and no reason to pay it. */}
+          <h1 className="hero-headline">
             Your buyers stopped Googling.
             <br />
             They started asking.
