@@ -573,10 +573,6 @@ footer .wrap {
   padding-top: 56px;
 }
 
-.hero .eyebrow {
-  max-width: 620px;
-}
-
 .punch {
   font-family: var(--font-cond), var(--font-sans), sans-serif;
   font-weight: 700;
@@ -1328,11 +1324,30 @@ footer .wrap {
   .sitenav-inner {
     gap: 10px;
   }
+  /* NOWRAP, and it is not cosmetic. The bar carried three items until /sample went live on
+     28 Aug; the fourth pushed it past 390px and every label broke mid-phrase - "How it / works",
+     "Sample / report", and a two-line green button. Caught in a 390px screenshot taken for
+     something else entirely, which is the third time today that has been how a CSS defect
+     surfaced.
+
+     space-between with nowrap keeps them on one row and lets the gaps absorb the difference,
+     rather than the words. */
   .sitenav-links {
-    gap: 16px;
-    font-size: 12px;
+    gap: 10px 14px;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    /* WRAP THE ROW, NOT THE WORDS. nowrap on the items keeps each label whole; flex-wrap on
+       the container lets a label that will not fit move to the next row intact. Forcing one
+       row instead overflowed by 46px at 360, and letting the items break gave "How it /
+       works" and a two-line button. */
+    flex-wrap: wrap;
+    white-space: nowrap;
+  }
+
+  .sitenav-links a.button-green {
+    padding: 8px 11px;
   }
   .sitenav .issue {
     display: none;
@@ -1461,6 +1476,40 @@ footer .wrap {
 
 .nots li:first-child { border-top: 1px solid var(--line); }
 
+/* ---- THE THESIS. The sentence the positioning rests on, reversed out of ink. ----
+
+   NOT `.eyebrow`. That class is this site's section label - 11px mono, grey, uppercase - and
+   using it here dressed the argument as furniture. It also inherited a 620px cap that left
+   "now" alone on its own line at every desktop width from 1280 to 1470.
+
+   ONE WORD IS GREEN, not the panel. §2 of the brand brief: green is a scalpel, one accent per
+   view. The first viewport already carries the lit cell in the mark and the Free scan button;
+   a green panel here would be the third and by far the largest, and it would outrank the thing
+   we want clicked. Ink ground with one word lit is the mark's own construction at paragraph
+   scale - five cells, one green. */
+.thesis {
+  max-width: 44rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 23px;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  padding: 16px 20px;
+  margin: 0 0 26px;
+}
+
+/* The deliberate break. A span rather than a bare <br> so the selector that styles it is a
+   class - see the descendant-selector rule in scripts/copycheck.mjs. */
+.thesis-break {
+  display: block;
+}
+
+.thesis-lit {
+  color: var(--green);
+}
+
 /* ============================================================================
    THE FOLD BUDGET — §4 of the brand brief.
 
@@ -1476,34 +1525,50 @@ footer .wrap {
    §4 settles the trade in advance: "if the headline has to shrink to make room,
    it shrinks". These are the pixels, measured before and after:
 
-     panel bottom   931 -> 617
+     panel bottom   931 -> 617 (28 Aug, Gate 3)
 
-   Measured at 390px after the change, strip bottom 617 throughout:
-     390 x 844  PASS, 227px headroom      390 x 664  PASS, 47px headroom
-     390 x 734  PASS, 117px headroom      390 x 628  PASS, 11px headroom
+   RE-MEASURED after the thesis block was added above the fold, which pushed the strip from
+   617 to 677 and broke the 664 and 628 cases. Strip bottom is now 589:
+     390 x 844  PASS, 255px headroom      390 x 664  PASS, 75px headroom
+     390 x 734  PASS, 145px headroom      390 x 628  PASS, 39px headroom
+
+   Anything added above the field spends this budget. Re-run the four heights.
    ============================================================================ */
 @media (max-width: 640px) {
   .hero {
-    padding-top: 22px;
+    padding-top: 12px;
   }
 
-  /* The clamp's 7vw floor is 38px at this width and the headline is three lines,
-     so this is the single biggest item in the budget after the lede. */
+  /* 27px, not the clamp's 38px floor and not the 33px this was on 28 Aug. Worth more than the
+     6px suggests: at 27 "Your buyers stopped Googling." stops wrapping, so the block loses a
+     whole line rather than a little leading. 621px at 28 became 589px at 27. */
   h1 {
-    font-size: 33px;
+    font-size: 27px;
     line-height: 1.02;
-    margin: 0 0 14px;
-  }
-
-  .hero .eyebrow {
-    font-size: 10.5px;
-    margin-bottom: 12px;
+    margin: 0 0 10px;
   }
 
   .hero .lede {
-    font-size: 16.5px;
-    line-height: 1.5;
-    margin: 0 0 16px;
+    font-size: 15.5px;
+    line-height: 1.45;
+    margin: 0 0 14px;
+  }
+
+  /* The thesis is the newest thing competing for this budget. See its own block below. */
+  .thesis {
+    font-size: 15px;
+    line-height: 1.34;
+    padding: 11px 13px;
+    margin-bottom: 13px;
+  }
+
+  /* The forced desktop break costs a line the budget cannot spare, so it flows here. */
+  .thesis-break {
+    display: inline;
+  }
+
+  .thesis-break::before {
+    content: ' ';
   }
 
   /* The field stack is the thing being protected, so it does not shrink. */
@@ -1769,3 +1834,18 @@ footer .wrap {
   .totals td { font-size: 12.5px; }
   .totals-working { display: block; }
 }
+
+/* On a phone the forced break costs a line the fold budget cannot spare, so the sentence flows
+   instead. §4's acceptance test outranks the desktop line arrangement. */
+/* THE THESIS IS NEW WEIGHT ABOVE THE FOLD, and §4's acceptance test outranks it.
+   Measured: adding this block pushed the reassurance strip from 617 to 677 and broke the
+   390x664 and 390x628 cases that Gate 3 had passing. Something had to give, and the brief
+   settles which - "if the headline has to shrink to make room, it shrinks".
+
+   The headline at 27px rather than 33px is most of it, and it is worth more than the 6px
+   suggests: at 27 "Your buyers stopped Googling." stops wrapping, so the block loses a whole
+   line rather than a little leading. 621px at h1:28 became 589px at h1:27.
+
+   On a phone the forced break also costs a line the budget cannot spare, so the sentence
+   flows instead. Measured after: 589, against folds of 844 / 734 / 664 / 628. */
+

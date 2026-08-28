@@ -101,7 +101,21 @@ export default async function Page({
             - now sits below it as the strip. It was costing 95px of fold to say what the strip
             says better, in the place the brief puts it. */}
         <section className="hero">
-          <div className="eyebrow">Word of mouth still decides who gets bought. The mouth is just a machine now</div>
+          {/* THE THESIS, not an eyebrow. It was styled as one - 11px mono, grey, uppercase -
+              which is the treatment this site gives a section label, and this is the sentence
+              the whole positioning rests on. It also had a widow: `.hero .eyebrow` capped at
+              620px put "now" alone on its own line on every desktop width, 1280 through 1470.
+              The break is now deliberate rather than whatever 620px happened to produce.
+
+              ONE WORD CARRIES THE ACCENT. §2: green is a scalpel, one accent per view. The
+              first viewport already has the lit cell in the mark and the Free scan button, so
+              a whole green panel would be the third and largest green and would outrank the
+              CTA. Reversed on ink with `machine` lit is the mark's own construction at
+              paragraph scale: a neutral ground with exactly one thing on. */}
+          <p className="thesis">
+            Word of mouth still decides who gets bought.<span className="thesis-break" />
+            The mouth is just a <span className="thesis-lit">machine</span> now.
+          </p>
           <h1>
             Your buyers stopped Googling.
             <br />
