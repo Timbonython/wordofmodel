@@ -107,25 +107,60 @@ export type PriceKey = (typeof PRICE_KEYS)[number];
 export type Interval = 'month' | 'year';
 export type TierKey = 'main' | 'premium' | 'location';
 
-/** The three products. Names print on Checkout and on every invoice, so they are copy. */
+/**
+ * The three products. Names and descriptions print on Checkout and on every invoice, so they
+ * are copy.
+ *
+ * A PRODUCT DESCRIPTION MUST NEVER NAME A PRICE, and that is enforced below rather than
+ * remembered. Stripe renders the amount being charged directly above the description, and one
+ * product carries several prices - monthly, annual, and for premium the founding rate. A
+ * description that quoted "US$249 a month" therefore appeared under "US$149.00 per month" on
+ * the founding checkout, and under "US$2,490.00 per year" on the annual one.
+ *
+ * Observed 28 Aug 2026 on a real cs_live_ session: FIVE of the eight prices rendered a
+ * description quoting a different price than the one being charged, at the moment of payment.
+ * The founding buyer - the person being asked to trust this most - saw the worst version.
+ *
+ * The description says what the thing IS. The price is Stripe's to render.
+ */
 export const PRODUCTS: Record<TierKey, { name: string; description: string }> = {
   main: {
     name: 'Word of Model - Monitoring',
     description:
       'What AI assistants say about your business, measured the same way every month. Five ' +
-      'questions across five AI surfaces, US$69 a month.',
+      'questions across five AI surfaces, twenty five answers captured word for word, with the ' +
+      'competitor leaderboard, the sources and three ranked actions.',
   },
   premium: {
     name: 'Word of Model - Monitoring + Review',
     description:
-      'Everything in Monitoring every month, plus a quarterly human deep read that adds Claude ' +
-      'and Microsoft Copilot by hand. US$249 a month.',
+      'Everything in Monitoring every month, unchanged, plus a quarterly deep read from Tim by ' +
+      'hand that adds Claude and Microsoft Copilot - the two surfaces no API can honestly reach.',
   },
   location: {
     name: 'Word of Model - Additional location',
-    description: 'One further location on either plan, US$30 a month each.',
+    description:
+      'One further location on either plan. The same five questions, asked from each town.',
   },
 };
+
+/**
+ * No product copy may contain a price. Checked at module load, so it fails the BUILD rather
+ * than appearing on a stranger's checkout page.
+ *
+ * Matches a currency amount in any of the forms this codebase has used: US$69, $69, USD 69.
+ */
+for (const [tier, product] of Object.entries(PRODUCTS)) {
+  const copy = `${product.name} ${product.description}`;
+  const found = copy.match(/(?:US)?\$\s?\d|\bUSD\s?\d/g);
+  if (found) {
+    throw new Error(
+      `Product copy for "${tier}" names a price (${found.join(', ')}). Stripe renders the amount ` +
+        'being charged directly above this text, and one product carries several prices, so any ' +
+        'price written here will contradict the one on screen. Say what the product is instead.',
+    );
+  }
+}
 
 export interface PriceSpec {
   amount: number;
