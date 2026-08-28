@@ -24,6 +24,7 @@
     "noise": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/noise-floor.mjs",
     "funnel": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/funnel.mjs",
     "requeue": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/requeue-capture.mjs",
+    "trial:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/founding-trial-setup.mjs",
     "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs",
     "favicon": "node scripts/make-favicon.mjs",
     "pixel:check": "node scripts/pixel-check.mjs",

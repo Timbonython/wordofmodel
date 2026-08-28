@@ -91,21 +91,26 @@ export async function createCheckout(input: {
   // premium price. Applied to Monitoring at US$69 it would floor the invoice at zero and then
   // "revert" to a price the customer was never quoted. Refused with a sentence they can act on
   // rather than silently ignored, because a code that vanishes reads as a bug.
-  if (tier !== 'premium' && input.discountCode) {
+  const discount = input.discountCode ? await validateDiscount(input.discountCode) : null;
+
+  // THE CODE HAS TO MATCH THE PLAN. Each offer names the one price it may be charged on, and
+  // Stripe cannot express that itself: `applies_to` scopes to PRODUCTS, and both Monitoring
+  // prices hang off one product, so a coupon scoped to Monitoring covers the annual price too.
+  // Without this line a hundred-percent-off trial would be three months free against a US$690
+  // annual commitment. Refused with a sentence the buyer can act on.
+  if (discount && discount.tier !== tier) {
+    const wanted = discount.tier === 'premium' ? 'Monitoring + Review' : 'Monitoring';
     throw new DiscountError(
-      'That code applies to Monitoring + Review. Choose that plan to use it, or continue on ' +
-        'Monitoring at the standard price.',
+      `That code applies to ${wanted}. Choose that plan to use it, or continue at the standard price.`,
     );
   }
-
-  const discount = input.discountCode ? await validateDiscount(input.discountCode) : null;
 
   // FOUNDING IS PREMIUM ONLY, and Monitoring must not consume one of the twenty: the place is
   // capped by Tim's calendar and what it buys is the quarterly hour, which is premium's.
   // A Monitoring checkout therefore never calls claimFoundingSeat at all - there is no window
   // in which a place is held by somebody who was never eligible for it.
   const { claimId, priceKey } = discount
-    ? { claimId: null as string | null, priceKey: 'premium_monthly' as PriceKey }
+    ? { claimId: null as string | null, priceKey: discount.priceKey }
     : tier === FOUNDING_TIER
       ? await claimFoundingSeat(input.account.id)
       : { claimId: null as string | null, priceKey: TIER_BASE_PRICE[tier] as PriceKey };
@@ -173,6 +178,14 @@ export async function createCheckout(input: {
       // configuration one.
       managed_payments: { enabled: false },
       billing_address_collection: 'auto',
+      // ALWAYS, and this is the line that makes a free trial revert rather than die.
+      //
+      // At a hundred percent off the amount due on the first invoice is zero, and Stripe's
+      // default ('if_required') then collects no card at all. Month four does not step to
+      // US$69: the invoice fails for want of a payment method and the subscription cancels,
+      // which looks from the outside like the customer left. Collecting the card up front is
+      // what makes "then US$69" true, and the wizard's copy says so before they agree to it.
+      payment_method_collection: 'always',
       // No trial. The free scan is the trial.
       //
       // Stated only when there is no discount, and that is Stripe's rule rather than a

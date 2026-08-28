@@ -30,7 +30,8 @@
 import 'server-only';
 import type Stripe from 'stripe';
 import { stripe } from './stripe';
-import { PRICE_USD } from './scope';
+import { PRICE_USD, type PlanTier } from './scope';
+import type { PriceKey } from './stripe';
 
 /**
  * USD 249 less USD 180. The cents are what Stripe carries; the dollars are what prints.
@@ -44,6 +45,22 @@ import { PRICE_USD } from './scope';
  */
 export const DISCOUNT_OFF_CENTS = 18_000;
 export const DISCOUNT_MONTHS = 3;
+
+/**
+ * The founding trial: three months of Monitoring at no charge, then US$69.
+ *
+ * A COUPON, WHERE THE FOUNDING RATE IS A PRICE, AND THE TWO ARE NOT IN TENSION. §3 of the
+ * pricing plan builds the founding rate as a separate price precisely because a coupon's
+ * `duration` can be set wrong and silently revert it - and permanence is what that offer
+ * promises. Here reversion IS the promise: three months free and then the standard rate. A
+ * coupon expressing exactly that is the right object, and a price could not express it at all.
+ *
+ * The rule that reconciles them: a PRICE when permanence is the promise, a COUPON when
+ * reversion is the promise.
+ */
+export const FOUNDING_TRIAL_COUPON_ID = 'founding_trial_100_3mo';
+export const FOUNDING_TRIAL_MONTHS = 3;
+export const FOUNDING_TRIAL_NAME = 'Founding trial - 3 months free';
 
 /** What the page prints for a valid code. Derived, so it cannot drift from the coupon. */
 export const COHORT_PRICE_USD = PRICE_USD.premium_monthly - DISCOUNT_OFF_CENTS / 100;
@@ -60,21 +77,118 @@ export const COHORT_PRICE_USD = PRICE_USD.premium_monthly - DISCOUNT_OFF_CENTS /
 export const COUPON_NAME = 'Local cohort - US$69 for three months';
 
 /**
+ * The coupon every cohort code must sit behind.
+ *
+ * THE PRICE IS IN THE ID ON PURPOSE, and this was previously only in scripts/discount-setup.mjs.
+ * A Stripe coupon's amount cannot be edited after creation, so changing the cohort price means
+ * a NEW coupon and a new id - and the id carrying the amount is what stops a retrieve() quietly
+ * returning the old one. Moved here on 29 Aug 2026 because the offer registry needs it.
+ */
+export const COUPON_ID = 'local_cohort_69_3mo';
+
+/**
  * 0016 says USD 49 in its comments and names LOCAL49 as the example code. It is left alone
  * deliberately: it has been applied, and an applied migration is a record of what ran rather
  * than a document to keep current. This file is where the price lives.
  */
+
+/**
+ * THE OFFERS THIS BUILD KNOWS ABOUT. One entry per coupon that may ever be honoured.
+ *
+ * WHY A REGISTRY. Until 29 Aug 2026 this module validated exactly one coupon shape - US$180
+ * off, repeating three months - and refused everything else as "not set up correctly on our
+ * side". That was right while one offer existed. A second offer would have been rejected by
+ * the validator no matter how carefully it was built in Stripe.
+ *
+ * STRIPE SCOPES COUPONS TO PRODUCTS, NOT PRICES. `applies_to[prices]` is refused outright:
+ * "Received unknown parameter". Both Monitoring prices - main_monthly and main_annual - hang
+ * off one product, so a product-scoped coupon covers both, and a hundred percent off would be
+ * three months free against a US$690 annual commitment.
+ *
+ * So `priceKey` here is the price granularity Stripe cannot express, and it is enforced in
+ * createCheckout: the discount decides the price, and a session is never built for any other.
+ * The coupon's own applies_to still does the structural work of keeping the code off premium,
+ * founding and the location add-on - proven by Stripe refusing those sessions outright.
+ */
+export interface DiscountOffer {
+  /** The Stripe coupon id a code must sit behind. */
+  couponId: string;
+  /** The ONLY price this offer may be charged on. Stripe cannot express this; we must. */
+  priceKey: PriceKey;
+  /** The plan the buyer has to have chosen. */
+  tier: PlanTier;
+  months: number;
+  /** Cents charged on each discounted invoice. Zero is a legitimate value. */
+  netCents: number;
+  /** What the coupon must be, checked against Stripe every time a code is used. */
+  expect: {
+    percentOff: number | null;
+    amountOff: number | null;
+    duration: 'repeating';
+    durationInMonths: number;
+  };
+  /** The line under the price. Copy, so it lives beside the numbers it describes. */
+  line: (code: string) => string;
+}
+
+export const OFFERS: Record<string, DiscountOffer> = {
+  [COUPON_ID]: {
+    couponId: COUPON_ID,
+    priceKey: 'premium_monthly',
+    tier: 'premium',
+    months: DISCOUNT_MONTHS,
+    netCents: PRICE_USD.premium_monthly * 100 - DISCOUNT_OFF_CENTS,
+    expect: {
+      percentOff: null,
+      amountOff: DISCOUNT_OFF_CENTS,
+      duration: 'repeating',
+      durationInMonths: DISCOUNT_MONTHS,
+    },
+    line: (code) =>
+      `Code ${code} applied: US$${COHORT_PRICE_USD} a month for ${DISCOUNT_MONTHS} months, then ` +
+      `US$${PRICE_USD.premium_monthly}. Cancel any time.`,
+  },
+  [FOUNDING_TRIAL_COUPON_ID]: {
+    couponId: FOUNDING_TRIAL_COUPON_ID,
+    priceKey: 'main_monthly',
+    tier: 'main',
+    months: FOUNDING_TRIAL_MONTHS,
+    netCents: 0,
+    expect: {
+      percentOff: 100,
+      amountOff: null,
+      duration: 'repeating',
+      durationInMonths: FOUNDING_TRIAL_MONTHS,
+    },
+    // SAYS WHAT HAPPENS IN MONTH FOUR, in the same sentence as the free part. A trial that
+    // does not print its own end date is a charge arriving with no warning.
+    line: (code) =>
+      `Code ${code} applied: free for ${FOUNDING_TRIAL_MONTHS} months, then ` +
+      `US$${PRICE_USD.main_monthly} a month. Your card is stored now and charged from month ` +
+      `${FOUNDING_TRIAL_MONTHS + 1}. Cancel any time before then and you pay nothing.`,
+  },
+};
 
 export interface ValidDiscount {
   /** Stripe promotion code id, `promo_...`. This is what goes in the session. */
   promotionCodeId: string;
   /** The code as Stripe holds it, uppercase. Echoed back so the wizard shows the real one. */
   code: string;
-  /** Cents charged on each of the first three invoices. */
+  /** Cents charged on each discounted invoice. Zero is legitimate - see the founding trial. */
   netCents: number;
   months: number;
   /** Redemptions left, when the code is capped. Null when it is not. */
   remaining: number | null;
+  /**
+   * THE PRICE THIS CODE IS FOR, and the reason it is on the result rather than assumed by the
+   * caller. createCheckout hard-coded premium_monthly for every discount, which was true while
+   * one offer existed. The offer decides the price now.
+   */
+  priceKey: PriceKey;
+  /** The plan the buyer must have chosen for this code to apply. */
+  tier: PlanTier;
+  /** The line under the price, from the offer that produced it. */
+  line: string;
 }
 
 export class DiscountError extends Error {
@@ -150,16 +264,31 @@ export async function validateDiscount(raw: string): Promise<ValidDiscount> {
     );
   }
 
+  // WHICH OFFER IS THIS? An unknown coupon is refused rather than honoured at whatever it
+  // happens to say: a code minted against a retired coupon must fail loudly on our side, not
+  // quietly charge an amount nobody chose.
+  const offer = OFFERS[coupon.id];
+  if (!offer) {
+    console.error(`Promotion code ${code} sits behind unknown coupon ${coupon.id}.`);
+    throw new DiscountError(
+      `The code ${code} is not one we recognise. Continue at the standard price and email hello@wordofmodel.ai.`,
+    );
+  }
+
   const problems: string[] = [];
   if (!coupon.valid) problems.push('the coupon behind it is no longer valid');
   if (coupon.currency && coupon.currency !== 'usd') problems.push(`it is in ${coupon.currency}, not usd`);
-  if (coupon.percent_off !== null) problems.push('it is a percentage rather than a fixed amount');
-  if (coupon.amount_off !== DISCOUNT_OFF_CENTS) {
-    problems.push(`it takes off ${coupon.amount_off}, not ${DISCOUNT_OFF_CENTS}`);
+  if (coupon.percent_off !== offer.expect.percentOff) {
+    problems.push(`percent_off is ${coupon.percent_off}, not ${offer.expect.percentOff}`);
   }
-  if (coupon.duration !== 'repeating') problems.push(`it runs ${coupon.duration}, not for a fixed number of months`);
-  if (coupon.duration_in_months !== DISCOUNT_MONTHS) {
-    problems.push(`it runs ${coupon.duration_in_months} months, not ${DISCOUNT_MONTHS}`);
+  if (coupon.amount_off !== offer.expect.amountOff) {
+    problems.push(`amount_off is ${coupon.amount_off}, not ${offer.expect.amountOff}`);
+  }
+  if (coupon.duration !== offer.expect.duration) {
+    problems.push(`it runs ${coupon.duration}, not ${offer.expect.duration}`);
+  }
+  if (coupon.duration_in_months !== offer.expect.durationInMonths) {
+    problems.push(`it runs ${coupon.duration_in_months} months, not ${offer.expect.durationInMonths}`);
   }
 
   if (problems.length) {
@@ -171,22 +300,26 @@ export async function validateDiscount(raw: string): Promise<ValidDiscount> {
     );
   }
 
-  const netCents = PRICE_USD.premium_monthly * 100 - DISCOUNT_OFF_CENTS;
   return {
     promotionCodeId: promo.id,
     code,
-    netCents,
-    months: DISCOUNT_MONTHS,
+    netCents: offer.netCents,
+    months: offer.months,
     remaining:
       promo.max_redemptions === null ? null : Math.max(0, promo.max_redemptions - promo.times_redeemed),
+    priceKey: offer.priceKey,
+    tier: offer.tier,
+    line: offer.line(code),
   };
 }
 
-/** The line under the price on the wizard's pay step. Copy, so it lives with the numbers. */
+/**
+ * The line under the price on the wizard's pay step.
+ *
+ * Built by the OFFER rather than here, because the sentence differs by more than the numbers:
+ * the cohort code reverts to US$249 and the founding trial reverts to US$69 and has to say
+ * that a card is stored now. One template could not say both honestly.
+ */
 export function discountLine(d: ValidDiscount): string {
-  const net = (d.netCents / 100).toFixed(0);
-  return (
-    `Code ${d.code} applied: US$${net} a month for ${d.months} months, then ` +
-    `US$${PRICE_USD.premium_monthly}. Cancel any time.`
-  );
+  return d.line;
 }

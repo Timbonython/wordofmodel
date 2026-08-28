@@ -824,6 +824,50 @@ assuming the environment is right.
 Fixed in 0021, which moves the constraint, the partial index and the function together, and
 verified by `npm run founding:cap` at both layers.
 
+## A price when permanence is the promise, a coupon when reversion is (29 Aug 2026)
+
+These two decisions look contradictory and are not. Read together they are one rule.
+
+**The founding rate is a PRICE.** §3 of the pricing plan is explicit about why: a coupon
+carries a `duration` field, and setting it wrong silently reverts the founding cohort to
+US$249 after three months. What that offer promises is **permanence** - "held at that price
+for as long as you stay" - and a distinct price cannot expire. Nothing about it can be set
+wrong in a way that quietly ends it.
+
+**The founding trial is a COUPON.** `founding_trial_100_3mo`: 100% off, repeating, three
+months. What it promises is **reversion** - three months free and then US$69. A coupon's
+`duration` is exactly that promise expressed as data. A price could not express it at all;
+it would take a second price and something to move the subscriber between them, which is a
+scheduled reprice nobody is watching.
+
+**The rule: a PRICE when permanence is the promise, a COUPON when reversion is the promise.**
+The `duration` field is a liability for the first and the mechanism for the second.
+
+### What the trial needed beyond the coupon, and why
+
+**`payment_method_collection: 'always'`.** At 100% off the first invoice is US$0 and Stripe's
+default (`if_required`) collects no card. Month four then does not step to US$69 - the invoice
+fails for want of a payment method and the subscription cancels, which from the outside looks
+like the customer left. Verified by completing a US$0 checkout: `subscription
+.default_payment_method` came back `visa ****4242`.
+
+**Stripe scopes coupons to PRODUCTS, not prices.** `applies_to[prices]` is refused outright:
+"Received unknown parameter". Both Monitoring prices - `main_monthly` and `main_annual` - hang
+off one product, so the coupon alone also covers the annual price: three months free against a
+US$690 commitment. The product scoping does the structural work that matters most (Stripe
+refuses a premium, founding or location session outright, proven), and the PRICE granularity
+is enforced in `lib/discount.ts`, where each offer names the one price it may be charged on
+and `createCheckout` refuses any other.
+
+**One offer per coupon, in a registry.** `validateDiscount` previously asserted a single
+shape - US$180 off, three months - and refused everything else as "not set up correctly on our
+side". A second offer would have been rejected however carefully it was built in Stripe. The
+registry in `lib/discount.ts` is now what a code is validated against, and an unknown coupon
+is still refused rather than honoured at whatever it happens to say.
+
+Reversion proven on a test clock rather than reasoned about: three invoices at US$0, then
+US$69.00 from month four, then US$69.00 again.
+
 ## Architecture and copy can disagree, and only one of them reaches the customer (28 Aug 2026)
 
 §3 of the pricing plan builds the founding rate as a **separate Stripe price, never a coupon**,

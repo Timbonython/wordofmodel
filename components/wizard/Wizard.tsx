@@ -6,6 +6,7 @@ import {
   QUESTION_SLOTS,
   TIERS,
   TIER_BASE_PRICE,
+  TIERS_WITH_A_CODE,
   priceLabel,
   type PlanTier,
   type QuestionSlot,
@@ -693,11 +694,12 @@ export default function Wizard({
               onChange={setEmail}
               type="email"
             />
-            {/* THE CODE BOX ONLY WHERE A CODE CAN BE USED. Every discount in circulation is
-                written against the premium price - US$180 off, three months, then US$249 - so on
-                Monitoring the box could only ever reject what somebody typed into it. A field
-                that exists to say no is worse than no field. */}
-            {tier === 'premium' && (
+            {/* THE CODE BOX ONLY WHERE A CODE CAN BE USED. Read from the offer registry rather
+                than hard-coded: while premium was the only plan with an offer this was
+                `tier === 'premium'`, and the founding trial made that wrong the day it existed.
+                A field that exists to say no is worse than no field, and a field that says no to
+                a code that IS valid is worse again. */}
+            {TIERS_WITH_A_CODE.includes(tier) && (
             <label className="wizard-field">
               <span className="k">Got a code?</span>
               <span className="h">Optional. The price above changes before you pay, not after</span>

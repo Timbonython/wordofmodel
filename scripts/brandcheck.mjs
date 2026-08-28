@@ -86,6 +86,29 @@ for (const brandKey of Object.keys(BRAND)) {
   }
 }
 
+
+// ---------------------------------------------------------------------------------------
+// THE CODE BOX AND THE OFFERS MUST AGREE.
+//
+// lib/discount.ts is server-only, so the wizard cannot read the offer registry directly and
+// TIERS_WITH_A_CODE in lib/scope.ts restates it for the browser. Two places, one fact - the
+// exact shape this repo keeps getting bitten by, so it is checked rather than trusted.
+//
+// Drift in either direction is a real defect: a tier listed here with no offer renders a box
+// that can only say no, and a tier with an offer left out hides a box from somebody holding a
+// code that works.
+const { OFFERS } = await import(join(here, '../lib/discount.ts'));
+const { TIERS_WITH_A_CODE } = await import(join(here, '../lib/scope.ts'));
+
+const tiersWithOffers = [...new Set(Object.values(OFFERS).map((o) => o.tier))].sort();
+const declaredTiers = [...TIERS_WITH_A_CODE].sort();
+if (JSON.stringify(tiersWithOffers) !== JSON.stringify(declaredTiers)) {
+  problems.push(
+    `TIERS_WITH_A_CODE is ${JSON.stringify(declaredTiers)} but the offers in lib/discount.ts cover ` +
+      `${JSON.stringify(tiersWithOffers)}. One of them is wrong.`,
+  );
+}
+
 if (problems.length) {
   console.error(`brandcheck: ${problems.length} problem(s).\n`);
   for (const p of problems) console.error(`  - ${p}`);

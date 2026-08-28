@@ -178,6 +178,15 @@ export const TIER_BASE_PRICE: Record<PlanTier, keyof typeof PRICE_USD> = {
 export const FOUNDING_TIER: PlanTier = 'premium';
 
 /**
+ * Which plans can accept a discount code, for deciding whether to render the box.
+ *
+ * DERIVED FROM THE OFFERS, not guessed. lib/discount.ts is server-only and holds the registry;
+ * this is the same fact where a client component can read it, and scripts/offercheck asserts
+ * the two agree so a retired offer cannot leave a box that only ever says no.
+ */
+export const TIERS_WITH_A_CODE: readonly PlanTier[] = ['main', 'premium'];
+
+/**
  * What each tier includes.
  *
  * PREMIUM'S LIST IS MAIN'S LIST PLUS ADDITIONS, BY CONSTRUCTION. §1 of the pricing plan and §5

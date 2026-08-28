@@ -42,7 +42,8 @@ const { DISCOUNT_OFF_CENTS, DISCOUNT_MONTHS, COUPON_NAME, COHORT_PRICE_USD } = a
  * or retrieve() returns the old one and every assertion below fails with no obvious cause.
  * The 49 version existed in test mode only and was never minted live.
  */
-const COUPON_ID = 'local_cohort_69_3mo';
+// From lib/discount.ts, not a second copy. The registry there needs it too.
+const { COUPON_ID } = await import(join(here, '../lib/discount.ts'));
 
 /** Ninety days. Long enough for a slow conversation, short enough that a leak expires. */
 const VALID_DAYS = 90;
