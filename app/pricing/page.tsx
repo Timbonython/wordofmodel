@@ -1,0 +1,111 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { SiteNav } from '@/components/SiteNav';
+import { SiteFooter } from '@/components/SiteFooter';
+import { PricingCards } from '@/components/PricingCards';
+import { ScanPanel } from '@/components/scan/ScanPanel';
+import { foundingOfferOrNull } from '@/lib/billing';
+import { FOUNDING_SEATS_PUBLIC, TIERS, priceLabel } from '@/lib/scope';
+import { env } from '@/lib/env';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Pricing - Word of Model',
+  description:
+    'Monitoring US$69 a month, Monitoring + Review US$249. Annual is two months free. ' +
+    'Additional locations US$30 each. No free tier, no contract.',
+  alternates: { canonical: '/pricing' },
+};
+
+/**
+ * The pricing page. §5 of the brand brief, §1 of the pricing plan.
+ *
+ * THE FOUNDING BLOCK IS DECIDED ON THE SERVER AND FAILS CLOSED. foundingOfferOrNull() returns
+ * null when the count cannot be read, when the places are gone, or when 30 September has
+ * passed - and in every one of those cases nothing renders here and the reader sees the
+ * standard US$249 on the premium card. Never a block without a number, and never a fallback
+ * count. A failed count cannot tell you whether the offer is open, so it cannot be offered.
+ *
+ * It also alerts, in lib/billing.ts, because the failure mode this page cannot show you is a
+ * silently withheld offer on a page that looks completely normal.
+ */
+export default async function PricingPage() {
+  const founding = await foundingOfferOrNull();
+  const wizardLive = env.wizardLive;
+
+  return (
+    <>
+      <SiteNav sampleLive issue="Pricing" />
+
+      <main className="wrap">
+        <section className="hero pricing-hero">
+          <div className="eyebrow">Pricing</div>
+          <h1>Two ways to run it</h1>
+          <p className="lede">
+            Both are the same measurement, taken the same way every month. The difference is
+            whether a person reads it with you once a quarter. All prices in US dollars.
+          </p>
+        </section>
+
+        <PricingCards tiers={TIERS} />
+
+        {founding !== null && (
+          <section className="founding-block">
+            <div className="eyebrow">Founding places</div>
+            <h2>
+              {FOUNDING_SEATS_PUBLIC} founding places at {priceLabel('premium_founding_monthly')} a
+              month, held at that price for as long as you stay.
+            </h2>
+            <p>
+              Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is what I
+              can do. Open until 30 September 2026, or until the {FOUNDING_SEATS_PUBLIC} are taken.
+            </p>
+            <p className="founding-count">
+              {founding.remaining === FOUNDING_SEATS_PUBLIC
+                ? `All ${FOUNDING_SEATS_PUBLIC} are open.`
+                : founding.remaining === 1
+                  ? 'One place left.'
+                  : `${founding.remaining} places left.`}
+            </p>
+            {wizardLive ? (
+              <Link className="button" href="/start" prefetch={false}>
+                Take a founding place
+              </Link>
+            ) : null}
+          </section>
+        )}
+
+        {/* §5: somebody reading pricing who is not ready should be able to run the scan from
+            here rather than leaving. The free scan is untouched by any of this - no card, no
+            account, and nothing on this page routes it through anything Stripe-aware. */}
+        <section className="pricing-scan">
+          <div className="eyebrow">Not ready</div>
+          <h2>See what one answer says about you first</h2>
+          <p className="lede">Free, about three minutes, no account and no card.</p>
+          <div id="scan">
+            <ScanPanel wizardLive={wizardLive} />
+          </div>
+        </section>
+
+        <section>
+          <div className="eyebrow">What is not on the list</div>
+          <h2>There is no free tier</h2>
+          <p>
+            A recurring free plan costs API spend every month for somebody who has already
+            decided not to pay, and gives them a reason to stay put rather than move up. The
+            free scan is the shopfront: one question, two engines, no account. It is not a tier
+            and it is not going away.
+          </p>
+          <p>
+            <Link href="/method" prefetch={false}>
+              How we measure, including what we have not measured
+            </Link>
+          </p>
+        </section>
+      </main>
+
+      <SiteFooter sampleLive />
+    </>
+  );
+}

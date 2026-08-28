@@ -2,6 +2,7 @@ import 'server-only';
 import type Stripe from 'stripe';
 import { db } from './db';
 import { FOUNDING_SEATS, idOf, periodEnd, periodStart, type PriceKey } from './stripe';
+import { sendOpsAlert } from './billing-mail';
 
 /**
  * Everything that reads or writes the billing side of the schema
@@ -105,7 +106,10 @@ export async function foundingDisplay(): Promise<FoundingState> {
   const { data, error } = await db()
     .from('subscriptions')
     .select('account_id')
-    .eq('price_key', 'founding_monthly')
+    // BOTH founding prices. The cohort has a monthly and an annual rate and is ONE cohort of
+    // twenty, not twenty of each. Counting only the monthly one would let the cap leak to
+    // forty permanent discounts, which is the same defect this whole section exists to stop.
+    .in('price_key', ['premium_founding_monthly', 'premium_founding_annual'])
     .neq('status', 'incomplete_expired');
 
   // A counter that cannot be read must not silently hand out the founding rate.
@@ -116,19 +120,84 @@ export async function foundingDisplay(): Promise<FoundingState> {
   return {
     taken,
     remaining,
-    priceKey: remaining > 0 ? 'founding_monthly' : 'standard_monthly',
+    priceKey: remaining > 0 ? 'premium_founding_monthly' : 'premium_monthly',
   };
 }
 
 /**
- * The pricing block renders on every page view, and a Supabase outage should
- * cost the founding line rather than the front page. Falls back to null, and
- * the caller renders the offer without a count.
+ * When the founding offer closes. §3 of the pricing plan: 30 September 2026, or twenty places,
+ * whichever comes first.
+ *
+ * End of that day in Adelaide, expressed in UTC. A cap on a date that quietly means "the
+ * morning of the 30th, if you are east of us" is the kind of detail somebody finds out about
+ * by being refused.
  */
-export async function foundingDisplayOrNull(): Promise<FoundingState | null> {
+export const FOUNDING_CLOSES = new Date('2026-10-01T13:30:00Z');
+
+/**
+ * THE ONE THE PAGE READS. Null means DO NOT OFFER, and the caller renders no founding block at
+ * all - not a block without a number.
+ *
+ * FAILS CLOSED, and this is the whole point of the function.
+ *
+ * Until 28 Aug 2026 this was foundingDisplayOrNull(), it returned null on failure, and the
+ * callers read null as "render the offer without a count". So an unreadable counter offered
+ * the founding rate to everybody, indefinitely, with nothing to say how many places were
+ * left - which is selling an unbounded number of permanent 40% discounts and not finding out.
+ * A failed count cannot tell you whether the offer is open, so it cannot be offered.
+ *
+ * AND IT ALERTS. A silently broken count refuses the offer to every visitor while the page
+ * looks perfectly normal - the same defect in the opposite direction, and the one more likely
+ * to run for a week before anybody notices. The read failing is the alert; a genuine zero is
+ * not an error and does not alert.
+ */
+/**
+ * One alert per process per half hour, not one per page render.
+ *
+ * FOUND BY BREAKING IT. The Gate 4 fail-closed proof fired three alerts in twenty seconds from
+ * three page loads, and this page is rendered by every visitor. On production that is an inbox
+ * flooded within a minute and, worse, a good chance of hitting Resend's rate limit - which
+ * would take out the alert channel for the failures that actually cost a customer.
+ *
+ * In-process and deliberately not in the database: a counter that needs a working database to
+ * report a broken database is the same mistake as an alert address on the domain it monitors.
+ * Several instances each sending one an hour is a fine outcome; a fleet sending one per render
+ * is not.
+ */
+const ALERT_EVERY_MS = 30 * 60_000;
+let lastFoundingAlert = 0;
+
+export async function foundingOfferOrNull(): Promise<FoundingState | null> {
+  if (Date.now() >= FOUNDING_CLOSES.getTime()) return null;
+
   try {
-    return await foundingDisplay();
-  } catch {
+    const state = await foundingDisplay();
+    // A real, readable zero. Not an error, and not alert-worthy: it is the offer selling out,
+    // which is the outcome it was designed for.
+    return state.remaining > 0 ? state : null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // ALWAYS LOGGED, even when the email is throttled: the log line is the record that this
+    // happened at all, and sendOpsAlert's own console line is the one being suppressed.
+    console.error(`founding: count unavailable, offer withheld. ${message}`);
+
+    const now = Date.now();
+    if (now - lastFoundingAlert < ALERT_EVERY_MS) return null;
+    lastFoundingAlert = now;
+
+    // Never throws, never blocks the page. The pricing block is worth less than the page.
+    await sendOpsAlert({
+      subject: 'Founding count unavailable - the offer is being withheld from every visitor',
+      lines: [
+        'foundingOfferOrNull() could not read the founding count, so the founding block is not',
+        'rendering and every visitor is being shown the standard US$249 rate.',
+        '',
+        'This is the fail-closed path working as designed. It is still wrong to leave: the page',
+        'looks completely normal while the offer is switched off, which is why this alert exists.',
+        '',
+        `Reason: ${message}`,
+      ],
+    }).catch(() => {});
     return null;
   }
 }
@@ -324,5 +393,58 @@ export async function releaseConfirmationEmail(subscriptionId: string): Promise<
     .eq('id', subscriptionId);
   if (error) {
     console.error(`Could not release the confirmation claim for ${subscriptionId}: ${error.message}`);
+  }
+}
+
+/**
+ * A founding subscription exists. Can the counter see it?
+ *
+ * THE NON-ZERO PATH, and it is the half a count cannot verify about itself. `foundingDisplay()`
+ * returning zero is indistinguishable from a counter that is blind - a stale price_key inside
+ * claim_founding_seat, a query pointed at the wrong Stripe mode, a constraint renamed without
+ * the function that reads it. Every one of those answers "zero" with complete confidence, and
+ * on 28 Aug 2026 one of them was real.
+ *
+ * So the first founding subscription to land is the test. If a row exists on a founding price
+ * and the counter still says nobody holds one, the counter is wrong and the cap is not
+ * capping - which means an unbounded number of permanent 40% discounts, quietly.
+ *
+ * NEVER THROWS. It is called after the subscription is already written; a check that took down
+ * the webhook would turn a reporting fault into a lost customer.
+ */
+export async function verifyFoundingCountSaw(priceKey: string, subscriptionId: string): Promise<void> {
+  if (!priceKey.startsWith('premium_founding_')) return;
+
+  try {
+    const state = await foundingDisplay();
+    if (state.taken > 0) return;
+
+    console.error(
+      `founding: subscription ${subscriptionId} is on ${priceKey} but the counter reports 0 taken.`,
+    );
+    await sendOpsAlert({
+      subject: 'The founding counter cannot see a founding subscription',
+      lines: [
+        `Subscription ${subscriptionId} was just written on ${priceKey}, and foundingDisplay()`,
+        'still reports 0 places taken.',
+        '',
+        'THE CAP IS NOT CAPPING. A counter that cannot see a subscription that exists will not',
+        'refuse the twenty-first either, and every visitor is being offered a permanent 40%',
+        'discount that nobody is counting.',
+        '',
+        'The three ways this has happened or nearly happened:',
+        '  - a price_key renamed without the query that reads it (0021)',
+        '  - claim_founding_seat holding a stale string while every display guard passed',
+        '  - a count reading one Stripe mode while the charge happens in the other',
+        '',
+        'Check `npm run stripe:mode` and the price_key values in subscriptions.',
+      ],
+    }).catch(() => {});
+  } catch (err) {
+    // The count itself failing here is already alerted by foundingOfferOrNull on the next page
+    // render. Log and move on rather than double-alerting from the webhook.
+    console.error(
+      `founding: could not verify the counter after ${subscriptionId}: ${err instanceof Error ? err.message : err}`,
+    );
   }
 }

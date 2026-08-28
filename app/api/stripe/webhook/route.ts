@@ -12,6 +12,7 @@ import {
   releaseConfirmationEmail,
   releaseStripeEvent,
   upsertSubscription,
+  verifyFoundingCountSaw,
 } from '@/lib/billing';
 import { sendConfirmationEmail, sendOpsAlert, sendPaymentFailedAlert } from '@/lib/billing-mail';
 import { notifyNewSubscriber } from '@/lib/notify';
@@ -154,7 +155,7 @@ async function onCheckoutCompleted(
   if (buyerEmail) {
     await sendPurchaseEvent({
       email: buyerEmail,
-      priceKey: (session.metadata?.price_key as 'founding_monthly' | 'standard_monthly') ?? 'standard_monthly',
+      priceKey: (session.metadata?.price_key as 'premium_founding_monthly' | 'premium_monthly') ?? 'premium_monthly',
       eventId: session.id,
       country: session.customer_details?.address?.country ?? null,
     });
@@ -167,15 +168,21 @@ async function onCheckoutCompleted(
   }
 
   const sub = await stripe().subscriptions.retrieve(subscriptionId);
+  const priceKey = await priceKeyOf(sub);
   const { row } = await upsertSubscription({
     sub,
     accountId,
     scopeId,
-    priceKey: priceKeyOf(sub),
+    priceKey,
     eventAt,
     scanId,
     discountCode: session.metadata?.discount_code ?? sub.metadata?.discount_code ?? null,
   });
+
+  // THE NON-ZERO PATH. A founding subscription now exists; if the counter still reports nobody
+  // holding one, the cap is blind and this is the only moment that is observable. Never throws
+  // - the subscription is already written and a reporting fault must not cost the customer.
+  await verifyFoundingCountSaw(priceKey, sub.id);
 
   await sendReceipt({
     row,
@@ -194,7 +201,7 @@ async function onCheckoutCompleted(
     subscriptionId: sub.id,
     accountId,
     scopeId,
-    priceKey: priceKeyOf(sub),
+    priceKey: await priceKeyOf(sub),
     email: session.customer_details?.email ?? null,
     scanId,
     reportDay: row.report_day ?? null,
@@ -327,7 +334,7 @@ async function onSubscriptionChanged(sub: Stripe.Subscription, eventAt: Date): P
     sub,
     accountId,
     scopeId,
-    priceKey: existing?.price_key ?? priceKeyOf(sub),
+    priceKey: existing?.price_key ?? await priceKeyOf(sub),
     eventAt,
     // Only used on insert. Whichever of the two events lands first carries it, which is why
     // createCheckout puts the same metadata on the session AND the subscription.

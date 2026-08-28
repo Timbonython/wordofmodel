@@ -93,7 +93,7 @@ export async function notifyNewSubscriber(input: {
     // Which founding place this is. Read after the subscription row is written, so a founding
     // subscriber is the Nth including themselves.
     let cohort = 'not a founding subscription';
-    if (input.priceKey === 'founding_monthly') {
+    if (input.priceKey === 'premium_founding_monthly') {
       try {
         const { taken } = await foundingDisplay();
         cohort = `${taken} of ${FOUNDING_SEATS}`;
@@ -116,7 +116,7 @@ export async function notifyNewSubscriber(input: {
       `Market:       ${market}`,
       `Locality:     ${locality}`,
       '',
-      `Plan:         ${input.priceKey === 'founding_monthly' ? 'Founding' : 'Standard'}, ${priceLabel(input.priceKey)}/mo`,
+      `Plan:         ${input.priceKey === 'premium_founding_monthly' ? 'Founding' : 'Standard'}, ${priceLabel(input.priceKey)}/mo`,
       `Founding no:  ${cohort}`,
       '',
       `Scope:        ${input.scopeId}`,

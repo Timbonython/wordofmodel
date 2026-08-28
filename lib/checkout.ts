@@ -2,7 +2,7 @@ import 'server-only';
 import type Stripe from 'stripe';
 import { db } from './db';
 import { env } from './env';
-import { assertPrice, priceIdFor, stripe, type PriceKey } from './stripe';
+import { assertOneInterval, assertPrice, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
 import { validateDiscount, type ValidDiscount } from './discount';
 import { recordFunnel } from './funnel';
@@ -74,13 +74,13 @@ export async function createCheckout(input: {
   // A DISCOUNTED CHECKOUT NEVER CLAIMS A SEAT, and it does not claim one and give it back.
   // claimFoundingSeat is not called at all, so there is no window in which one of twenty
   // places is held by somebody who was never going to take it. The discount sits on the
-  // standard price, so the subscription is written price_key 'standard_monthly' and
+  // standard price, so the subscription is written price_key 'premium_monthly' and
   // foundingDisplay() cannot see it: the public counter stays a count of people who paid
   // 149 rather than a count of giveaways.
   const discount = input.discountCode ? await validateDiscount(input.discountCode) : null;
 
   const { claimId, priceKey } = discount
-    ? { claimId: null as string | null, priceKey: 'standard_monthly' as PriceKey }
+    ? { claimId: null as string | null, priceKey: 'premium_monthly' as PriceKey }
     : await claimFoundingSeat(input.account.id);
   await assertPrice(priceKey);
 
@@ -101,12 +101,20 @@ export async function createCheckout(input: {
   };
 
   let session: Stripe.Checkout.Session;
+  const lineKeys: PriceKey[] = [priceKey];
+  assertOneInterval(lineKeys);
+
   try {
     session = await stripe().checkout.sessions.create({
       mode: 'subscription',
       customer,
       client_reference_id: input.scope.id,
-      line_items: [{ price: priceIdFor(priceKey), quantity: 1 }],
+      // ONE ARRAY, ASSERTED BEFORE IT IS PRICED. There is a single key in it today; the shape
+      // is plural so that an add-on line cannot be added later without passing the interval
+      // rule on its way to the charge. See assertOneInterval.
+      line_items: await Promise.all(
+        lineKeys.map(async (k) => ({ price: await priceIdFor(k), quantity: 1 })),
+      ),
       // The PROMOTION CODE, never the coupon. Stripe takes either, and passing the coupon
       // applies the coupon's own limits and ignores max_redemptions and redeem_by on the
       // promotion code entirely - which is where the cap lives. A leaked code with its cap
@@ -195,16 +203,40 @@ export async function portalSession(customerId: string, returnUrl: string): Prom
   return session.url;
 }
 
-/** The price key a subscription is on, read from its own metadata first. */
-export function priceKeyOf(sub: Stripe.Subscription, fallbackPriceId?: string): PriceKey {
+/**
+ * The price key a subscription is on, read from its own metadata first.
+ *
+ * NOW READS THE LOOKUP KEY, which is what the price itself carries. The old version compared
+ * the price id against one env var and returned 'premium_monthly' for everything else, which
+ * silently mislabelled the six prices that did not exist yet. Since the lookup key IS the
+ * application's name for a price, a subscription on any of the eight identifies itself.
+ */
+export async function priceKeyOf(
+  sub: Stripe.Subscription,
+  fallbackPriceId?: string,
+): Promise<PriceKey> {
   const fromMetadata = sub.metadata?.price_key;
-  if (fromMetadata === 'founding_monthly' || fromMetadata === 'standard_monthly') {
-    return fromMetadata;
+  if (fromMetadata && (PRICE_KEYS as readonly string[]).includes(fromMetadata)) {
+    return fromMetadata as PriceKey;
   }
-  // Metadata missing means the subscription was made outside the wizard, in the
-  // Stripe dashboard. Fall back to matching the price id rather than guessing:
-  // guessing standard would overcharge, guessing founding would give away a seat.
-  const priceId = sub.items.data[0]?.price.id ?? fallbackPriceId;
-  if (priceId === priceIdFor('founding_monthly')) return 'founding_monthly';
-  return 'standard_monthly';
+
+  // Metadata missing means the subscription was made outside the wizard, in the Stripe
+  // dashboard. Read the price's own lookup key rather than guessing: guessing premium would
+  // overcharge a founding subscriber, guessing founding would give away a capped seat.
+  const item = sub.items.data[0]?.price;
+  const lookup = item?.lookup_key;
+  if (lookup && (PRICE_KEYS as readonly string[]).includes(lookup)) return lookup as PriceKey;
+
+  const priceId = item?.id ?? fallbackPriceId;
+  if (priceId) {
+    const price = await stripe().prices.retrieve(priceId);
+    if (price.lookup_key && (PRICE_KEYS as readonly string[]).includes(price.lookup_key)) {
+      return price.lookup_key as PriceKey;
+    }
+  }
+
+  // Nothing identified it. Premium monthly is the safe guess: it is the standard rate, so an
+  // unrecognised subscription is never recorded as holding a capped founding place.
+  console.error(`priceKeyOf: could not identify the price on ${sub.id}; recording premium_monthly.`);
+  return 'premium_monthly';
 }

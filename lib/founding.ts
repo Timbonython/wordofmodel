@@ -47,11 +47,11 @@ export async function claimFoundingSeat(accountId: string): Promise<SeatClaim> {
 
   if (error) {
     console.error(`Founding claim failed for account ${accountId}: ${error.message}`);
-    return { claimId: null, priceKey: 'standard_monthly' };
+    return { claimId: null, priceKey: 'premium_monthly' };
   }
 
   const claimId = (data as string | null) ?? null;
-  return { claimId, priceKey: claimId ? 'founding_monthly' : 'standard_monthly' };
+  return { claimId, priceKey: claimId ? 'premium_founding_monthly' : 'premium_monthly' };
 }
 
 /** Ties a claim to the session it paid for, once Stripe has given us the id. */

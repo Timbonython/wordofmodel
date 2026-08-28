@@ -45,9 +45,7 @@ export function SiteNav({
           <Link href="/method" prefetch={false}>
             How it works
           </Link>
-          {/* TODO(gate 4): /pricing does not exist until the Stripe objects do. Points at the
-              home page's pricing block until then rather than at a 404. */}
-          <Link href="/#pricing" prefetch={false}>
+          <Link href="/pricing" prefetch={false}>
             Pricing
           </Link>
           {sampleLive ? (

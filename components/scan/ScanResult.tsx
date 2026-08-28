@@ -209,7 +209,7 @@ export function ScanResult({
               {ctaLabel}
             </a>
             <p className="note" style={{ marginTop: 10 }}>
-              {priceLabel('founding_monthly')}/mo founding rate, first {FOUNDING_SEATS_PUBLIC} subscribers.
+              {priceLabel('premium_founding_monthly')}/mo founding rate, {FOUNDING_SEATS_PUBLIC} places.
               Three minutes to set up, and your first report lands within 24 hours.
             </p>
           </div>
@@ -281,9 +281,9 @@ export function ScanResult({
               destination: two chances to act on one thing being offered. */}
           <div className="offer">
             <p>
-              <strong>{priceLabel('standard_monthly')}/mo.</strong> Founding rate{' '}
-              {priceLabel('founding_monthly')}/mo, first {FOUNDING_SEATS_PUBLIC} subscribers, locked for
-              12 months. Cancel any time.
+              <strong>{priceLabel('premium_monthly')}/mo.</strong> Founding rate{' '}
+              {priceLabel('premium_founding_monthly')}/mo, {FOUNDING_SEATS_PUBLIC} places, held at that
+              price for as long as you stay. Cancel any time.
             </p>
             <a className="button" href={ctaHref}>
               {ctaLabel}

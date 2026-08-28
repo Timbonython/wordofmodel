@@ -211,7 +211,7 @@ export default function Wizard({
   const founding = foundingRemaining !== null && foundingRemaining > 0;
   // Formatted from the same constants Stripe charges, never typed. The two literals that
   // used to be here were the fourth and fifth copies of a number that lives in lib/stripe.ts.
-  const listPrice = founding ? priceLabel('founding_monthly') : priceLabel('standard_monthly');
+  const listPrice = founding ? priceLabel('premium_founding_monthly') : priceLabel('premium_monthly');
   const price = discount ? `US$${discount.priceUsd}` : listPrice;
 
   const applyDiscount = () =>
@@ -624,8 +624,8 @@ export default function Wizard({
 
           {founding && !discount && (
             <p className="founding">
-              Founding rate: {priceLabel('founding_monthly')} a month, locked for twelve
-              months.{' '}
+              Founding rate: {priceLabel('premium_founding_monthly')} a month, held at that price for
+              as long as you stay.{' '}
               {foundingRemaining === 1
                 ? 'One place left.'
                 : `${foundingRemaining} of 20 places left.`}

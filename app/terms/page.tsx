@@ -90,9 +90,9 @@ export default function TermsPage() {
         <section>
           <h2>Price, billing and the founding rate</h2>
           <p>
-            US${PRICE_USD.standard_monthly} a month, billed monthly in advance, renewing automatically
+            US${PRICE_USD.premium_monthly} a month, billed monthly in advance, renewing automatically
             until you cancel. The first {FOUNDING_SEATS} subscribers pay a founding rate of USD{' '}
-            {PRICE_USD.founding_monthly} a month, held for twelve months from when you subscribe.
+            {PRICE_USD.premium_founding_monthly} a month, held at that price for as long as the subscription stays active.
           </p>
           <p>
             The {FOUNDING_SEATS} founding places are counted as {FOUNDING_SEATS} businesses, not{' '}

@@ -78,10 +78,10 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
   // started opening a baseline run on the day of payment. A subscriber was being told to
   // wait a month for something arriving overnight.
   const when = 'within 24 hours';
-  const price = input.priceKey === 'founding_monthly' ? 'US$149' : 'US$249';
+  const price = input.priceKey === 'premium_founding_monthly' ? 'US$149' : 'US$249';
   const foundingLine =
-    input.priceKey === 'founding_monthly'
-      ? `You took a founding place, so that is US$149 a month, locked for twelve months.`
+    input.priceKey === 'premium_founding_monthly'
+      ? `You took a founding place, so that is US$149 a month, held at that price for as long as you stay.`
       : `That is US$249 a month. Cancel any time, no contract.`;
 
   const text = [

@@ -1657,3 +1657,208 @@ footer .wrap {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ============================================================================
+   THE PRICING PAGE — §5 of the brand brief.
+   ============================================================================ */
+.pricing-hero { padding-top: 34px; }
+
+/* ---- the billing toggle. The annual FIGURE is shown, never left as arithmetic ---- */
+.billing-toggle {
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  margin: 0 0 30px;
+}
+
+.billing-toggle button {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  padding: 11px 18px;
+  background: transparent;
+  color: var(--soft);
+  border: 0;
+  cursor: pointer;
+}
+
+.billing-toggle button.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.toggle-note {
+  color: var(--green);
+  margin-left: 8px;
+}
+
+.billing-toggle button.on .toggle-note { color: var(--paper); opacity: 0.75; }
+
+/* ---- the two cards ---- */
+.cards {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-bottom: 44px;
+}
+
+@media (min-width: 861px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* margin-bottom: 0 IS LOAD-BEARING. The global `section { margin-bottom: 72px }` applies to
+   these too, and a grid item's margin does not collapse away - so the row was sized 88px
+   taller than the cards and the container's own --line background showed through as a grey
+   band beneath both of them. Same failure as the .gets grid: a gap-as-hairline grid only works
+   when the items fill the row. Found by measuring the DOM, not by reading the CSS. */
+.card {
+  background: var(--card);
+  padding: 30px 28px;
+  margin-bottom: 0;
+}
+
+.card h2 {
+  font-size: 24px;
+  margin: 0 0 12px;
+}
+
+.card-price {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--soft);
+}
+
+.card-price strong {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-size: 40px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.card-sub {
+  margin: 0 0 22px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+}
+
+.features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.features li {
+  padding: 9px 0 9px 22px;
+  border-top: 1px solid var(--line);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--soft);
+  position: relative;
+}
+
+.features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  width: 9px;
+  height: 9px;
+  background: var(--line);
+}
+
+/* The ONLY visual difference between the two lists. Shared lines are repeated in full and
+   look identical on both cards, so nobody can read premium as a substitution. */
+.features li.feature-added {
+  color: var(--ink);
+}
+
+.features li.feature-added::before { background: var(--green); }
+
+/* ---- additional locations: a quantity row under both cards, not a third card ---- */
+.locations {
+  border: 1px solid var(--line);
+  padding: 26px 28px;
+  margin-bottom: 44px;
+}
+
+.locations h3 { font-size: 20px; margin: 0 0 8px; }
+.locations p { margin: 0 0 18px; color: var(--soft); max-width: 60ch; }
+
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--ink);
+  margin-bottom: 20px;
+}
+
+.stepper button {
+  background: transparent;
+  border: 0;
+  padding: 0 16px;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.stepper button:disabled { color: var(--line); cursor: default; }
+
+.stepper-count {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  padding: 11px 14px;
+  border-left: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  min-width: 11ch;
+  text-align: center;
+}
+
+/* A five-clinic group must see the total without doing arithmetic, and the working is shown
+   beside it so the number can be checked rather than trusted. */
+.totals { border-collapse: collapse; width: 100%; max-width: 46rem; }
+
+.totals th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--soft);
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14.5px;
+}
+
+.totals td {
+  text-align: right;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13.5px;
+}
+
+.totals-working { color: var(--faint); }
+
+/* ---- the founding block. Renders only when the count is real. ---- */
+.founding-block {
+  border-left: 3px solid var(--green);
+  padding: 4px 0 4px 22px;
+  margin-bottom: 44px;
+}
+
+.founding-block h2 { font-size: 24px; margin: 0 0 12px; max-width: 34ch; }
+.founding-block p { color: var(--soft); max-width: 60ch; }
+
+.founding-count {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--green);
+}
+
+.pricing-scan { border-top: 1px solid var(--line); padding-top: 34px; }
+
+@media (max-width: 640px) {
+  .card { padding: 24px 20px; }
+  .totals td { font-size: 12.5px; }
+  .totals-working { display: block; }
+}

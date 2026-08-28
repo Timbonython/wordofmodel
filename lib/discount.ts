@@ -17,8 +17,8 @@
  *
  * THE DISCOUNT SITS ON THE STANDARD PRICE, NOT THE FOUNDING ONE. The brief does not say
  * which, and it decides two things. On standard, the subscription is written with
- * price_key 'standard_monthly', so foundingDisplay() - which counts distinct accounts on
- * 'founding_monthly' - cannot see it, and the public counter stays a count of people who
+ * price_key 'premium_monthly', so foundingDisplay() - which counts distinct accounts on
+ * 'premium_founding_monthly' - cannot see it, and the public counter stays a count of people who
  * paid 149 rather than a count of giveaways. And month four steps to 249, which is what the
  * brief asks for. The consequence to accept is that a code holder never becomes founding.
  *
@@ -46,7 +46,7 @@ export const DISCOUNT_OFF_CENTS = 18_000;
 export const DISCOUNT_MONTHS = 3;
 
 /** What the page prints for a valid code. Derived, so it cannot drift from the coupon. */
-export const COHORT_PRICE_USD = PRICE_USD.standard_monthly - DISCOUNT_OFF_CENTS / 100;
+export const COHORT_PRICE_USD = PRICE_USD.premium_monthly - DISCOUNT_OFF_CENTS / 100;
 
 /** The coupon every cohort code must point at. Created by scripts/discount-setup.mjs. */
 /**
@@ -171,7 +171,7 @@ export async function validateDiscount(raw: string): Promise<ValidDiscount> {
     );
   }
 
-  const netCents = PRICE_USD.standard_monthly * 100 - DISCOUNT_OFF_CENTS;
+  const netCents = PRICE_USD.premium_monthly * 100 - DISCOUNT_OFF_CENTS;
   return {
     promotionCodeId: promo.id,
     code,
@@ -187,6 +187,6 @@ export function discountLine(d: ValidDiscount): string {
   const net = (d.netCents / 100).toFixed(0);
   return (
     `Code ${d.code} applied: US$${net} a month for ${d.months} months, then ` +
-    `US$${PRICE_USD.standard_monthly}. Cancel any time.`
+    `US$${PRICE_USD.premium_monthly}. Cancel any time.`
   );
 }

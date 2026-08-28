@@ -9,7 +9,6 @@ import Link from 'next/link';
  * there is something to point at, and Contact is the reply-to address that already receives
  * mail rather than a page that does not. Both are flagged rather than quietly invented.
  *
- * Pricing points at the home page block until /pricing exists - see the note in SiteNav.
  */
 export function SiteFooter({ sampleLive = false }: { sampleLive?: boolean }) {
   return (
@@ -19,7 +18,7 @@ export function SiteFooter({ sampleLive = false }: { sampleLive?: boolean }) {
           <Link href="/method" prefetch={false}>
             How it works
           </Link>
-          <Link href="/#pricing" prefetch={false}>
+          <Link href="/pricing" prefetch={false}>
             Pricing
           </Link>
           {sampleLive ? (

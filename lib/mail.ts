@@ -114,7 +114,7 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
     `Your full scan result, with both answers word for word:`,
     result,
     ``,
-    `${priceLabel('founding_monthly')}/mo founding rate. Scanned ${input.domain}.`,
+    `${priceLabel('premium_founding_monthly')}/mo founding rate. Scanned ${input.domain}.`,
     `Reply to this email and a person reads it.`,
   ].join('\n');
 
@@ -161,7 +161,7 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
 
       <tr><td style="padding:18px 30px 22px 30px;border-top:1px solid ${PALETTE.rule};">
         <p style="font-family:${MONO};font-size:11.5px;line-height:1.6;color:${PALETTE.inkFaint};margin:0;">
-          ${escapeHtml(priceLabel('founding_monthly'))}/mo founding rate &middot; you asked for this scan for ${escapeHtml(input.domain)}<br>
+          ${escapeHtml(priceLabel('premium_founding_monthly'))}/mo founding rate &middot; you asked for this scan for ${escapeHtml(input.domain)}<br>
           Reply to this email and a person reads it.
         </p>
       </td></tr>

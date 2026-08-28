@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ScanPanel } from '@/components/scan/ScanPanel';
 import { WaitlistForm } from '@/components/WaitlistForm';
-import { foundingDisplayOrNull } from '@/lib/billing';
+import { foundingOfferOrNull } from '@/lib/billing';
 import { FOUNDING_SEATS_PUBLIC, TIERS, priceLabel } from '@/lib/scope';
 import { headers } from 'next/headers';
 import { env } from '@/lib/env';
@@ -59,7 +59,7 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const founding = await foundingDisplayOrNull();
+  const founding = await foundingOfferOrNull();
   const wizardLive = env.wizardLive;
   // /sample always renders: a consenting customer's real report when SAMPLE_RUN_ID names one,
   // and the labelled specimen otherwise. The prop stays because the link must follow the page,
@@ -228,23 +228,29 @@ export default async function Page({
             ))}
           </ul>
           <div className="price">
-            {founding === null ? (
+            {/* FAIL-CLOSED. Null means the count could not be read, or the offer has closed,
+                or the places are gone - and in every one of those cases NOTHING renders here
+                and the reader sees the standard premium price above.
+
+                Never a block without a number, and never "20 remaining" as a fallback: a
+                failed count cannot tell you whether the offer is open, so it cannot be
+                offered. foundingOfferOrNull() alerts when the cause was a failure rather than
+                a genuine zero - a silently withheld offer on a normal-looking page is the
+                version of this that runs for a week. §5 of the brand brief, §3 of the Stripe
+                plan. */}
+            {founding !== null && (
               <p>
-                <span className="founding">Founding rate: {priceLabel('founding_monthly')} a month.</span> Twenty
-                places, because each one includes time with Tim.
-              </p>
-            ) : founding.remaining > 0 ? (
-              <p>
-                <span className="founding">Founding rate: {priceLabel('founding_monthly')} a month.</span>{' '}
+                <span className="founding">
+                  Founding rate: {priceLabel('premium_founding_monthly')} a month.
+                </span>{' '}
                 {founding.remaining === FOUNDING_SEATS_PUBLIC
                   ? `All ${FOUNDING_SEATS_PUBLIC} founding places are open`
                   : founding.remaining === 1
                     ? 'One founding place left'
                     : `${founding.remaining} founding places left`}
-                , held at that price for as long as you stay.
+                , held at that price for as long as you stay. Capped because each one includes
+                time with Tim, and 20 is what he can do.
               </p>
-            ) : (
-              <p className="note">All {FOUNDING_SEATS_PUBLIC} founding places are taken.</p>
             )}
             {wizardLive ? (
               <>

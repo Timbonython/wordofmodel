@@ -1,165 +1,115 @@
 /**
- * Creates the Stripe product, the two prices and the Customer Portal
- * configuration, then prints the environment variables to paste.
+ * Creates the three products and eight prices in Stripe, idempotently.
  *
- *   node --env-file=.env.local scripts/stripe-setup.mjs
+ *   npm run stripe:setup              report only, changes nothing
+ *   npm run stripe:setup -- --create  create anything missing
  *
- * Idempotent. Prices are matched by lookup_key, so running it twice does not
- * create a second USD 149 price with a different id. A price whose amount no
- * longer matches is not edited, because Stripe prices are immutable: the script
- * says so and stops, and changing a price is a deliberate act of creating a new
- * one and moving the environment variable.
+ * §5 of the pricing plan. EVERY PRICE CARRIES A lookup_key, and the application resolves ids
+ * through those keys rather than storing them: an id differs between test and live mode and a
+ * lookup key does not, so there is nothing left to set to the wrong mode's value at midnight.
  *
- * Refuses to run against a live key unless STRIPE_MODE=live is set explicitly.
+ * WHY IT ONLY EVER CREATES. A Stripe price is immutable in the ways that matter - unit_amount
+ * and interval cannot be edited after creation - so "fixing" a wrong price means creating a new
+ * one and moving the lookup key. This script refuses to pretend otherwise: it reports a
+ * mismatch loudly and makes the operator decide, because silently minting a second price at a
+ * different amount is how a customer ends up on a rate nobody chose.
+ *
+ * Product NAMES and DESCRIPTIONS are updated in place, because those are copy, they print on
+ * Checkout and on every invoice, and they are safe to change.
  */
-import Stripe from 'stripe';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const API_VERSION = '2026-07-29.dahlia';
-const PRODUCT_NAME = 'Word of Model - Monthly Report';
-const MODE = process.env.STRIPE_MODE === 'live' ? 'live' : 'test';
+const here = dirname(fileURLToPath(import.meta.url));
+const { stripe, PRICES, PRICE_KEYS, PRODUCTS, STRIPE_API_VERSION } = await import(join(here, '../lib/stripe.ts'));
 
-const PRICES = [
-  { lookup_key: 'founding_monthly', unit_amount: 14_900, nickname: 'Founding monthly (first 20)' },
-  { lookup_key: 'standard_monthly', unit_amount: 24_900, nickname: 'Standard monthly' },
-];
+const create = process.argv.includes('--create');
+const s = stripe();
 
-const key = process.env.STRIPE_SECRET_KEY;
-if (!key) {
-  console.error('Missing STRIPE_SECRET_KEY. Run with: node --env-file=.env.local scripts/stripe-setup.mjs');
-  process.exit(1);
-}
+console.log(`Stripe ${STRIPE_API_VERSION}, ${create ? 'CREATE' : 'report only'}\n`);
 
-const isLive = key.startsWith('sk_live_') || key.startsWith('rk_live_');
-if (isLive && MODE !== 'live') {
-  console.error('Refusing to run: that is a live key and STRIPE_MODE is not "live".');
-  process.exit(1);
-}
-if (!isLive && MODE === 'live') {
-  console.error('Refusing to run: STRIPE_MODE is "live" and that is a test key.');
-  process.exit(1);
-}
+// ---------------------------------------------------------------- products, by metadata key
+//
+// Matched on metadata.wom_tier rather than on the name, because the name is copy and copy
+// changes. Searching by name is how a renamed product becomes a second product.
+const productIds = {};
+for (const [tier, want] of Object.entries(PRODUCTS)) {
+  const found = await s.products.search({ query: `active:'true' AND metadata['wom_tier']:'${tier}'`, limit: 1 });
+  let product = found.data[0];
 
-const stripe = new Stripe(key, { apiVersion: API_VERSION });
-
-console.log(`Stripe setup, ${MODE} mode.\n`);
-
-// ------------------------------------------------------------------ product
-const existingProducts = await stripe.products.search({
-  query: `active:'true' AND name:'${PRODUCT_NAME}'`,
-  limit: 1,
-});
-
-const product =
-  existingProducts.data[0] ??
-  (await stripe.products.create({
-    name: PRODUCT_NAME,
-    description:
-      'Five questions your buyers actually ask, run across five AI surfaces every month. Verbatim answers, competitor leaderboard, and three ranked actions.',
-  }));
-
-console.log(`product  ${product.id}  ${product.name}`);
-
-// ------------------------------------------------------------------- prices
-const env = {};
-
-for (const want of PRICES) {
-  const found = await stripe.prices.list({
-    lookup_keys: [want.lookup_key],
-    active: true,
-    limit: 1,
-  });
-
-  let price = found.data[0];
-
-  if (price) {
-    const wrong = [];
-    if (price.unit_amount !== want.unit_amount) {
-      wrong.push(`amount is ${price.unit_amount}, expected ${want.unit_amount}`);
+  if (!product) {
+    if (!create) {
+      console.log(`  product ${tier}: MISSING (${want.name})`);
+      continue;
     }
-    if (price.currency !== 'usd') wrong.push(`currency is ${price.currency}`);
-    if (price.recurring?.interval !== 'month') wrong.push('it is not monthly');
-    if (wrong.length) {
-      console.error(
-        `\n${want.lookup_key} (${price.id}) does not match: ${wrong.join(', ')}.\n` +
-          `Stripe prices are immutable. Archive it in the dashboard, free the lookup key, and run this again.`,
-      );
-      process.exit(1);
+    product = await s.products.create({ name: want.name, description: want.description, metadata: { wom_tier: tier } });
+    console.log(`  product ${tier}: created ${product.id}`);
+  } else if (product.name !== want.name || product.description !== want.description) {
+    if (create) {
+      product = await s.products.update(product.id, { name: want.name, description: want.description });
+      console.log(`  product ${tier}: ${product.id} copy updated`);
+    } else {
+      console.log(`  product ${tier}: ${product.id} copy DIFFERS from the build`);
     }
   } else {
-    price = await stripe.prices.create({
-      product: product.id,
-      lookup_key: want.lookup_key,
-      nickname: want.nickname,
-      currency: 'usd',
-      unit_amount: want.unit_amount,
-      // No trial. The free scan is the trial.
-      recurring: { interval: 'month', interval_count: 1 },
-    });
+    console.log(`  product ${tier}: ${product.id} ok`);
   }
-
-  console.log(`price    ${price.id}  ${want.lookup_key}  USD ${(want.unit_amount / 100).toFixed(2)}/mo`);
-  env[want.lookup_key === 'founding_monthly' ? 'STRIPE_PRICE_FOUNDING_MONTHLY' : 'STRIPE_PRICE_STANDARD_MONTHLY'] =
-    price.id;
+  if (product) productIds[tier] = product.id;
 }
 
-// ------------------------------------------------------- portal configuration
-//
-// subscription_update is off on purpose. The founding price is locked for twelve
-// months by being a normal recurring price, and a portal that lets somebody
-// switch plan is a portal that can move them off it, in either direction,
-// without anybody deciding to.
-//
-// Cancellation is at period end: they get the report they paid for, and there
-// are no pro rata refunds. It also has to be no harder than signing up, which is
-// the July 2027 Unfair Trading Practices position and is simply the right way to
-// sell a subscription.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wordofmodel.ai';
+// ------------------------------------------------------------------- prices, by lookup key
+console.log('');
+let missing = 0;
+let wrong = 0;
 
-const portal = await stripe.billingPortal.configurations.create({
-  business_profile: {
-    headline: 'Word of Model',
-    privacy_policy_url: `${siteUrl}/privacy`,
-    terms_of_service_url: `${siteUrl}/terms`,
-  },
-  default_return_url: `${siteUrl}/account`,
-  features: {
-    customer_update: { enabled: true, allowed_updates: ['email', 'address', 'name'] },
-    invoice_history: { enabled: true },
-    payment_method_update: { enabled: true },
-    subscription_cancel: {
-      enabled: true,
-      mode: 'at_period_end',
-      proration_behavior: 'none',
-      cancellation_reason: {
-        enabled: true,
-        options: ['too_expensive', 'missing_features', 'unused', 'customer_service', 'other'],
-      },
-    },
-    subscription_update: { enabled: false },
-  },
-});
+for (const key of PRICE_KEYS) {
+  const want = PRICES[key];
+  const found = await s.prices.list({ lookup_keys: [key], active: true, limit: 1 });
+  const price = found.data[0];
 
-console.log(`portal   ${portal.id}`);
-env.STRIPE_PORTAL_CONFIGURATION_ID = portal.id;
+  if (price) {
+    const problems = [];
+    if (price.unit_amount !== want.amount) problems.push(`amount ${price.unit_amount} != ${want.amount}`);
+    if (price.currency !== 'usd') problems.push(`currency ${price.currency} != usd`);
+    if (price.recurring?.interval !== want.interval) problems.push(`interval ${price.recurring?.interval} != ${want.interval}`);
+    if (price.recurring?.trial_period_days) problems.push('it has a trial');
+    if (problems.length) {
+      wrong++;
+      console.log(`  ${key.padEnd(26)} ${price.id}  WRONG: ${problems.join(', ')}`);
+      console.log(`  ${''.padEnd(26)} a price's amount and interval cannot be edited. Create a new`);
+      console.log(`  ${''.padEnd(26)} price, move the lookup key onto it, and deactivate this one.`);
+    } else {
+      console.log(`  ${key.padEnd(26)} ${price.id}  ${String(want.amount).padStart(6)} usd / ${want.interval}  ok`);
+    }
+    continue;
+  }
 
-// -------------------------------------------------------------------- output
-console.log('\nPaste into .env.local, and into Vercel:\n');
-for (const [k, v] of Object.entries(env)) console.log(`${k}=${v}`);
+  missing++;
+  if (!create) { console.log(`  ${key.padEnd(26)} MISSING  ${want.amount} usd / ${want.interval}`); continue; }
 
-console.log(`
-Still to do by hand:
+  const productId = productIds[want.tier];
+  if (!productId) { console.log(`  ${key.padEnd(26)} SKIPPED, product ${want.tier} does not exist`); continue; }
 
-  1. Stripe Tax: leave it OFF. Not GST registered, so no Australian GST is
-     charged. That is a decision, not a default. The EU and UK VAT question on
-     digital services to consumers is open and is for the accountant before the
-     first overseas sale.
-  2. Billing → Subscriptions: Smart Retries ON, four attempts, and set the
-     end-of-retries behaviour to leave the subscription past_due rather than
-     cancel it.
-  3. Developers → Webhooks: point an endpoint at ${siteUrl}/api/stripe/webhook
-     for checkout.session.completed, customer.subscription.created,
-     customer.subscription.updated, customer.subscription.deleted and
-     invoice.payment_failed. Put its signing secret in STRIPE_WEBHOOK_SECRET.
+  const made = await s.prices.create({
+    product: productId,
+    lookup_key: key,
+    // A key already on another price is transferred rather than refused. Without this the
+    // second run after a corrected amount fails with a duplicate-key error and no explanation.
+    transfer_lookup_key: true,
+    currency: 'usd',
+    unit_amount: want.amount,
+    recurring: { interval: want.interval, interval_count: 1 },
+    nickname: want.nickname,
+    // §5: reporting reads these rather than parsing lookup keys.
+    metadata: { tier: want.tier, founding: String(want.founding), wom_price_key: key },
+  });
+  console.log(`  ${key.padEnd(26)} ${made.id}  created  ${want.amount} usd / ${want.interval}`);
+}
 
-     Locally, instead:  stripe listen --forward-to localhost:3000/api/stripe/webhook
-`);
+console.log('');
+if (!create && (missing || wrong)) {
+  console.log(`${missing} missing, ${wrong} wrong. Re-run with --create to make the missing ones.`);
+  process.exit(1);
+}
+if (wrong) { console.log(`${wrong} price(s) do not match the build. Nothing was changed for those.`); process.exit(1); }
+console.log('Catalogue matches the build.');

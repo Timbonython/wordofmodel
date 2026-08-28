@@ -70,9 +70,39 @@ export const QUARTERLY_SURFACES = Object.keys(SURFACES) as Surface[];
  * in the browser, which is the same reason lib/scope.ts exists at all.
  */
 export const PRICE_USD = {
-  founding_monthly: 149,
-  standard_monthly: 249,
+  // Monitoring - the main tier.
+  main_monthly: 69,
+  main_annual: 690,
+  // Monitoring + Review - premium. Cumulative, never a substitution: the subscriber gets the
+  // entire Monitoring product every month AND a quarterly human deep read on top.
+  premium_monthly: 249,
+  premium_annual: 2490,
+  // The founding cohort. A SEPARATE PRICE, NEVER A COUPON - see §3 of the pricing plan. A
+  // coupon carries a `duration` field, and setting it wrong silently reverts the twenty people
+  // who backed this earliest. A distinct price cannot expire.
+  premium_founding_monthly: 149,
+  premium_founding_annual: 1490,
+  // Per additional location, on either tier. A quantity line, not a plan.
+  location_monthly: 30,
+  location_annual: 300,
 } as const;
+
+/**
+ * Annual is TEN TIMES MONTHLY on every line - two months free, no exceptions and no rounding.
+ *
+ * The arithmetic being obvious is part of the offer, so it is enforced rather than trusted:
+ * a price list where one annual figure is 11x is a page a reader can catch us on.
+ */
+for (const [key, monthly] of Object.entries(PRICE_USD)) {
+  if (!key.endsWith('_monthly')) continue;
+  const annualKey = key.replace(/_monthly$/, '_annual') as keyof typeof PRICE_USD;
+  const annual = PRICE_USD[annualKey];
+  if (annual !== monthly * 10) {
+    throw new Error(
+      `Annual must be ten times monthly: ${annualKey} is ${annual}, expected ${monthly * 10}.`,
+    );
+  }
+}
 
 /**
  * THE PRODUCT CATALOGUE. Everything that renders a tier reads this; nothing retypes one.
@@ -99,14 +129,52 @@ export interface Tier {
 
 export const TIERS: readonly Tier[] = [
   {
-    key: 'standard_monthly',
-    name: 'Monitoring + Review',
+    key: 'main_monthly',
+    name: 'Monitoring',
     line:
       'Five questions, five AI surfaces, twenty five answers captured word for word every month, ' +
-      'plus a quarterly deep read that adds Claude and Copilot by hand.',
+      'with the leaderboard, the sources and three ranked actions.',
   },
-  // GATE 4 ADDS 'Monitoring' HERE at main_monthly, once that price exists in PRICE_USD and in
-  // Stripe. Order is display order, cheapest first.
+  {
+    key: 'premium_monthly',
+    name: 'Monitoring + Review',
+    line:
+      'Everything in Monitoring, every month, unchanged - plus a quarterly deep read from Tim ' +
+      'that adds Claude and Microsoft Copilot by hand.',
+  },
+];
+
+/**
+ * What each tier includes.
+ *
+ * PREMIUM'S LIST IS MAIN'S LIST PLUS ADDITIONS, BY CONSTRUCTION. §1 of the pricing plan and §5
+ * of the brand brief both insist premium is cumulative and never a substitution, and that the
+ * page repeats every shared line rather than abbreviating to "everything in Monitoring".
+ *
+ * So the shared lines are not copied into a second array where they could drift. Premium
+ * renders MAIN_FEATURES verbatim and then PREMIUM_ADDITIONS, visually marked. A reader cannot
+ * construct the idea that premium swaps monthly reporting for quarterly, because there is no
+ * arrangement of this data in which premium has fewer monthly lines than main.
+ *
+ * That matters commercially: a tier that looked like it traded monthly automation for
+ * quarterly human work would read as paying 3.6x more for a report four times less often, and
+ * no amount of copy rescues that.
+ */
+export const MAIN_FEATURES: readonly string[] = [
+  'Five questions, written for your buyers and approved by you before anything runs',
+  'Five AI surfaces: ChatGPT, Gemini, Grok, Perplexity and Google AI Overviews',
+  'Twenty five answers captured word for word, every month',
+  'Recommendation Share: how many surfaces put you forward, not just name you',
+  'The competitor leaderboard, measured over exactly the answers you are measured over',
+  'The sources the assistants cited, which is usually somebody else',
+  'Three ranked actions, in order, with why that one is first',
+  'Month on month change, with configuration changes reported separately from movement',
+];
+
+export const PREMIUM_ADDITIONS: readonly string[] = [
+  'A quarterly deep read from Tim, by hand, on your actual answers',
+  'Claude and Microsoft Copilot read manually - the two surfaces no API can honestly reach',
+  'Your questions revisited each quarter as your market moves',
 ];
 
 /**

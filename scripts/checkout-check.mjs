@@ -103,7 +103,7 @@ try {
   const items = await stripe().checkout.sessions.listLineItems(session.id, { limit: 1 });
   const line = items.data[0];
 
-  check('line item price id is the one the key resolves to', line.price.id === priceIdFor(priceKey), line.price.id);
+  check('line item price id is the one the key resolves to', line.price.id === (await priceIdFor(priceKey)), line.price.id);
   check(
     'line item amount equals the printed price',
     line.amount_total === PRICE_USD[priceKey] * 100,
@@ -118,7 +118,7 @@ try {
     .select('id, outcome, checkout_session_id')
     .eq('account_id', account.id)
     .maybeSingle();
-  if (priceKey === 'founding_monthly') {
+  if (priceKey === 'premium_founding_monthly') {
     check('a founding claim was taken', Boolean(claim), claim?.outcome);
     check('the claim carries the session id', claim?.checkout_session_id === session.id);
   } else {
@@ -163,17 +163,17 @@ try {
 
   check(
     'a discounted checkout never takes the founding price',
-    second.priceKey === 'standard_monthly',
+    second.priceKey === 'premium_monthly',
     second.priceKey,
   );
   check(
     'the line item is still the standard catalogue price',
-    dLine.price.id === priceIdFor('standard_monthly'),
+    dLine.price.id === (await priceIdFor('premium_monthly')),
     dLine.price.id,
   );
   check(
     'the subtotal is the catalogue price before the discount',
-    dLine.amount_subtotal === PRICE_USD.standard_monthly * 100,
+    dLine.amount_subtotal === PRICE_USD.premium_monthly * 100,
     `${dLine.amount_subtotal}c`,
   );
   // THE ASSERTION THE BRIEF THOUGHT WOULD HOLD UNCHANGED. Displayed against charged, with

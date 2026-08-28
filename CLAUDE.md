@@ -784,6 +784,63 @@ rendering dynamically, but only because `app/layout.tsx` calls `headers()` for t
 country gate - an unrelated line that will be edited when the Business Portfolio lands, silently
 taking `searchParams` and this measurement with it.
 
+## A fail-closed rule protects the layer it is written about (28 Aug 2026)
+
+**The check belongs where the decision is made, not where the number is shown.**
+
+§3 of the pricing plan says the founding cap must fail closed: if the count query errors or
+returns nothing, do not offer the founding price, show US$249. That rule was written about
+what the PAGE RENDERS, and the page was made to obey it - `foundingOfferOrNull()` returns null
+on failure, the founding block does not render, the premium card shows its standard price, and
+an alert goes out. Proven by breaking the query deliberately.
+
+**Every one of those guards passed while the function that decides the CHARGE was broken.**
+
+`claim_founding_seat` (0012) counted holders with `price_key = 'founding_monthly'`. The two-tier
+ladder renamed that key to `premium_founding_monthly` and added `premium_founding_annual`. Left
+alone, the function would have found **zero holders on every call, forever** - and handed out an
+unlimited number of permanent 40% discounts while the page looked completely normal and every
+display guard reported healthy.
+
+The display layer and the charging layer are different layers with different failure modes:
+
+| | reads | fails by |
+|---|---|---|
+| `foundingOfferOrNull` | `subscriptions`, in the app | throwing, loudly, caught and alerted |
+| `claim_founding_seat` | `subscriptions`, in Postgres | returning a confident, wrong zero |
+
+A stale string inside a database function does not throw. It answers. **A guard that reports
+healthy while the thing it guards is broken is worse than no guard**, because it also stops
+anybody looking.
+
+The same shape arrives through configuration rather than through a rename: a founding count
+pointed at test-mode data while the site charges live returns zero forever, with no error. When
+live-mode objects exist, read back a count with one live subscription present rather than
+assuming the environment is right.
+
+Fixed in 0021, which moves the constraint, the partial index and the function together, and
+verified by `npm run founding:cap` at both layers.
+
+## Architecture and copy can disagree, and only one of them reaches the customer (28 Aug 2026)
+
+§3 of the pricing plan builds the founding rate as a **separate Stripe price, never a coupon**,
+for a specific reason: a coupon carries a `duration` field, and setting it wrong silently
+reverts the founding cohort to US$249 after three months. A distinct price cannot expire.
+
+The architecture was right. **The copy said "locked for twelve months" in five places** - the
+terms page, the confirmation page, the account page, the confirmation email and the wizard.
+
+So the product could not revert the price, and the words promised that it would. A subscriber
+reading a receipt has no access to the price architecture; they have the sentence. The copy was
+recreating, as a promise, exactly the failure the architecture exists to make impossible.
+
+Corrected to "held at that price for as long as the subscription stays active". Also removed
+"the first 20 subscribers", which implies a first 20 that were taken, and there were none.
+
+**When an architectural decision exists to prevent a specific failure, grep the copy for that
+failure being promised.** The price list is checked against Stripe at module load; nothing
+checks that a sentence agrees with the schema.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

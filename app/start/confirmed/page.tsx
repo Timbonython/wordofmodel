@@ -47,7 +47,7 @@ export default async function ConfirmedPage({
         const row = await getSubscriptionByStripeId(subId);
         if (row) {
           reportDay = row.report_day;
-          founding = row.price_key === 'founding_monthly';
+          founding = row.price_key === 'premium_founding_monthly';
         }
       }
     } catch {
@@ -78,7 +78,7 @@ export default async function ConfirmedPage({
           </p>
           {founding && (
             <p className="founding">
-              You took a founding place. US$149 a month, locked for twelve months.
+              You took a founding place. US$149 a month, held at that price for as long as you stay.
             </p>
           )}
           <p className="punch">Nothing needed from you in the meantime.</p>

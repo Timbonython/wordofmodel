@@ -5,7 +5,7 @@ import { isSupportedMarket } from '@/lib/geo';
 import { iso2 } from '@/lib/domain';
 import { getScan } from '@/lib/db';
 import { recordFunnel, touchFrom } from '@/lib/funnel';
-import { foundingDisplayOrNull } from '@/lib/billing';
+import { foundingOfferOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
 import { SiteNav } from '@/components/SiteNav';
 
@@ -81,7 +81,7 @@ export default async function StartPage({
     }
   }
 
-  const founding = await foundingDisplayOrNull();
+  const founding = await foundingOfferOrNull();
 
   return (
     <>

@@ -130,12 +130,6 @@ export const env = {
   get stripeWebhookSecret() {
     return required('STRIPE_WEBHOOK_SECRET');
   },
-  get stripeFoundingPriceId() {
-    return required('STRIPE_PRICE_FOUNDING_MONTHLY');
-  },
-  get stripeStandardPriceId() {
-    return required('STRIPE_PRICE_STANDARD_MONTHLY');
-  },
   /**
    * Which Stripe mode this build is allowed to talk to. Defaults to test, so
    * forgetting to set it can only ever make the build safer. assertTestMode in

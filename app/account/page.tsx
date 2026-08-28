@@ -117,10 +117,10 @@ export default async function AccountPage({
                   <dd>{nextReport}</dd>
                 </div>
               )}
-              {subscription.price_key === 'founding_monthly' && (
+              {subscription.price_key === 'premium_founding_monthly' && (
                 <div>
                   <dt>Rate</dt>
-                  <dd>Founding, locked for twelve months</dd>
+                  <dd>Founding, held for as long as this subscription stays active</dd>
                 </div>
               )}
             </dl>
