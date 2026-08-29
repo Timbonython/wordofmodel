@@ -1197,3 +1197,21 @@ deliverable's real name.
 buzzword rule's own hint describes: a sentence that would survive on any SaaS site in the world.
 "Ranked, in order, with why that one is first" says the same thing and can be checked against the
 report.
+
+## The strapline was being wrapped by a constraint, not by the page (29 Aug 2026)
+
+`.sitenav-tagline` was written with `max-width: 72ch` on 29 Aug. At 13px mono that is 562px
+against a container of 892px, and the sentence needs 833px - so it fits on one line at every
+desktop width and was being broken in half by a number nobody had checked. My own defect from the
+change one commit earlier, and the sort that looks like a design decision.
+
+Removed, plus `margin-top: 11px` (it had none at all, sitting flush against the nav row with 12px
+to the rule below) and `padding: 12px 0 14px` on `.sitenav`.
+
+One line reads as a strapline; two read as a paragraph that got stuck. Between 640 and about 900
+it does still wrap, and `text-wrap: pretty` keeps a single word off the last line there - checked
+at 860, where it breaks after "and three".
+
+**Three alternatives were rendered and rejected.** Balanced two lines broke mid-phrase, at "how /
+often", and `text-wrap: balance` cannot fix that in a monospace face. Moving the line below the
+rule into the hero orphaned it from the brand it describes.

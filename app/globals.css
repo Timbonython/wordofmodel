@@ -152,7 +152,19 @@ body {
   color: var(--ink);
   letter-spacing: 0.01em;
   line-height: 1.5;
-  max-width: 72ch;
+  /* AIR ABOVE IT. It was sitting flush against the nav row - no margin at all, and 12px to the
+     rule below - which read as crowded rather than as a masthead line.
+
+     NO max-width, and removing it is the actual fix. It carried `max-width: 72ch` when this
+     class was written, which at 13px mono is 562px against a container of 892px, so a sentence
+     needing 833px was being broken in half by a constraint rather than by the page. It fits on
+     one line at any desktop width, and one line reads as a strapline where two read as a
+     paragraph that got stuck. Measured, not guessed: see the numbers above.
+
+     Between 640 and about 900 it does wrap, and `pretty` keeps a single word off the last line
+     there. */
+  margin-top: 11px;
+  text-wrap: pretty;
 }
 
 /* ---------- section furniture ---------- */
@@ -1421,7 +1433,9 @@ footer .wrap {
    ============================================================================ */
 .sitenav {
   border-bottom: 1px solid var(--line);
-  padding: 12px 0;
+  /* More below than above, because on the home page a line of strapline sits under the row and
+     had nothing between it and the rule. */
+  padding: 12px 0 14px;
   margin-bottom: 26px;
 }
 
