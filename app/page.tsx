@@ -86,7 +86,7 @@ export default async function Page({
   }
   return (
     <>
-      <SiteNav scanIsHere sampleLive={sampleLive} issue="RECOMMENDATION SHARE  ·  WHAT AI SAYS ABOUT YOU" />
+      <SiteNav scanIsHere sampleLive={sampleLive} tagline="What the assistants say about you, who they cite, how often they recommend you, and the three things to do about it." />
 
       <main className="wrap">
         {/* ============ 1. HERO ============

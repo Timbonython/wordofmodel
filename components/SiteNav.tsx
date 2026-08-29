@@ -29,11 +29,21 @@ import { Wordmark } from '@/components/Mark';
 export function SiteNav({
   /** The page's own caption, kept from the old masthead where it was doing real work. */
   issue,
+  /**
+   * The home page's strapline, which is a different job from a page label and now says so.
+   *
+   * `issue` renders "Pricing", "About", "Account" - a word telling you where you are. The home
+   * page was pushing a whole value proposition through the same slot and getting the caption
+   * treatment for it: grey, 12px, the quietest type on the page, directly under a bar that had
+   * just been made loud. Two jobs, one class, and the more important one was losing.
+   */
+  tagline,
   /** Home page suppresses its own "Free scan" link - the scan is already the hero. */
   scanIsHere = false,
   sampleLive = false,
 }: {
   issue?: string;
+  tagline?: string;
   scanIsHere?: boolean;
   /**
    * Whether /sample has a report behind it. A nav item pointing at a 404 is worse than a
@@ -77,9 +87,9 @@ export function SiteNav({
           )}
         </nav>
       </div>
-      {issue ? (
+      {tagline || issue ? (
         <div className="wrap">
-          <div className="issue">{issue}</div>
+          <div className={tagline ? 'sitenav-tagline' : 'issue'}>{tagline ?? issue}</div>
         </div>
       ) : null}
     </header>

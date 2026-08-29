@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export default function FaqPage() {
   return (
     <>
-      <SiteNav sampleLive issue="Questions" />
+      <SiteNav sampleLive issue="FAQs" />
 
       <main className="wrap">
         <section className="hero faq-hero">

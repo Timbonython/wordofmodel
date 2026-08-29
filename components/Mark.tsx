@@ -74,7 +74,7 @@ export function Wordmark({
 }) {
   return (
     <span className="lockup">
-      <Mark size={size} surface={surface} />
+      <Mark size={size} surface={surface} className="lockup-mark" />
       <span className="lockup-text">
         Word of Model&trade;
         {suffix ? <span className="lockup-suffix">{suffix}</span> : null}

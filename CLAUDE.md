@@ -1140,3 +1140,38 @@ unreadable once already, in the other direction.
 `.nots li:first-child` came off when the block was replaced and the new list gave its rows a
 class. The comment no longer states the count - a number written beside a list is a number that
 goes stale the first time the list changes, and that one already had.
+
+## The nav bar, aligned and given a strapline (29 Aug 2026)
+
+**One baseline from the wordmark to the button, and the fix was in the lockup rather than in the
+row.** A flex container reports the baseline of its FIRST flex item, and `.lockup`'s first item is
+the mark - a replaced element with no baseline, so the browser synthesises one from its bottom
+edge. The lockup was telling the row its baseline was 6px below the wordmark's actual text
+baseline, and no `align-items` on the row could correct that. `.lockup` is now `inline-block`,
+whose baseline IS its last line box, and the mark keeps its optical centring with
+`vertical-align: middle`. Measured across the wordmark, a menu item and the button: **0px, against
+1.9px when the row was centred.** The lockup renders identically - checked at 3x.
+
+**The green button was the only item on a phone that was not shrinking.** `.sitenav-links` drops
+to 11px under 640, and `.button-green` sets 13px on the element, which beats inheritance. So the
+CTA sat two points larger than the menu it belongs to and cost the row the 16px that pushed it
+onto a line of its own. At 11px with a 10px gap the whole bar fits one row at 390 and 414, and the
+nav is **88px instead of 124px**. 360 still wraps to two rows, intact, which is what that media
+query was written to do.
+
+**`issue` was doing two jobs and the important one was losing.** It renders "Pricing", "About",
+"Account" - a word telling you where you are - and the home page was pushing a whole value
+proposition through the same slot, getting caption treatment for it: grey, 12px, the quietest type
+on the page, directly beneath a bar that had just been made loud. `tagline` is now its own prop
+and its own class: ink, 13px, sentence case, mono kept because mono is this site's measurement
+voice and the sentence is a list of measurements.
+
+The copy is Tim's four beats with two changes. "Discover" came out: the copy rule's own test is
+"if a sentence would survive on any SaaS site in the world, rewrite it", and it would. And "AI
+says about you / its recommendations" became "the assistants say about you / they recommend you",
+because treating them as one entity is precisely what the method page spends a page arguing
+against - **we measure surfaces, not models**, and the strapline should not undo that in the first
+sentence anybody reads.
+
+Also fixed here: `/faq` still passed `issue="Questions"`. The footer link was renamed to FAQs on
+28 Aug and this one was missed.

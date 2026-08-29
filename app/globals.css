@@ -85,10 +85,27 @@ body {
 /* The lockup: mark + wordmark, per §1 of the brand brief. The mark is optically centred on the
    cap height rather than the baseline, which is what `align-items: center` on a flex row gives
    once the text box is the same height as the mark. */
+ /* INLINE-BLOCK, NOT INLINE-FLEX, AND THAT IS THE WHOLE ALIGNMENT FIX.
+    
+    A flex container reports the baseline of its FIRST flex item, and the first one here is the
+    mark - a replaced element with no baseline of its own, so the browser synthesises one from
+    its bottom edge. The lockup therefore told the nav row that its baseline was 6px below the
+    wordmark's actual text baseline, and no amount of align-items on the row could correct that.
+    
+    An inline-block reports the baseline of its last line box, which IS the wordmark's text
+    baseline. Measured: the wordmark, the menu items and the button now sit on one line to
+    within 0px, against 1.9px when the row was centred.
+    
+    The mark stays optically centred on the cap height - vertical-align: middle rather than
+    baseline - so the lockup renders identically to before. That centring is §1 of the brand
+    brief and is not what was being fixed. */
 .lockup {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
+  display: inline-block;
+}
+
+.lockup-mark {
+  vertical-align: middle;
+  margin-right: 9px;
 }
 
 .lockup-text {
@@ -118,6 +135,24 @@ body {
   font-size: 12px;
   color: var(--soft);
   letter-spacing: 0.04em;
+}
+
+ /* THE HOME PAGE'S STRAPLINE, which is not a page label and no longer borrows the class for
+    one. Ink rather than grey, because it sits directly under a bar that is now condensed caps
+    in ink and was being read as the quietest thing on the screen. Sentence case rather than
+    the caps it used to carry: this is a sentence now, and a hundred and fourteen characters of
+    letterspaced uppercase is a thing people skip.
+
+    Mono is kept on purpose. It is this site's measurement voice - the scan field, the fine
+    print, the method notes - and the sentence is a list of measurements. Desktop only, like
+    `.issue`: at 390 the bar is competing with the scan field for the fold and the field wins. */
+.sitenav-tagline {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  max-width: 72ch;
 }
 
 /* ---------- section furniture ---------- */
@@ -1392,7 +1427,8 @@ footer .wrap {
 
 .sitenav-inner {
   display: flex;
-  align-items: center;
+  /* One text baseline from the wordmark through to the button. See .lockup. */
+  align-items: baseline;
   justify-content: space-between;
   gap: 20px;
   flex-wrap: wrap;
@@ -1417,7 +1453,7 @@ footer .wrap {
    that back. */
 .sitenav-links {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 22px;
   /* THE WORDMARK'S FAMILY, NOT THE CAPTION'S. The bar was IBM Plex Mono at var(--soft) and
      11.5px, and so is `.issue` - the page caption sitting directly underneath it. Same font,
@@ -1523,7 +1559,10 @@ footer .wrap {
      space-between with nowrap keeps them on one row and lets the gaps absorb the difference,
      rather than the words. */
   .sitenav-links {
-    gap: 10px 14px;
+    /* 10px across, not 14. The row is 316px of labels in 342px of content box, and at 14px
+       gaps that is 358px - sixteen over, which is what pushed the button onto a third row of
+       its own. Measured rather than guessed. */
+    gap: 10px;
     font-size: 11px;
     letter-spacing: 0.08em;
     width: 100%;
@@ -1537,9 +1576,15 @@ footer .wrap {
   }
 
   .sitenav-links a.button-green {
+    /* THE BUTTON WAS THE ONLY ITEM NOT SHRINKING. `.sitenav-links` drops to 11px on a phone
+       and `.button-green` sets its own 13px on the element, which wins over inheritance - so
+       the CTA stayed two points larger than the menu it sits in, and cost the row the width
+       that put it on a line by itself. Same size as its neighbours here, as on desktop. */
+    font-size: 11px;
     padding: 8px 11px;
   }
-  .sitenav .issue {
+  .sitenav .issue,
+  .sitenav .sitenav-tagline {
     display: none;
   }
 }
