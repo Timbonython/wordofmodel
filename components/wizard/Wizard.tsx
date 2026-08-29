@@ -391,6 +391,14 @@ export default function Wizard({
             We read your website. Correct anything we got wrong. This is what the questions get
             built from.
           </p>
+          {/* §2, the same promise the price buttons carry, so the reassurance survives the
+              click. A visitor who pressed a price button has three screens ahead of them and
+              should not have to discover that on the way. */}
+          <p className="four-steps">
+            Four steps, about five minutes.{' '}
+            <span className="four-steps-lede">Nothing is charged until step four</span>, and you
+            approve your five questions before it.
+          </p>
 
           {!detected && (
             <div className="inline-form" style={{ marginBottom: 28 }}>

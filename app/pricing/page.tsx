@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SiteNav } from '@/components/SiteNav';
 import { SiteFooter } from '@/components/SiteFooter';
 import { PricingCards } from '@/components/PricingCards';
+import { PriceCard } from '@/components/PriceCard';
 import { ScanPanel } from '@/components/scan/ScanPanel';
 import { foundingOfferOrNull } from '@/lib/billing';
 import { FOUNDING_SEATS_PUBLIC, TIERS, priceLabel } from '@/lib/scope';
@@ -48,31 +49,40 @@ export default async function PricingPage() {
           </p>
         </section>
 
-        <PricingCards tiers={TIERS} wizardLive={wizardLive} />
+        <PricingCards tiers={TIERS} />
+
+        {/* §2, mirrored from the homepage. One copy, beneath the row. */}
+        <p className="four-steps">
+          Four steps, about five minutes. Your business, your competitors, your five questions,
+          then payment. <span className="four-steps-lede">You approve the questions before anything is charged.</span>
+        </p>
 
         {founding !== null && (
           <section className="founding-block">
             <div className="eyebrow">Founding places</div>
-            <h2>
-              {FOUNDING_SEATS_PUBLIC} founding places at {priceLabel('premium_founding_monthly')} a
-              month, held at that price for as long as you stay.
-            </h2>
-            <p>
-              Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is what I
-              can do. Open until 30 September 2026, or until the {FOUNDING_SEATS_PUBLIC} are taken.
-            </p>
-            <p className="founding-count">
-              {founding.remaining === FOUNDING_SEATS_PUBLIC
-                ? `All ${FOUNDING_SEATS_PUBLIC} are open.`
-                : founding.remaining === 1
-                  ? 'One place left.'
-                  : `${founding.remaining} places left.`}
-            </p>
-            {wizardLive ? (
-              <Link className="button" href="/start?plan=premium" prefetch={false}>
-                Take a founding place
-              </Link>
-            ) : null}
+            <PriceCard
+              name={`${FOUNDING_SEATS_PUBLIC} founding places`}
+              amount={priceLabel('premium_founding_monthly')}
+              unit="a month"
+              variant="card"
+              featured
+              sub="Held at that price for as long as you stay."
+              cta={{ label: 'Take a founding place', plan: 'premium_founding' }}
+            >
+              <p>
+                {/* FIRST PERSON, §3. It read "time with Tim" and "20 is what he can do". */}
+                Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is
+                what I can do. Open until 30 September 2026, or until the{' '}
+                {FOUNDING_SEATS_PUBLIC} are taken.
+              </p>
+              {/* A COUNT ONLY ONCE ONE IS TAKEN, §3. "All 20 are open" volunteers that nobody
+                  has bought yet; "20 founding places" is already a complete statement. */}
+              {founding.remaining < FOUNDING_SEATS_PUBLIC ? (
+                <p className="founding-count">
+                  {founding.remaining === 1 ? 'One place left.' : `${founding.remaining} places left.`}
+                </p>
+              ) : null}
+            </PriceCard>
           </section>
         )}
 

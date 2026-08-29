@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PriceCard } from '@/components/PriceCard';
 import {
   MAIN_FEATURES,
   PREMIUM_ADDITIONS,
@@ -21,7 +22,7 @@ type Billing = 'monthly' | 'annual';
 
 const money = (usd: number) => `US$${usd.toLocaleString('en-US')}`;
 
-export function PricingCards({ tiers, wizardLive = false }: { tiers: readonly Tier[]; wizardLive?: boolean }) {
+export function PricingCards({ tiers }: { tiers: readonly Tier[] }) {
   const [billing, setBilling] = useState<Billing>('monthly');
   const [locations, setLocations] = useState(0);
 
@@ -59,31 +60,24 @@ export function PricingCards({ tiers, wizardLive = false }: { tiers: readonly Ti
       <div className="cards">
         {tiers.map((tier) => {
           const isPremium = tier.key === 'premium_monthly';
+          const annualKey = tier.key.replace(/_monthly$/, '_annual') as keyof typeof PRICE_USD;
           return (
-            <section className={`card${isPremium ? ' card-premium' : ''}`} key={tier.key}>
-              <h2>{tier.name}</h2>
-              <p className="card-price">
-                <strong>{money(priceFor(tier))}</strong> {unit}
-              </p>
-              {annual ? (
-                <p className="card-sub">
-                  {money(PRICE_USD[tier.key])} a month, billed yearly. Two months free.
-                </p>
-              ) : (
-                <p className="card-sub">
-                  {money(PRICE_USD[tier.key.replace(/_monthly$/, '_annual') as keyof typeof PRICE_USD])} a
-                  year if you pay yearly, which is two months free.
-                </p>
-              )}
-
-              {/* EVERY SHARED LINE IS REPEATED, not abbreviated to "everything in Monitoring".
+            <PriceCard
+              key={tier.key}
+              name={tier.name}
+              amount={money(priceFor(tier))}
+              unit={unit}
+              variant="card"
+              featured={isPremium}
+              cta={{ label: `Start ${tier.name}`, plan: tier.tier }}
+              sub={
+                annual
+                  ? `${money(PRICE_USD[tier.key])} a month, billed yearly. Two months free.`
+                  : `${money(PRICE_USD[annualKey])} a year if you pay yearly, which is two months free.`
+              }
+            >
+              {/* EVERY SHARED LINE REPEATED, not abbreviated to "everything in Monitoring".
                   Both cards map the same MAIN_FEATURES array, so they cannot diverge. */}
-              {wizardLive ? (
-                <a className={`button plan-cta${isPremium ? '' : ' ghost'}`} href={`/start?plan=${tier.tier}`}>
-                  Choose {tier.name}
-                </a>
-              ) : null}
-
               <ul className="features">
                 {MAIN_FEATURES.map((f) => (
                   <li key={f}>{f}</li>
@@ -96,16 +90,30 @@ export function PricingCards({ tiers, wizardLive = false }: { tiers: readonly Ti
                     ))
                   : null}
               </ul>
-            </section>
+            </PriceCard>
           );
         })}
       </div>
 
       {/* A QUANTITY ROW, NOT A THIRD CARD. §5. A fixed "two sites" plan has no answer for a
           five-clinic group, and a five-clinic group is the best customer on the list. */}
+      {/* KNOWN GAP, and the price-door check surfaced it rather than anybody remembering.
+          §0's own defect, in the section §5 of the brand brief asked for: this row renders
+          US$30, and the stepper below renders a live total - US$189 for five clinics - and
+          NOTHING CAN BUY EITHER. createCheckout builds one line item; location quantity is
+          not in the checkout at all.
+
+          Deliberately not given a button. A CTA here would open a session that charges the
+          base tier and silently drops the locations, which is a price checkout cannot honour -
+          the defect this whole brief exists to remove, reintroduced one level down.
+
+          The fix is a quantity in createCheckout, not a link. Until then the number is
+          honest about the rate and dishonest about being purchasable, and that is worth
+          saying out loud rather than suppressing quietly. */}
       <section className="locations">
         <h3>More than one location?</h3>
         <p>
+          {/* price-door: no purchase path - see the note above */}
           {money(PRICE_USD.location_monthly)} a month for each additional location, on either
           plan. Same questions, asked from each town.
         </p>
@@ -131,10 +139,12 @@ export function PricingCards({ tiers, wizardLive = false }: { tiers: readonly Ti
               <tr key={tier.key}>
                 <th scope="row">{tier.name}</th>
                 <td>
+                  {/* price-door: no purchase path - see the note above */}
                   {money(priceFor(tier) + locations * perLocation)} {unit}
                   {locations > 0 ? (
                     <span className="totals-working">
                       {' '}
+                      {/* price-door: no purchase path - see the note above */}
                       = {money(priceFor(tier))} + {locations} &times; {money(perLocation)}
                     </span>
                   ) : null}

@@ -1944,3 +1944,89 @@ footer .wrap {
   margin: 4px 0 18px;
   display: inline-block;
 }
+
+/* ---- PriceCard. One component, two densities, a CTA that cannot be omitted. ---- */
+.pricecards {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-bottom: 22px;
+}
+
+@media (min-width: 861px) {
+  .pricecards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pricecard {
+  background: var(--card);
+  margin-bottom: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.pricecard-strip { padding: 22px 20px; }
+.pricecard-card { padding: 30px 28px; }
+
+.pricecard-name {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  margin: 0;
+}
+
+.pricecard-card .pricecard-name { font-size: 24px; }
+
+.pricecard-amount { margin: 0; font-size: 15px; color: var(--soft); }
+
+.pricecard-figure {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-size: 32px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.pricecard-card .pricecard-figure { font-size: 40px; }
+
+.pricecard-sub {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+}
+
+/* The door, before the detail. A buyer who has decided at the price should not have to scroll
+   a feature list to find it. */
+.pricecard-cta {
+  justify-self: start;
+  margin: 8px 0 2px;
+}
+
+.pricecard-line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--soft); }
+.pricecard-detail { margin-top: 2px; }
+.pricecard-detail .features { margin-top: 6px; }
+
+/* §2: once, beneath the row. Mono at label scale. */
+.four-steps {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  letter-spacing: 0.03em;
+  color: var(--soft);
+  max-width: 64ch;
+  margin: 0 0 34px;
+}
+
+.four-steps-lede { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .pricecard-strip { padding: 18px 16px; }
+  .pricecard-card { padding: 22px 18px; }
+  .pricecard-figure { font-size: 28px; }
+  .pricecard-card .pricecard-figure { font-size: 32px; }
+  .four-steps { font-size: 11.5px; margin-bottom: 26px; }
+}

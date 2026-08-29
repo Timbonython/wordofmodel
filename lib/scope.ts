@@ -160,6 +160,8 @@ export const TIERS: readonly Tier[] = [
 export type PlanTier = 'main' | 'premium';
 
 export function planTierFrom(value: unknown): PlanTier {
+  // 'premium_founding' resolves to premium on purpose: it is a label on a button, and whether
+  // a founding place is actually available is decided by claimFoundingSeat at charge time.
   return value === 'main' ? 'main' : 'premium';
 }
 
@@ -185,6 +187,24 @@ export const FOUNDING_TIER: PlanTier = 'premium';
  * the two agree so a retired offer cannot leave a box that only ever says no.
  */
 export const TIERS_WITH_A_CODE: readonly PlanTier[] = ['main', 'premium'];
+
+/**
+ * What a price button points at. Derived from the plan, never written out at a call site.
+ *
+ * THE POINT OF DERIVING IT. §0: a tier that exists in TIERS gets a working link by
+ * construction rather than by somebody remembering to add one. The homepage strip rendered
+ * three prices and one ambiguous button for exactly as long as it took nobody to remember.
+ *
+ * `premium_founding` is a LABEL, not a fourth tier. The founding rate is premium's price when
+ * a place remains, and claimFoundingSeat decides that at the moment of charging - there is no
+ * separate path to route to. The parameter exists so the founding card's button says what it
+ * is starting; it resolves to the premium tier like any other premium entry.
+ */
+export type PlanParam = PlanTier | 'premium_founding';
+
+export function startHref(plan: PlanParam): string {
+  return `/start?plan=${plan}`;
+}
 
 /**
  * What each tier includes.

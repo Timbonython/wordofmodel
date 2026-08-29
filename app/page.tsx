@@ -6,6 +6,7 @@ import { FOUNDING_SEATS_PUBLIC, TIERS, priceLabel } from '@/lib/scope';
 import { headers } from 'next/headers';
 import { env } from '@/lib/env';
 import { isClick, recordFunnel, touchFrom } from '@/lib/funnel';
+import { PriceCard } from '@/components/PriceCard';
 import { SiteNav } from '@/components/SiteNav';
 import { SiteFooter } from '@/components/SiteFooter';
 
@@ -228,66 +229,82 @@ export default async function Page({
             Gate 4, with the Stripe objects behind it. */}
         <section id="pricing">
           <div className="eyebrow">Pricing</div>
-          {/* One tier names its price in the heading; more than one and the heading cannot,
-              so the list carries them. TIERS[0] is indexed defensively because an empty
-              catalogue should render a heading rather than throw on the home page. */}
-          <h2>{TIERS.length === 1 && TIERS[0] ? `${priceLabel(TIERS[0].key)} a month` : 'What it costs'}</h2>
-          {/* DERIVED FROM lib/scope.ts, NOT WRITTEN OUT. One tier renders one line today and
-              two render two after Gate 4, with no edit here. Same rule as the brand tokens:
-              read the source, never retype it. */}
-          <ul className="tiers">
-            {TIERS.map((tier) => (
-              <li key={tier.key}>
-                <span className="tier-name">{tier.name}</span>
-                <span className="tier-price">{priceLabel(tier.key)} a month</span>
-                <span className="tier-line">{tier.line}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="price">
-            {/* FAIL-CLOSED. Null means the count could not be read, or the offer has closed,
-                or the places are gone - and in every one of those cases NOTHING renders here
-                and the reader sees the standard premium price above.
+          <h2>What it costs</h2>
 
-                Never a block without a number, and never "20 remaining" as a fallback: a
-                failed count cannot tell you whether the offer is open, so it cannot be
-                offered. foundingOfferOrNull() alerts when the cause was a failure rather than
-                a genuine zero - a silently withheld offer on a normal-looking page is the
-                version of this that runs for a week. §5 of the brand brief, §3 of the Stripe
-                plan. */}
+          {/* THE PREMIUM CARD SHOWS US$249 AND THE CHECKOUT CHARGES US$149 WHILE FOUNDING
+              PLACES REMAIN. Decided 29 Aug 2026, and written down because it looks like a bug.
+
+              claimFoundingSeat applies the founding rate to any premium checkout while a place
+              is open, so a buyer clicking "Start Monitoring + Review" is charged less than the
+              number on the card. US$249 is the list price and the founding card beside it says
+              what the discount is. The surprise is in the buyer's favour, which is the opposite
+              direction from the defect this brief exists to remove - a price checkout cannot
+              honour. Do not "correct" the card to US$149: when the twenty places are gone,
+              US$249 is what everybody pays and the card is already right.
+
+              EVERY PRICE THROUGH PriceCard, whose CTA is a required prop. This strip used to
+              render three prices and one ambiguous "Set up my report" button that always
+              started premium - so a buyer who wanted the US$69 had no way to say so, and one
+              who read the Monitoring line and clicked the only button was quietly taken to
+              the US$249 plan. §0 and §1. */}
+          <div className="pricecards">
+            {TIERS.map((tier) => (
+              <PriceCard
+                key={tier.key}
+                name={tier.name}
+                amount={priceLabel(tier.key)}
+                unit="a month"
+                variant="strip"
+                featured={tier.tier === 'premium'}
+                cta={{ label: `Start ${tier.name}`, plan: tier.tier }}
+              >
+                <p className="pricecard-line">{tier.line}</p>
+              </PriceCard>
+            ))}
+
+            {/* FAIL-CLOSED, unchanged. Null means the count could not be read, the offer has
+                closed, or the places are gone - and in every one of those cases nothing
+                renders and the reader sees the standard price above. foundingOfferOrNull()
+                alerts when the cause was a failure rather than a genuine zero. */}
             {founding !== null && (
-              <p>
-                <span className="founding">
-                  Founding rate: {priceLabel('premium_founding_monthly')} a month.
-                </span>{' '}
-                {founding.remaining === FOUNDING_SEATS_PUBLIC
-                  ? `All ${FOUNDING_SEATS_PUBLIC} founding places are open`
-                  : founding.remaining === 1
-                    ? 'One founding place left'
-                    : `${founding.remaining} founding places left`}
-                , held at that price for as long as you stay. Capped because each one includes
-                time with Tim, and 20 is what he can do.
-              </p>
-            )}
-            {wizardLive ? (
-              <>
-                {/* prefetch={false} is load-bearing, not a tidy-up. /start is force-dynamic, so
-                    next/link prefetching it when this button scrolls into view runs a real
-                    server render AND a real funnel_events insert for somebody who never
-                    clicked: 1030 rows in the 48 hours to 27 Aug 2026, against 2 scans. */}
-                <Link className="button" href="/start" prefetch={false}>
-                  Set up my report
-                </Link>
-              </>
-            ) : (
-              <WaitlistForm
-                source="pricing"
-                cta="Email me when a place opens"
-                buyHref="/#scan"
-                buyLabel="Run a free scan while you wait"
-              />
+              <PriceCard
+                name="Founding"
+                amount={priceLabel('premium_founding_monthly')}
+                unit="a month"
+                variant="strip"
+                sub={`${FOUNDING_SEATS_PUBLIC} places, held at that price for as long as you stay.`}
+                cta={{ label: 'Take a founding place', plan: 'premium_founding' }}
+              >
+                <p className="pricecard-line">
+                  {/* FIRST PERSON. This read "time with Tim" and "20 is what he can do" -
+                      third person, on Tim's own site. §3. */}
+                  Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is
+                  what I can do.
+                  {/* A COUNT ONLY ONCE ONE IS TAKEN. "All 20 are open" is true and volunteers
+                      that nobody has bought yet - the same self-inflicted emptiness that
+                      "first 20 subscribers" avoided from the other direction. §3. */}
+                  {founding.remaining < FOUNDING_SEATS_PUBLIC ? (
+                    <>
+                      {' '}
+                      {founding.remaining === 1
+                        ? 'One place left.'
+                        : `${founding.remaining} places left.`}
+                    </>
+                  ) : null}
+                </p>
+              </PriceCard>
             )}
           </div>
+
+          {/* ONCE, BENEATH THE ROW, NOT INSIDE EACH CARD. §2: three copies of one sentence is
+              noise. Leading with "payment is last" turns a friction into a reason to trust -
+              the buyer has no idea three screens sit between the button and the thing they
+              just decided to buy, and a destination that is not what the button implied is
+              the defect that cost two days last week. */}
+          <p className="four-steps">
+            Four steps, about five minutes. Your business, your competitors, your five
+            questions, then payment. <span className="four-steps-lede">You approve the questions before anything is charged.</span>
+          </p>
         </section>
 
       </main>

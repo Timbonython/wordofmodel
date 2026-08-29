@@ -47,9 +47,22 @@ const RULES = [
   },
 ];
 
-/** Comments are working notes, not copy. Only user-facing text is checked. */
+/**
+ * Comments are working notes, not copy. Only user-facing text is checked.
+ *
+ * NEWLINES ARE PRESERVED, and that is the whole fix. This used to replace a block comment with
+ * a single space, which collapsed multi-line comments onto one line and shifted every line
+ * number after them - so every location this tool reported was wrong, quietly, for as long as
+ * the rules rarely fired. It surfaced when the price-door rule needed to read the line ABOVE a
+ * match to honour an inline opt-out and kept reading the wrong one.
+ *
+ * A checker that misreports where a problem is costs more than the problem.
+ */
 function stripComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+  const blank = (m) => m.replace(/[^\n]/g, ' ');
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + m.slice(p1.length).replace(/./g, ' '));
 }
 
 function walk(dir) {
@@ -164,6 +177,91 @@ css.split('\n').forEach((raw, i) => {
     );
   }
 });
+
+
+// ---------------------------------------------------------------------------------------
+// A RENDERED PRICE MUST HAVE A DOOR.
+//
+// §0 of the purchase-path brief: a price on a page with no purchase path is the same defect
+// as a price checkout cannot honour - both print a number the visitor cannot act on. The
+// homepage strip rendered three prices and one ambiguous button for as long as it took nobody
+// to remember, and nothing in the build could see it.
+//
+// PriceCard holds the invariant by construction: its `cta` prop is required, so a price cannot
+// be expressed through it without a door. This checks the other half - that the marketing
+// surfaces do not render a price any other way.
+//
+// PASSING A PRICE INTO PriceCard IS NOT RENDERING ONE. `amount={priceLabel(...)}` is the
+// component being used correctly; only a price in a JSX text position counts.
+//
+// THE FLOW SURFACES ARE EXEMPT, and named rather than pattern-matched so an exemption has to
+// be argued for. The wizard, the scan result and the account page all show a price INSIDE the
+// purchase path - the wizard is the checkout, the scan result puts its CTA against the price,
+// and the account page shows what a subscriber already pays. None of them is a price a visitor
+// cannot act on.
+const PRICE_DOOR_EXEMPT = new Set([
+  'components/wizard/Wizard.tsx',   // the checkout itself
+  'components/scan/ScanResult.tsx', // price and CTA rendered together, both blocks
+  'app/account/page.tsx',           // what an existing subscriber pays
+  'components/PriceCard.tsx',       // the component that holds the invariant
+  'app/terms/page.tsx',             // legal text describing the price, not an offer to buy it
+]);
+
+const PRICE_IN_TEXT = /\{\s*(?:priceLabel\(|money\(|PRICE_USD[.[])/;
+
+/** Replace every `prop={ ... }` expression with spaces, keeping newlines so lines still line up. */
+function blankPropExpressions(source) {
+  let out = source;
+  const start = /\b[a-zA-Z][\w]*=\{/g;
+  let m;
+  while ((m = start.exec(out)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    while (i < out.length && depth > 0) {
+      if (out[i] === '{') depth++;
+      else if (out[i] === '}') depth--;
+      i++;
+    }
+    const body = out.slice(m.index, i).replace(/[^\n]/g, ' ');
+    out = out.slice(0, m.index) + body + out.slice(i);
+    start.lastIndex = i;
+  }
+  return out;
+}
+
+for (const dir of ['app', 'components']) {
+  let files = [];
+  try { files = walk(join(ROOT, dir)); } catch { continue; }
+  for (const file of files) {
+    if (!file.endsWith('.tsx')) continue;
+    const rel = relative(ROOT, file);
+    if (PRICE_DOOR_EXEMPT.has(rel)) continue;
+    const original = readFileSync(file, 'utf8');
+    const raw = stripComments(original);
+    // PROPS REMOVED FIRST, and by brace matching rather than by line. `sub={annual ? \`…\` :
+    // \`…\`}` spans three lines, and a line-based skip flagged its continuations as bare
+    // renderings - which is how this check first reported two false positives on its own
+    // author's code. Blanked rather than deleted so line numbers still point at the source.
+    const src = blankPropExpressions(raw);
+    // An opt-out has to be written on the line above the price it excuses, so it cannot be
+    // granted from a distance. A file-level exemption would have covered this file's tier
+    // cards too, and those genuinely go through PriceCard.
+    // FROM THE ORIGINAL, not the stripped copy. The marker IS a comment, so reading it out of
+    // the source that has had comments blanked finds nothing - which is how this opt-out
+    // silently did nothing on its first run.
+    const rawLines = original.split('\n');
+    src.split('\n').forEach((line, i) => {
+      if (!PRICE_IN_TEXT.test(line)) return;
+      if ((rawLines[i - 1] ?? '').includes('price-door: no purchase path')) return;
+      failures++;
+      console.error(
+        `${rel}:${i + 1}  a price is rendered outside PriceCard  ->  ${line.trim().slice(0, 88)}\n` +
+          '    A rendered price needs a purchase path. Put it in a PriceCard, whose cta prop is\n' +
+          '    required, or add this file to PRICE_DOOR_EXEMPT with a reason.',
+      );
+    });
+  }
+}
 
 if (failures) {
   console.error(`\ncopycheck: ${failures} problem${failures === 1 ? '' : 's'}.`);
