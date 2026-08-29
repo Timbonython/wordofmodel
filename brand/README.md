@@ -98,11 +98,28 @@ paragraph is the only thing standing between the current bar and a well-meaning 
 
 The four live ad creatives still carry the **old five-in-a-row lockup**, not the 3+2 grid. That was deliberate — the brief said change it at the next creative render rather than re-uploading mid-flight. Whoever renders the next ad should use `grid_mark()` from `gen_brand_social.py` instead of `bars()` from `gen_g.py`.
 
-**Still outstanding as of 30 Aug 2026.** Nothing has been re-rendered since the kit was written,
-so every live creative is still on the old lockup. `bars()` is what `gen_g.py` calls, and it is
-still the function the ad scripts reach for - which means the next render reproduces the old mark
-unless somebody changes the call deliberately. This is the one thing in this kit that a
-`brandcheck` run cannot catch: the mark is drawn by geometry, not by a colour token.
+**The rendered files stay live and untouched.** Nothing has been re-rendered since the kit was
+written, so every live creative is still on the old lockup, and that is fine - they are finished
+artefacts.
+
+**The next render cannot reproduce it.** 30 Aug 2026: the retired mark now raises rather than
+drawing. `brandcheck` cannot catch this - the mark is geometry, not a colour token - so it is
+enforced in the code that would draw it:
+
+| Script | What raises | Why there |
+|---|---|---|
+| `gen_g.py` | `bars()` | the named one; `lockup()` calls it |
+| `gen_ads.py` | `bars()` | **its own copy** of the same function, not an import |
+| `gen_video.py`, `gen_video45.py`, `gen_video169.py` | `lockup()` | no `bars()` to stub - the five-cell loop is inlined in `lockup()` itself |
+| `gen_g_video.py` | inherited | imports `lockup` from `gen_g` |
+
+`gen_brand_social.py`, `gen_linkedin.py` and `gen_favicon.py` are untouched: the first two already
+use `grid_mark()`, and the favicon generator is retired for other reasons.
+
+**Fixing them is the next ad's job.** They are meant to fail. Whoever renders the next creative
+replaces the call with `grid_mark()` from `gen_brand_social.py` and deletes the stub in that file
+only. A script that fails loudly is the point; a script quietly drawing the wrong mark is what
+this replaced.
 
 ## What is enforced, and what is only written down
 

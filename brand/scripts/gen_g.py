@@ -23,12 +23,11 @@ html,body{width:100%;height:100%;overflow:hidden;-webkit-font-smoothing:antialia
 """
 
 
-def bars(size, gap, on_colour, off_colour, on_index=0, n=5):
-    out = []
-    for i in range(n):
-        c = on_colour if i == on_index else off_colour
-        out.append(f'<i style="width:{size}px;height:{size}px;background:{c};display:block"></i>')
-    return f'<div class="row" style="gap:{gap}px">' + ''.join(out) + '</div>'
+def bars(*a, **k):
+    raise RuntimeError(
+        "bars() is the retired five-in-a-row mark. "
+        "Use grid_mark() from gen_brand_social. See brand/README.md."
+    )
 
 
 def lockup(scale, colour):

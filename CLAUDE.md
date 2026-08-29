@@ -1288,10 +1288,32 @@ kind of thing a tidy-up reverts.
 as caps. The README and `app/globals.css` now both carry the reasoning and both say plainly that
 **nothing enforces a tracking value** - those two paragraphs are the whole defence.
 
-### The live ad creatives are still on the old lockup
+### The retired lockup now raises instead of drawing (30 Aug 2026)
 
-All four carry the five-in-a-row mark, not the 3+2 grid. Deliberate when written - change it at
-the next render rather than re-uploading mid-flight - and still outstanding. `gen_g.py`'s `bars()`
-is what the ad scripts call, so the next render reproduces the old mark unless somebody
-deliberately switches to `grid_mark()` from `gen_brand_social.py`. `brandcheck` cannot catch this:
-the mark is drawn by geometry, not by a colour token.
+The four live creatives carry the five-in-a-row mark and stay exactly as they are - they are
+finished files. The risk was never those; it was the NEXT render quietly reproducing the mark,
+which `brandcheck` cannot catch because geometry is not a colour token.
+
+**Documenting it was not enough, so it was made impossible.** `bars()` raises a `RuntimeError`
+naming its replacement.
+
+**And it was five places, not one.** The brief named `gen_g.py`. `gen_ads.py` carries its **own
+copy** of `bars()` rather than importing it, and `gen_video.py`, `gen_video45.py` and
+`gen_video169.py` have no `bars()` at all - the five-cell loop is inlined inside their own
+`lockup()`, so the stub goes one level up there. `gen_g_video.py` inherits the failure by
+importing `lockup` from `gen_g`. Stubbing only the named file would have closed two paths of six
+and left three video scripts silently drawing it - the same defect in a new costume, which is
+what the widened palette check had just been corrected for.
+
+`range(5)` no longer appears anywhere in `brand/scripts`.
+
+**Verified against the pristine archive, because the local machine has no playwright and a shim
+produces failures of its own.** Running every script through the same fake playwright before and
+after shows five changed and four unchanged: `gen_brand_social.py` and `gen_linkedin.py` already
+use `grid_mark()`, `gen_favicon.py` is retired for other reasons, and `gen_g.py` still imports
+cleanly - its failure comes on the render, proven by calling `gen_g.lockup()` directly. The
+`AttributeError: __aenter__` seen on several scripts is the shim and is present in the untouched
+archive too.
+
+**They are meant to stay failing.** Fixing them is the next ad's job: swap the call for
+`grid_mark()` and delete the stub in that file only.

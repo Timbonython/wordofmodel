@@ -40,16 +40,11 @@ function pop(id,t,a,b){var p=ease(seg(t,a,b));var e=E(id);if(!e)return;
 """
 
 
-def lockup(scale, colour):
-    off = '#3A3D45' if colour != 'var(--ink)' else 'var(--line)'
-    bars = ''.join(
-        f'<i style="width:{int(14*scale)}px;height:{int(14*scale)}px;background:{"var(--green)" if i==0 else off};display:block"></i>'
-        for i in range(5))
-    return f'''
-    <div style="display:flex;align-items:center;gap:{int(18*scale)}px">
-      <div class="bars" style="gap:{int(6*scale)}px">{bars}</div>
-      <div class="cond" style="color:{colour};font-size:{int(34*scale)}px;line-height:1;letter-spacing:.01em">WORD OF MODEL</div>
-    </div>'''
+def lockup(*a, **k):
+    raise RuntimeError(
+        "lockup() here inlines the retired five-in-a-row mark. "
+        "Use grid_mark() from gen_brand_social. See brand/README.md."
+    )
 
 
 # ============================================================ HOOK A (video)
