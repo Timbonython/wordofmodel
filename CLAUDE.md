@@ -579,6 +579,66 @@ never as movement. Delta reporting has to read all three.
   `lib/method.ts`. A low rate is a finding about the subscriber's category: Google
   declining to answer means classic search still carries the weight for their buyers.
   Stated plainly it is intelligence; buried it reads as an excuse.
+## Additional locations, built 29 Aug 2026 (migration 0022)
+
+**The price list sold this for a day and a half and nothing implemented it.** `/pricing` offered
+US$30 a month per additional location with a live stepper computing US$189 for five clinics, and
+the live Stripe product description promised the mechanism in as many words - *"The same five
+questions, asked from each town."* `scopes` carried four locality columns describing ONE place,
+the wizard collected one, `createCheckout` built one line item at quantity 1, and no run had ever
+known about a second town. That is worse than a price with no purchase path: it would have taken
+money for output that does not exist, and the subscriber would not have found out until they read
+a report covering one town.
+
+**One run per location, not one run covering many.** The capture key is
+`(run_id, question_id, engine, capture_method, sample)` and the queue, extraction, scoring and the
+delta are all built on a run meaning "one scope, one period, 55 captures". Widening that key would
+have touched every one of them. A run per town leaves all of it untouched, and `runs.location_id`
+(null = the scope's own locality, which is every run before 0022) joins the two.
+
+**The approved questions are NOT regenerated per town.** Approval is the credibility mechanic the
+product is sold on; generating a fresh five per town would mean approving five and receiving
+answers to fifteen nobody had seen. The same five run in each place with the place substituted.
+
+**And the place is IN THE TEXT, not only in the geo parameter.** `questionsPrompt` instructs "Name
+the place in questions 1 to 4, exactly as it is written above", so an approved question reads "who
+is best at emergency dentistry in Geelong, Australia". Sending that text with a Ballarat geo
+parameter would ask about Geelong from Ballarat and file the answer under Ballarat - a wrong number
+that looks completely normal. `localiseQuestion()` in `lib/location-text.ts` does the substitution
+and **throws when it cannot find the place**, because there is no safe fallback. The branded slot
+is exempt: slot 5 is deliberately not asked to name a place.
+
+**Three things that had to widen with it, and each would have been a silent wrong number:**
+
+- `runs_scope_period_start_uniq` → `(scope_id, period, period_start, location_id) NULLS NOT
+  DISTINCT`. Without `NULLS NOT DISTINCT` a nullable column reintroduces the exact double-run
+  collision the original index exists to prevent.
+- `attachDelta()` matched on scope and period only, so a second town's month two would find the
+  FIRST town's month one and print the difference between two markets as movement. The location is
+  part of comparability in exactly the way `runs.surfaces`, `runs.samples` and the competitor set
+  are.
+- `reportSubject()` now names the town. Three towns is three reports in one inbox, and without the
+  town they are three identical subject lines: the second reads as a duplicate and the third never
+  gets opened.
+
+**The checkout quantity is counted from `scope_locations`, not from the form.** Those are the same
+number today and stop being the same number the moment a duplicate is dropped or a stale form is
+replayed. Counting the rows that will actually be RUN is what makes over-charging impossible rather
+than merely unlikely. Shipped last on purpose: charging for locations before the pipeline honoured
+them would have been the original defect with extra steps.
+
+**Known limit, and it is real.** `assertScopeEditable` refuses any scope that has runs, so an
+EXISTING subscriber cannot add a town through the wizard - it is a signup-time choice today.
+Adding one for a live subscriber is a support action (insert the row, update the Stripe
+subscription item quantity); `scopesAwaitingFirstRun()` now asks its question per town rather than
+per scope, so the new town gets its baseline run within twenty minutes exactly like a new
+subscriber, rather than waiting up to a month for `report_day`. A self-service "add a location"
+flow on `/account` is the follow-on.
+
+`npm run locations:check` proves all ten guards, each watched refusing. `copycheck` gained
+`price-door: linked`, which asserts a price is inside an anchor and **verifies it** by requiring an
+open `href` above the line; proven by deleting the href and watching the marker fail.
+
 - **Multiple scopes per account — Session 5.** The schema and the whole run pipeline already
   support it: nothing built in Session 3 needs changing, `scopes.account_id` has no unique
   constraint, `subscriptions` carries both ids, and RLS matches on account. Three application

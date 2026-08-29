@@ -59,6 +59,16 @@ export const MONTHLY_SURFACES = (Object.keys(SURFACES) as Surface[]).filter(
 export const QUARTERLY_SURFACES = Object.keys(SURFACES) as Surface[];
 
 /**
+ * How many towns beyond the first one scope may carry.
+ *
+ * Not a technical limit. Each one is a full run - fifty five captures, about US$3.69 - so the
+ * cap is what stands between a typo in a repeated field and a four figure API bill on one
+ * subscriber. Ten towns is already US$37 of captures a month against US$270 of add-on revenue,
+ * which is the right side of the line; a hundred is not.
+ */
+export const MAX_EXTRA_LOCATIONS = 9;
+
+/**
  * THE PRICE, AS A STRING, FROM THE ONLY NUMBER THAT REACHES STRIPE.
  *
  * The amounts live in lib/stripe.ts because that is what builds the line item and what

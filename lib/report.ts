@@ -16,6 +16,7 @@
 
 import 'server-only';
 import { db } from './db';
+import { getLocation, localityOfLocation } from './locations';
 import { diagnose, THRESHOLD_VERSION, THRESHOLD_NOTE, type DiagnosisResult } from './diagnosis';
 import { shareOfModel, aiOverviewStats, type ScoredCapture } from './share';
 import { computeDelta, type DeltaReport, type RunSnapshot } from './delta';
@@ -26,7 +27,7 @@ import { EXTRACTION_VERSION } from './extract';
 import { METRIC_VERSION, NOISE_FLOOR_NOTE } from './metric';
 import type { RunRow } from './accounts';
 import type { Citation } from './types';
-import { marketName } from './geo';
+import { marketName, placeLabel } from './geo';
 import type { GeoSent, Locality } from './geo';
 
 export const surfaceLabel = (s: string) => SURFACES[s as Surface]?.label ?? s;
@@ -174,7 +175,7 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
     locality_city: string | null;
     locality_region: string | null;
   };
-  const locality: Locality | null = scope.locality
+  const scopeLocality: Locality | null = scope.locality
     ? {
         input: scope.locality,
         canonical: scope.locality_canonical,
@@ -182,6 +183,20 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
         region: scope.locality_region,
       }
     : null;
+
+  // THE TOWN THIS RUN WAS ACTUALLY FOR. A run with a location_id asked the five questions with
+  // that town's name substituted in and that town's geo parameters sent, so every number below
+  // is about it. Reading the scope's own locality here would head a Ballarat report "Geelong" -
+  // and the two would be indistinguishable in an inbox, which is how a subscriber ends up
+  // reading one town's report twice and believing the other never came.
+  const location = run.location_id ? await getLocation(run.location_id) : null;
+  if (run.location_id && !location) {
+    throw new Error(
+      `Run ${run.id} is for location ${run.location_id}, which no longer exists. Refusing to ` +
+        `build a report: it would be headed with the wrong town.`,
+    );
+  }
+  const locality: Locality | null = location ? localityOfLocation(location) : scopeLocality;
 
   const { data: qRows } = await db()
     .from('questions')
@@ -307,7 +322,10 @@ export async function buildReport(run: RunRow): Promise<ReportData> {
   return {
     scope: {
       brandName: scope.brand_name,
-      market: scope.market,
+      // scopes.market is placeLabel(country, the scope's own locality) - "Geelong, Australia" -
+      // written once at approval. On a location run that is the wrong town, so the same builder
+      // is used against this run's locality rather than the stored string.
+      market: location ? placeLabel(scope.market_country, locality) : scope.market,
       marketCountry: scope.market_country,
       website: scope.website,
       locality: locality?.input ?? null,
@@ -552,14 +570,24 @@ function endorses(usable: CaptureRecord[]): boolean {
   return yes * 2 > usable.length;
 }
 
-/** Attach a delta by comparing against the previous comparable run for this scope. */
+/**
+ * Attach a delta by comparing against the previous comparable run for this scope AND THIS TOWN.
+ *
+ * The location is part of comparability, in exactly the way `runs.surfaces`, `runs.samples` and
+ * the competitor set are. Without it a subscriber's second town in month two finds their first
+ * town's month one - the most recent earlier run for the scope - and prints the difference
+ * between two different markets as movement. That is the same defect 0002 warns about for
+ * competitors, except the reader has no way at all to see it.
+ */
 export async function attachDelta(report: ReportData, run: RunRow): Promise<ReportData> {
-  const { data: prevRows } = await db()
+  let prevQ = db()
     .from('runs')
     .select('*')
     .eq('scope_id', run.scope_id)
     .eq('period', run.period)
-    .lt('period_start', run.period_start)
+    .lt('period_start', run.period_start);
+  prevQ = run.location_id ? prevQ.eq('location_id', run.location_id) : prevQ.is('location_id', null);
+  const { data: prevRows } = await prevQ
     .order('period_start', { ascending: false })
     .limit(1);
   const prev = (prevRows?.[0] as RunRow | undefined) ?? null;

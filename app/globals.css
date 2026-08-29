@@ -1028,6 +1028,58 @@ footer .wrap {
   margin-bottom: 8px;
 }
 
+ /* The repeatable extra-location row. Three flat classes rather than `.wizard-row input`,
+    because a descendant selector is what put grey text on the wordmark and an unreadable
+    button in the nav: `.class tag` scores (0,1,1) and beats the (0,1,0) of the class the
+    element actually carries. `.wizard-row .field` below is class-to-class, which carries no
+    such trap: it cannot be beaten by the element's own class because it contains it. */
+ /* The total IS the button. A separate CTA beside every row would be four buttons in a
+    four-row table saying the same thing; the price a visitor just built with the stepper is
+    the thing they want to click. */
+.totals-buy {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.totals-buy:hover {
+  color: var(--green);
+}
+
+.wizard-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.wizard-row .field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wizard-drop,
+.wizard-add {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--soft);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.wizard-drop:hover,
+.wizard-add:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
 .wizard-actions {
   display: flex;
   flex-wrap: wrap;

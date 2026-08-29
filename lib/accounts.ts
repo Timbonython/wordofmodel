@@ -83,6 +83,13 @@ export interface RunRow {
   surfaces: Surface[];
   /** 0007. Samples per surface. Same warning as surfaces. */
   samples: Record<string, number>;
+  /**
+   * 0022. The additional location this run measured, or null for the scope's own locality.
+   * Part of the idempotency key, and part of comparability: a delta must only ever compare a
+   * town with itself. Null on every run before 0022, which is correct - they measured the one
+   * place a scope had.
+   */
+  location_id: string | null;
   cost_usd: number;
   cost_ceiling_usd: number | null;
   failure_reason: string | null;

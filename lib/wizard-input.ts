@@ -1,6 +1,7 @@
 import 'server-only';
 import { QUESTION_SLOTS, type QuestionSlot } from './accounts';
 import { isSupportedMarket, marketName, placeLabel } from './geo';
+import { MAX_EXTRA_LOCATIONS } from './scope';
 import { normaliseDomain } from './domain';
 import {
   MAX_COMPETITORS,
@@ -59,6 +60,12 @@ export function parseProfile(input: unknown): WizardProfile {
       ? text(p.locality, 'Where more specifically', 120)
       : '';
 
+  // THE ADDITIONAL TOWNS. Parsed after locality because they depend on it: an extra location is
+  // only meaningful when the approved questions name a place to substitute, and a country-level
+  // scope has none. Refused rather than silently dropped, because a subscriber who typed two
+  // towns and is charged for two towns must not receive one report.
+  const extra_locations = parseExtraLocations(p.extra_locations, locality);
+
   return {
     brand_name: text(p.brand_name, 'Your brand name', 120),
     category_term,
@@ -70,6 +77,7 @@ export function parseProfile(input: unknown): WizardProfile {
     // the subscriber approved disagreeing with the market on their report is the whole
     // failure this feature was designed to avoid.
     place: placeLabel(market_country, locality ? { input: locality, canonical: null, city: null, region: null } : null),
+    extra_locations,
     what_they_sell: typeof p.what_they_sell === 'string' && p.what_they_sell.trim()
       ? text(p.what_they_sell, 'What you sell', 200)
       : category_term,
@@ -78,6 +86,44 @@ export function parseProfile(input: unknown): WizardProfile {
       : 'buyers',
     website: typeof p.website === 'string' ? p.website.trim().slice(0, 200) : '',
   };
+}
+
+
+/**
+ * The additional towns, deduplicated and checked against the first one.
+ *
+ * A duplicate is not an error worth stopping for - somebody typed Ballarat twice - but it must
+ * not become two rows, because two rows is two runs and two charges for one town. The unique
+ * constraint in 0022 would refuse the second insert anyway; catching it here means the
+ * subscriber sees the set they are actually buying before they pay rather than an error after.
+ */
+export function parseExtraLocations(input: unknown, locality: string): string[] {
+  const raw = Array.isArray(input) ? input : [];
+  const cleaned: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of raw) {
+    if (typeof value !== 'string' || !value.trim()) continue;
+    const name = text(value, 'Another location', 120);
+    const key = name.toLowerCase();
+    // The first location is not an additional one. Charging for it would be charging twice
+    // for the same town, and it would open two runs asking identical questions.
+    if (key === locality.trim().toLowerCase()) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(name);
+  }
+
+  if (cleaned.length && !locality.trim()) {
+    throw new InputError(
+      'Name your main location first. Extra locations work by asking your five approved ' +
+        'questions about another town, and there is no town in them yet.',
+    );
+  }
+  if (cleaned.length > MAX_EXTRA_LOCATIONS) {
+    throw new InputError(`That is more than ${MAX_EXTRA_LOCATIONS} extra locations. Get in touch and we will set it up.`);
+  }
+  return cleaned;
 }
 
 /**

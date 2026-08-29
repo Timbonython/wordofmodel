@@ -50,6 +50,17 @@ export interface WizardProfile {
    * or prompts uses this; everything geographic uses market_country.
    */
   place: string;
+  /**
+   * The ADDITIONAL towns, beyond `locality`, each as the subscriber typed it. Empty on almost
+   * every scope. This is the billable quantity on the additional-location price and it is also
+   * the fan-out: one run per entry, per period, asking the same five approved questions with
+   * the town substituted.
+   *
+   * Requires `locality` to be set, enforced in parseProfile. There is nothing to substitute in
+   * a question that never named a place, and asking a country-level question from a town and
+   * filing it under that town would be a wrong number nobody could see.
+   */
+  extra_locations: string[];
   category_term: string;
   website: string;
 }
@@ -377,6 +388,7 @@ export async function approveOnboarding(input: {
   const scope = await upsertScope(account.id, input.profile, locality);
   await writeCompetitors(scope.id, input.competitors);
   await writeQuestions(scope.id, input.questions);
+  await writeLocations(scope.id, input.profile);
 
   return { account, scope };
 }
@@ -444,6 +456,38 @@ async function upsertScope(
   const { data, error } = await db().from('scopes').insert(fields).select('*').single();
   if (error || !data) throw new Error(`Could not save the profile: ${error?.message}`);
   return data as ScopeRow;
+}
+
+/**
+ * The additional towns, resolved and stored.
+ *
+ * RESOLVED HERE, at approval, for the same reason the scope's own locality is: a resolution
+ * that runs monthly is a parameter that can change without anybody deciding, and two captures
+ * in one run resolving differently would be one report measured against two towns.
+ *
+ * A full replace rather than a merge. The wizard sends the whole set every time, so a town the
+ * subscriber removed has to disappear; leaving it would keep opening a run and keep charging for
+ * it. Safe because assertScopeEditable has already refused any scope with runs.
+ */
+async function writeLocations(scopeId: string, profile: WizardProfile): Promise<void> {
+  const { error: clearErr } = await db().from('scope_locations').delete().eq('scope_id', scopeId);
+  if (clearErr) throw new Error(`Could not clear locations for scope ${scopeId}: ${clearErr.message}`);
+  if (!profile.extra_locations.length) return;
+
+  const rows = [];
+  for (const input of profile.extra_locations) {
+    const resolved = await resolveLocality(input, profile.market_country);
+    rows.push({
+      scope_id: scopeId,
+      locality: input,
+      locality_canonical: resolved?.canonical ?? null,
+      locality_city: resolved?.city ?? null,
+      locality_region: resolved?.region ?? null,
+    });
+  }
+
+  const { error } = await db().from('scope_locations').insert(rows);
+  if (error) throw new Error(`Could not write locations for scope ${scopeId}: ${error.message}`);
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   PREMIUM_ADDITIONS,
   PRICE_USD,
   priceLabel,
+  startHref,
   type Tier,
 } from '@/lib/scope';
 
@@ -95,27 +96,29 @@ export function PricingCards({ tiers }: { tiers: readonly Tier[] }) {
         })}
       </div>
 
-      {/* A QUANTITY ROW, NOT A THIRD CARD. §5. A fixed "two sites" plan has no answer for a
-          five-clinic group, and a five-clinic group is the best customer on the list. */}
-      {/* KNOWN GAP, and the price-door check surfaced it rather than anybody remembering.
-          §0's own defect, in the section §5 of the brand brief asked for: this row renders
-          US$30, and the stepper below renders a live total - US$189 for five clinics - and
-          NOTHING CAN BUY EITHER. createCheckout builds one line item; location quantity is
-          not in the checkout at all.
+      {/* THE GAP IS CLOSED, 29 Aug 2026. This row rendered US$30 and a live stepper total -
+          US$189 for five clinics - and nothing could buy any of it: createCheckout built one
+          line item and location quantity was not in the checkout at all. Worse than a price
+          with no door, because the Stripe product description promised the mechanism too
+          ("The same five questions, asked from each town") and nothing did that.
 
-          Deliberately not given a button. A CTA here would open a session that charges the
-          base tier and silently drops the locations, which is a price checkout cannot honour -
-          the defect this whole brief exists to remove, reintroduced one level down.
+          Now: the wizard asks for the towns, scope_locations stores them, one run per town
+          per period asks the same five approved questions with the place substituted, and
+          createCheckout adds a location line whose quantity is COUNTED FROM THE STORED ROWS
+          rather than from the form. So the number here is the number charged and the number
+          measured.
 
-          The fix is a quantity in createCheckout, not a link. Until then the number is
-          honest about the rate and dishonest about being purchasable, and that is worth
-          saying out loud rather than suppressing quietly. */}
+          The door is the plan buttons above, because the locations are chosen inside the
+          wizard rather than bought separately - which is also why this is a quantity row and
+          not a third card. §5. A fixed "two sites" plan has no answer for a five-clinic
+          group, and a five-clinic group is the best customer on the list. */}
       <section className="locations">
         <h3>More than one location?</h3>
         <p>
-          {/* price-door: no purchase path - see the note above */}
+          {/* price-door: no purchase path - the rate; the buyable totals are the linked table below */}
           {money(PRICE_USD.location_monthly)} a month for each additional location, on either
-          plan. Same questions, asked from each town.
+          plan. Your same five questions, asked again about each town, in its own report. Add
+          them when you pick a plan.
         </p>
         <div className="stepper">
           <button
@@ -139,12 +142,14 @@ export function PricingCards({ tiers }: { tiers: readonly Tier[] }) {
               <tr key={tier.key}>
                 <th scope="row">{tier.name}</th>
                 <td>
-                  {/* price-door: no purchase path - see the note above */}
-                  {money(priceFor(tier) + locations * perLocation)} {unit}
+                  <a className="totals-buy" href={startHref(tier.tier)}>
+                    {/* price-door: linked */}
+                    {money(priceFor(tier) + locations * perLocation)} {unit}
+                  </a>
                   {locations > 0 ? (
                     <span className="totals-working">
                       {' '}
-                      {/* price-door: no purchase path - see the note above */}
+                      {/* price-door: no purchase path - the working behind the linked total above */}
                       = {money(priceFor(tier))} + {locations} &times; {money(perLocation)}
                     </span>
                   ) : null}

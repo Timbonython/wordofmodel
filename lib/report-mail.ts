@@ -75,10 +75,15 @@ export function reportUrl(runId: string): string {
 export function reportSubject(r: ReportData): string {
   const period = monthName(r.run.periodStart);
   const e = r.endorsement;
+  // THE TOWN, WHEN THERE IS ONE. A subscriber measured in three towns gets three reports in one
+  // month, and without the town in the subject they are three identical lines in an inbox: the
+  // second reads as a duplicate of the first and the third never gets opened. The brand still
+  // leads, because the subject has to survive being forwarded with no context.
+  const who = r.scope.locality ? `${r.scope.brandName} in ${r.scope.locality}` : r.scope.brandName;
   if (e.askedDirectly > 0) {
-    return `${r.scope.brandName}, ${period}: ${e.endorsed} of ${e.askedDirectly} AI surfaces recommend you`;
+    return `${who}, ${period}: ${e.endorsed} of ${e.askedDirectly} AI surfaces recommend you`;
   }
-  return `${r.scope.brandName}, ${period}: your report is ready`;
+  return `${who}, ${period}: your report is ready`;
 }
 
 /**

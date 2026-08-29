@@ -16,11 +16,17 @@ import { completeJob, failJob } from './jobs';
 import { addRunCost } from './run';
 import type { CaptureJobRow } from './accounts';
 import type { Locality } from './geo';
+import { placeLabel } from './geo';
+import { getLocation, localityOfLocation } from './locations';
+import { localiseQuestion } from './location-text';
 
 interface JobContext {
   questionText: string;
   marketCountry: string;
-  /** Null on a country scope, which is most of them. */
+  /**
+   * Null on a country scope, which is most of them. On a run with a location_id this is the
+   * ADDITIONAL town, not the scope's own, and questionText has already been rewritten to name it.
+   */
   locality: Locality | null;
 }
 
@@ -59,7 +65,7 @@ async function contextFor(job: CaptureJobRow): Promise<JobContext> {
   const { data, error } = await db()
     .from('questions')
     .select(
-      'text, scopes!inner(market_country, locality, locality_canonical, locality_city, locality_region)',
+      'text, slot, scopes!inner(market_country, locality, locality_canonical, locality_city, locality_region)',
     )
     .eq('id', job.question_id)
     .single();
@@ -67,6 +73,7 @@ async function contextFor(job: CaptureJobRow): Promise<JobContext> {
 
   const row = data as unknown as {
     text: string;
+    slot: string;
     scopes: {
       market_country: string;
       locality: string | null;
@@ -75,10 +82,53 @@ async function contextFor(job: CaptureJobRow): Promise<JobContext> {
       locality_region: string | null;
     };
   };
+
+  const country = row.scopes.market_country;
+  const scopeLocality = localityOf(row.scopes);
+
+  // WHICH TOWN IS THIS RUN FOR. Null on every run before 0022 and on every single-location
+  // subscriber, which is the overwhelming majority, and that path is byte for byte what it was.
+  const { data: runRow, error: runErr } = await db()
+    .from('runs')
+    .select('location_id')
+    .eq('id', job.run_id)
+    .single();
+  if (runErr || !runRow) throw new Error(`Could not read run ${job.run_id}: ${runErr?.message}`);
+  const locationId = (runRow as { location_id: string | null }).location_id;
+  if (!locationId) {
+    return { questionText: row.text, marketCountry: country, locality: scopeLocality };
+  }
+
+  const location = await getLocation(locationId);
+  if (!location) {
+    throw new Error(
+      `Run ${job.run_id} is for location ${locationId}, which no longer exists. Refusing the ` +
+        `capture: falling back to the scope's own town would file another town's answer under it.`,
+    );
+  }
+
+  // THE PLACE IS SUBSTITUTED IN THE TEXT, not only in the geo parameter. See lib/location-text.ts.
+  // A scope with no locality of its own cannot have an additional one localised against it -
+  // there is no place in the question to replace - and that is refused rather than guessed at.
+  if (!scopeLocality) {
+    throw new Error(
+      `Run ${job.run_id} is for an additional location but scope has no locality of its own, so ` +
+        `there is no place in the question text to substitute. Refusing.`,
+    );
+  }
+
+  const target = localityOfLocation(location);
   return {
-    questionText: row.text,
-    marketCountry: row.scopes.market_country,
-    locality: localityOf(row.scopes),
+    questionText: localiseQuestion({
+      text: row.text,
+      slot: row.slot,
+      fromPlace: placeLabel(country, scopeLocality),
+      toPlace: placeLabel(country, target),
+      fromLocality: scopeLocality.input,
+      toLocality: target.input,
+    }),
+    marketCountry: country,
+    locality: target,
   };
 }
 

@@ -1,8 +1,9 @@
 import 'server-only';
 import type Stripe from 'stripe';
 import { db } from './db';
+import { locationsForScope } from './locations';
 import { env } from './env';
-import { assertOneInterval, assertPrice, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
+import { assertOneInterval, assertPrice, PRICES, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
 import { DiscountError, validateDiscount, type ValidDiscount } from './discount';
 import { recordFunnel } from './funnel';
@@ -132,8 +133,24 @@ export async function createCheckout(input: {
     ...(discount ? { discount_code: discount.code } : {}),
   };
 
+  // THE ADDITIONAL LOCATIONS, COUNTED FROM THE DATABASE, NOT FROM THE FORM.
+  //
+  // The wizard has already written scope_locations, so this reads what will actually be RUN
+  // rather than what was posted. Those are the same number today; they stop being the same
+  // number the moment a duplicate is dropped, a row fails to insert, or somebody replays a
+  // stale form. Charging for towns that will not be measured is the exact defect this whole
+  // change exists to remove, and counting the rows is what makes over-charging impossible
+  // rather than merely unlikely.
+  const extraLocations = await locationsForScope(input.scope.id);
+  // Derived from the plan that was actually chosen, so an annual plan gets the annual location
+  // price and a monthly one the monthly. Never passed in.
+  const locationKey: PriceKey = PRICES[priceKey].interval === 'year' ? 'location_annual' : 'location_monthly';
+
   let session: Stripe.Checkout.Session;
-  const lineKeys: PriceKey[] = [priceKey];
+  const lineKeys: PriceKey[] = extraLocations.length ? [priceKey, locationKey] : [priceKey];
+  // Now doing real work rather than standing ready: a monthly plan with an annual location line
+  // would produce a subscription Stripe cannot bill and a subscriber who is charged twice on
+  // different cycles. The interval is derived from the plan above, so the two cannot disagree.
   assertOneInterval(lineKeys);
 
   try {
@@ -145,7 +162,10 @@ export async function createCheckout(input: {
       // is plural so that an add-on line cannot be added later without passing the interval
       // rule on its way to the charge. See assertOneInterval.
       line_items: await Promise.all(
-        lineKeys.map(async (k) => ({ price: await priceIdFor(k), quantity: 1 })),
+        lineKeys.map(async (k) => ({
+          price: await priceIdFor(k),
+          quantity: k === locationKey ? extraLocations.length : 1,
+        })),
       ),
       // The PROMOTION CODE, never the coupon. Stripe takes either, and passing the coupon
       // applies the coupon's own limits and ignores max_redemptions and redeem_by on the

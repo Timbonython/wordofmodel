@@ -7,6 +7,7 @@ import {
   TIERS,
   TIER_BASE_PRICE,
   TIERS_WITH_A_CODE,
+  MAX_EXTRA_LOCATIONS,
   priceLabel,
   type PlanTier,
   type QuestionSlot,
@@ -44,6 +45,15 @@ export interface WizardProfileInput {
    * the next screen but one.
    */
   locality: string;
+  /**
+   * The additional towns, beyond `locality`. Empty on almost every scope.
+   *
+   * Shown only once a locality has been typed, because an extra location works by substituting
+   * the town inside the five approved questions and a country-level question has no town in it
+   * to substitute. Each one is billed at US$30 a month and produces its own run and its own
+   * report.
+   */
+  extra_locations: string[];
   category_term: string;
   website: string;
 }
@@ -99,6 +109,7 @@ const EMPTY: WizardProfileInput = {
   buyer: '',
   market_country: DEFAULT_MARKET,
   locality: '',
+  extra_locations: [],
   category_term: '',
   website: '',
 };
@@ -180,6 +191,16 @@ export default function Wizard({
    * they should find that out while they can still change it.
    */
   const [localityStatement, setLocalityStatement] = useState<string | null>(null);
+
+  /**
+   * The extra locations that actually have a name in them.
+   *
+   * An empty row is a row somebody just added and has not typed into yet. Counting it would
+   * quote them US$60 for one town, and the price shown before paying has to be the price
+   * charged. parseExtraLocations drops the same empties on the server, so the count here and
+   * the quantity on the invoice come from the same rule.
+   */
+  const namedExtras = profile.extra_locations.map((t) => t.trim()).filter(Boolean);
 
   async function checkLocality() {
     const typed = profile.locality.trim();
@@ -296,8 +317,10 @@ export default function Wizard({
         buyer: out.profile.buyer ?? '',
         market_country: resolveMarket(out.profile.country ?? null),
         // Never guessed from the site. A town read off a footer is a town nobody chose,
-        // and it would arrive already interpolated into five questions.
+        // and it would arrive already interpolated into five questions. Same for the extra
+        // ones, which additionally cost US$30 a month each.
         locality: '',
+        extra_locations: [],
         category_term: out.profile.category_term ?? '',
         website: out.domain,
       });
@@ -487,6 +510,60 @@ export default function Wizard({
                     town reaches the answer through the question and nothing else. Your
                     report says which is which, every month.
                   </p>
+                )}
+                {profile.locality.trim() && (
+                  <div className="wizard-field">
+                    <span className="k">Anywhere else?</span>
+                    <span className="h">
+                      Optional. US$30 a month each. Your same five questions, asked again
+                      about that town, in its own report.
+                    </span>
+                    {profile.extra_locations.map((town, i) => (
+                      <div className="wizard-row" key={i}>
+                        <input
+                          className="field"
+                          value={town}
+                          placeholder="Another town"
+                          onChange={(e) => {
+                            const next = [...profile.extra_locations];
+                            next[i] = e.target.value;
+                            set('extra_locations', next);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="wizard-drop"
+                          onClick={() =>
+                            set(
+                              'extra_locations',
+                              profile.extra_locations.filter((_, j) => j !== i),
+                            )
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    {profile.extra_locations.length < MAX_EXTRA_LOCATIONS && (
+                      <button
+                        type="button"
+                        className="wizard-add"
+                        onClick={() => set('extra_locations', [...profile.extra_locations, ''])}
+                      >
+                        Add a location
+                      </button>
+                    )}
+                    {namedExtras.length > 0 && (
+                      <p className="wizard-note">
+                        {namedExtras.length === 1
+                          ? `${namedExtras[0]} is US$30 a month on top of your plan.`
+                          : `${namedExtras.length} extra locations is US$${namedExtras.length * 30} a month on top of your plan.`}{' '}
+                        You will get a separate report for {profile.locality.trim()} and for{' '}
+                        {namedExtras.join(', ')}, because a number averaged across towns hides
+                        the town you are losing.
+                      </p>
+                    )}
+                  </div>
                 )}
                 <Field
                   label="Category"

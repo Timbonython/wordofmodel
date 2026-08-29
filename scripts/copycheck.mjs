@@ -253,6 +253,24 @@ for (const dir of ['app', 'components']) {
     src.split('\n').forEach((line, i) => {
       if (!PRICE_IN_TEXT.test(line)) return;
       if ((rawLines[i - 1] ?? '').includes('price-door: no purchase path')) return;
+      // `price-door: linked` says THIS PRICE IS THE LINK, and is CHECKED rather than believed.
+      // An href must actually be open above it, within three lines and not already closed, or
+      // the marker fails like any other bare price. A marker the checker takes on trust is an
+      // opt-out with extra steps, and this file already learned that lesson once: the original
+      // opt-out was read from the comment-stripped copy and silently excused nothing.
+      if ((rawLines[i - 1] ?? '').includes('price-door: linked')) {
+        const above = rawLines.slice(Math.max(0, i - 4), i).join('\n');
+        const opened = /<(a|Link)\b[^>]*\bhref=/.test(above);
+        const closed = /<\/(a|Link)>/.test(above.slice(above.search(/<(a|Link)\b/)));
+        if (opened && !closed) return;
+        failures++;
+        console.error(
+          `${rel}:${i + 1}  price-door: linked, but no open href above it  ->  ${line.trim().slice(0, 70)}\n` +
+            '    The marker claims this price is inside a link. It is not. Either wrap it in an\n' +
+            '    anchor with an href, or say `price-door: no purchase path` and mean it.',
+        );
+        return;
+      }
       failures++;
       console.error(
         `${rel}:${i + 1}  a price is rendered outside PriceCard  ->  ${line.trim().slice(0, 88)}\n` +

@@ -227,7 +227,7 @@ async function onCheckoutCompleted(
 async function openFirstRun(scopeId: string, subId: string): Promise<void> {
   try {
     const started = await ensureBaselineRun(scopeId);
-    if (!started) return;
+    if (!started.length) return;
     // Fire and forget. If the kick never lands the sweeper finds the pending jobs within
     // five minutes.
     await kickChains();

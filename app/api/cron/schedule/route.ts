@@ -21,7 +21,7 @@
  */
 
 import { authorised, unauthorised, kickChains, CHAINS } from '@/lib/cron';
-import { startRun, ensureBaselineRun, scopesAwaitingFirstRun } from '@/lib/run';
+import { startRunsForScope, ensureBaselineRun, scopesAwaitingFirstRun } from '@/lib/run';
 import { dueJobCount } from '@/lib/jobs';
 import { runsStuckAwaitingReport } from '@/lib/reports';
 import { sendOpsAlert } from '@/lib/billing-mail';
@@ -57,13 +57,13 @@ async function handle(req: Request): Promise<Response> {
     try {
       // period_start is today's date, so this is idempotent by the unique index rather
       // than by asking whether a run exists. Re-running the cron opens nothing new.
-      const { run, created } = await startRun({
+      const runs = await startRunsForScope({
         scopeId: sub.scope_id,
         period: 'monthly',
         periodStart: today,
         triggerSource: 'scheduled',
       });
-      opened.push({ scope: sub.scope_id, run: run.id, created });
+      for (const { run, created } of runs) opened.push({ scope: sub.scope_id, run: run.id, created });
     } catch (err) {
       // One subscriber's bad configuration must not stop everybody else's report.
       failed.push({ scope: sub.scope_id, reason: err instanceof Error ? err.message : String(err) });
@@ -81,8 +81,10 @@ async function handle(req: Request): Promise<Response> {
   const baselines: Array<{ scope: string; run: string }> = [];
   for (const scopeId of awaiting) {
     try {
-      const started = await ensureBaselineRun(scopeId, today);
-      if (started) baselines.push({ scope: scopeId, run: started.run.id });
+      // One entry per town. A two-location subscriber whose scope has never run gets two.
+      for (const started of await ensureBaselineRun(scopeId, today)) {
+        baselines.push({ scope: scopeId, run: started.run.id });
+      }
     } catch (err) {
       failed.push({ scope: scopeId, reason: `baseline: ${err instanceof Error ? err.message : String(err)}` });
       console.error(`schedule: could not open a baseline run for scope ${scopeId}`, err);

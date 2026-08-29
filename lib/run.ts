@@ -12,6 +12,7 @@
 
 import 'server-only';
 import { db } from './db';
+import { locationsForScope } from './locations';
 import { env } from './env';
 import { sendOpsAlert } from './billing-mail';
 import { capturesExpected, runnableMonthlySurfaces, samplesFor, samplingMap } from './engines';
@@ -43,12 +44,20 @@ export interface StartRunInput {
   /** Which period, as a date. The idempotency key together with scope and cadence. */
   periodStart: string;
   triggerSource: 'baseline' | 'scheduled' | 'manual';
+  /**
+   * The additional location this run measures, or null for the scope's own locality.
+   *
+   * Part of the idempotency key, not a decoration. Two locations run the same five questions in
+   * the same period, and without this in the key the second one is refused as a duplicate of the
+   * first and a subscriber pays US$30 a month for a run that silently never opens.
+   */
+  locationId?: string | null;
 }
 
 /**
  * Open a run and fill its queue. Safe to call twice.
  *
- * Idempotency is the unique index on (scope_id, period, period_start) from 0005, not a
+ * Idempotency is the unique index on (scope_id, period, period_start, location_id) from 0022, not a
  * check-then-insert. Two callers race, Postgres serialises them, one insert wins and the
  * loser reads the winner's row. Nothing anywhere asks "does a run already exist" and then
  * acts on the answer, because the gap between those two things is where the second run
@@ -80,6 +89,7 @@ export async function startRun(input: StartRunInput): Promise<{ run: RunRow; cre
       scope_id: input.scopeId,
       period: input.period,
       period_start: input.periodStart,
+      location_id: input.locationId ?? null,
       status: 'pending',
       trigger_source: input.triggerSource,
       captures_expected: expected,
@@ -99,7 +109,7 @@ export async function startRun(input: StartRunInput): Promise<{ run: RunRow; cre
     }
     // Somebody else opened this run. Theirs is the run; fall in behind it and still
     // enqueue, because we do not know how far they got before we arrived.
-    const existing = await getRun(input.scopeId, input.period, input.periodStart);
+    const existing = await getRun(input.scopeId, input.period, input.periodStart, input.locationId ?? null);
     if (!existing) throw new Error(`Run conflict for scope ${input.scopeId} but no row to read.`);
     run = existing;
     created = false;
@@ -145,14 +155,23 @@ async function enqueueJobs(run: RunRow, questions: QuestionRow[], surfaces: Surf
   if (error) throw new Error(`Could not enqueue captures for run ${run.id}: ${error.message}`);
 }
 
-export async function getRun(scopeId: string, period: RunPeriod, periodStart: string): Promise<RunRow | null> {
-  const { data, error } = await db()
+export async function getRun(
+  scopeId: string,
+  period: RunPeriod,
+  periodStart: string,
+  locationId: string | null = null,
+): Promise<RunRow | null> {
+  // .is() for null, .eq() for a value. PostgREST renders eq.null as the literal string "null"
+  // and matches nothing, which here would mean the loser of a run race finding no row and
+  // throwing "Run conflict but no row to read" on the single-location path that has always worked.
+  let q = db()
     .from('runs')
     .select('*')
     .eq('scope_id', scopeId)
     .eq('period', period)
-    .eq('period_start', periodStart)
-    .limit(1);
+    .eq('period_start', periodStart);
+  q = locationId ? q.eq('location_id', locationId) : q.is('location_id', null);
+  const { data, error } = await q.limit(1);
   if (error) throw new Error(`Run lookup failed: ${error.message}`);
   return (data?.[0] as RunRow | undefined) ?? null;
 }
@@ -345,24 +364,59 @@ export async function alertOnRun(run: RunRow, scopeLabel?: string): Promise<void
 export async function ensureBaselineRun(
   scopeId: string,
   today = new Date().toISOString().slice(0, 10),
-): Promise<{ run: RunRow; created: boolean } | null> {
+): Promise<{ run: RunRow; created: boolean }[]> {
+  // EVERY TOWN THE SUBSCRIBER IS PAYING FOR, not just the scope's own. A run per location, which
+  // is what keeps the capture key, the queue, extraction and the delta exactly as they were.
+  const locationIds: (string | null)[] = [null, ...(await locationsForScope(scopeId)).map((l) => l.id)];
+
+  // ASKED PER LOCATION, NOT PER SCOPE, and that is the difference between a second town getting
+  // its first report in twenty minutes and getting it whenever report_day next comes round. A
+  // location added in month three has never had a run even though its scope has had two.
   const { data, error } = await db()
     .from('runs')
-    .select('id')
-    .eq('scope_id', scopeId)
-    .limit(1);
+    .select('location_id')
+    .eq('scope_id', scopeId);
   if (error) throw new Error(`Could not check for existing runs: ${error.message}`);
-  if (data?.length) return null;
+  const ran = new Set((data ?? []).map((r) => (r as { location_id: string | null }).location_id));
 
-  return startRun({
-    scopeId,
-    period: 'monthly',
-    // A real monthly run, not a special kind. period_start is today, so the subscriber's
-    // report_day run next month is a different key and there is no double cost inside one
-    // billing period.
-    periodStart: today,
-    triggerSource: 'baseline',
-  });
+  const opened: { run: RunRow; created: boolean }[] = [];
+  for (const locationId of locationIds) {
+    if (ran.has(locationId)) continue;
+    opened.push(
+      await startRun({
+        scopeId,
+        period: 'monthly',
+        // A real monthly run, not a special kind. period_start is today, so the subscriber's
+        // report_day run next month is a different key and there is no double cost inside one
+        // billing period.
+        periodStart: today,
+        triggerSource: 'baseline',
+        locationId,
+      }),
+    );
+  }
+  return opened;
+}
+
+/**
+ * Open this period's run for every town on a scope.
+ *
+ * The scheduler's counterpart to ensureBaselineRun. Idempotent by the unique index in 0022, which
+ * now carries location_id: re-running the cron opens nothing new, and the second town is a
+ * different key rather than a refused duplicate of the first.
+ */
+export async function startRunsForScope(input: {
+  scopeId: string;
+  period: RunPeriod;
+  periodStart: string;
+  triggerSource: 'baseline' | 'scheduled' | 'manual';
+}): Promise<{ run: RunRow; created: boolean }[]> {
+  const locationIds: (string | null)[] = [null, ...(await locationsForScope(input.scopeId)).map((l) => l.id)];
+  const opened: { run: RunRow; created: boolean }[] = [];
+  for (const locationId of locationIds) {
+    opened.push(await startRun({ ...input, locationId }));
+  }
+  return opened;
 }
 
 /** Live subscriptions whose scope has never had a run. The scheduler's safety net. */
@@ -378,10 +432,39 @@ export async function scopesAwaitingFirstRun(): Promise<string[]> {
 
   const { data: runs, error: runErr } = await db()
     .from('runs')
-    .select('scope_id')
+    .select('scope_id, location_id')
     .in('scope_id', scopeIds);
   if (runErr) throw new Error(`Could not list runs: ${runErr.message}`);
 
-  const withRuns = new Set((runs ?? []).map((r) => (r as { scope_id: string }).scope_id));
-  return scopeIds.filter((id) => !withRuns.has(id));
+  // A TOWN THAT HAS NEVER RUN, not a scope that has never run.
+  //
+  // Asking the scope-level question would mean a location added to an established subscriber
+  // waits until their next report_day for its first report - up to a month of paying US$30 for
+  // silence - because the scope plainly has runs. Asked per town, the new one is in exactly the
+  // position a new subscriber is in, and gets the same twenty minutes.
+  //
+  // Unchanged for the single-location subscriber, which is nearly all of them: one town, one
+  // key, and it has either run or it has not.
+  const ran = new Set(
+    (runs ?? []).map((r) => {
+      const row = r as { scope_id: string; location_id: string | null };
+      return `${row.scope_id}:${row.location_id ?? ''}`;
+    }),
+  );
+
+  const { data: locs, error: locErr } = await db()
+    .from('scope_locations')
+    .select('scope_id, id')
+    .in('scope_id', scopeIds);
+  if (locErr) throw new Error(`Could not list locations: ${locErr.message}`);
+
+  const towns = new Map<string, (string | null)[]>(scopeIds.map((id) => [id, [null]]));
+  for (const l of locs ?? []) {
+    const row = l as { scope_id: string; id: string };
+    towns.get(row.scope_id)?.push(row.id);
+  }
+
+  return scopeIds.filter((id) =>
+    (towns.get(id) ?? [null]).some((locationId) => !ran.has(`${id}:${locationId ?? ''}`)),
+  );
 }
