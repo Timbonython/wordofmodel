@@ -1175,3 +1175,25 @@ sentence anybody reads.
 
 Also fixed here: `/faq` still passed `issue="Questions"`. The footer link was renamed to FAQs on
 28 Aug and this one was missed.
+
+## The product had the right word and the marketing drifted off it (29 Aug 2026)
+
+`lib/scope.ts` and the live Stripe product description have both said **"three ranked actions"**
+since the price ladder was built. The home page, the FAQ, the about page, the confirmation page
+and the confirmation email had all quietly become **"three things to do"** - which says nothing
+about what makes them ranked, in what order, or why. The system of record was right and every
+customer-facing surface had drifted.
+
+Also gone: the definite article. "The three things" reads as machine-written; "three ranked
+actions" does not need it.
+
+`copycheck` now refuses `things to do` and `three things`, proven by putting the old wording back
+on `/about` and watching it fail. **Narrow on purpose** - it does not ban the word. "The whole
+thing", "not the same thing" and "different things" are ordinary English, and rewriting those
+would make the copy stilted. It bans the two phrasings that were standing in for the
+deliverable's real name.
+
+**"Actions that will move the needle" was considered and not used.** It is exactly what the
+buzzword rule's own hint describes: a sentence that would survive on any SaaS site in the world.
+"Ranked, in order, with why that one is first" says the same thing and can be checked against the
+report.

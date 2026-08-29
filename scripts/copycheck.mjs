@@ -29,6 +29,21 @@ const RULES = [
     hint: 'If a sentence would survive on any SaaS site in the world, rewrite it.',
   },
   {
+    // THE PRODUCT ALREADY HAD THE RIGHT WORD AND THE MARKETING COPY DRIFTED OFF IT.
+    // lib/scope.ts and the live Stripe product description have both said "three ranked
+    // actions" since the price ladder was built. The home page, the FAQ, the about page, the
+    // confirmation page and the confirmation email had all quietly become "three things to do",
+    // which says nothing about what makes them ranked, or in what order, or why.
+    //
+    // Narrow on purpose. This does not ban the word - "the whole thing", "not the same thing"
+    // and "different things" are ordinary English and rewriting them would make the copy
+    // stilted. It bans the two phrasings that were standing in for the deliverable's actual
+    // name.
+    name: 'name the deliverable, do not call it things',
+    pattern: /\bthings to do\b|\bthree things\b/gi,
+    hint: 'It is three ranked actions, in order, with why that one is first. lib/scope.ts says so.',
+  },
+  {
     name: 'never use noreply@',
     pattern: /noreply@/gi,
     hint: 'It filters harder and reads as a machine.',

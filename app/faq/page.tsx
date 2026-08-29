@@ -54,7 +54,7 @@ export default function FaqPage() {
               and noisy signal.
             </p>
             <p>
-              Once a month, read properly, with the actual answers attached and three things to do, is
+              Once a month, read properly, with the actual answers attached and three ranked actions, is
               a better use of your time. If that turns out to be wrong we'll say so.
             </p>
           </div>

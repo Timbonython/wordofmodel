@@ -193,7 +193,7 @@ async function handle(req: Request): Promise<Response> {
         '',
         mode.detail,
         '',
-        'Three things do this, and they are not equally bad:',
+        'Three causes, and they are not equally bad:',
         '',
         '  1. STRIPE_MODE and STRIPE_SECRET_KEY point at a different account than expected.',
         '     Anything counting subscriptions is then counting the wrong ledger, silently.',

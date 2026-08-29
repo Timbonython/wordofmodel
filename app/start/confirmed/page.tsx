@@ -67,7 +67,7 @@ export default async function ConfirmedPage({
           <p className="lede">
             We&apos;ll run {brandName ? `${brandName}'s` : 'your'} five questions across{' '}
             {monthlySurfaceList()}, and you&apos;ll have the whole thing, numbers, competitors,
-            verbatim answers, and three things to do,{' '}
+            verbatim answers, and three ranked actions,{' '}
             in your inbox by this time tomorrow
             {reportDay ? `. Then the ${ordinal(reportDay)} of every month after that` : ''}.
           </p>

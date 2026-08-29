@@ -94,7 +94,7 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
     `You're in. Your first report lands within 24 hours.`,
     ``,
     `We'll run your five questions across ${monthlySurfaceList()}, and you'll have`,
-    `the whole thing - numbers, competitors, verbatim answers, and three things to do -`,
+    `the whole report - numbers, competitors, verbatim answers, and three ranked actions -`,
     `in your inbox ${when}. Then the ${ordinal(input.reportDay)} of every month after that.`,
     ``,
     `Four times a year we also read ${quarterlySurfaceList()} by hand, because neither`,
@@ -116,7 +116,7 @@ export function buildConfirmationEmail(input: ConfirmationInput): {
     <p style="margin:0 0 24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${PALETTE.inkSoft};">Word of Model</p>
     <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;">You're in. Your first report lands within 24 hours.</h1>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
-      We'll run your five questions for ${escapeHtml(input.brandName)} across ${escapeHtml(monthlySurfaceList())}, and you'll have the whole thing, numbers, competitors, verbatim answers, and three things to do, in your inbox ${escapeHtml(when)}. Same date every month after that.
+      We'll run your five questions for ${escapeHtml(input.brandName)} across ${escapeHtml(monthlySurfaceList())}, and you'll have the whole report, numbers, competitors, verbatim answers, and three ranked actions, in your inbox ${escapeHtml(when)}. Same date every month after that.
     </p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
       Four times a year we also read ${escapeHtml(quarterlySurfaceList())} by hand, because neither can be captured any other way without substituting a different system and calling it their answer.

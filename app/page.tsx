@@ -86,7 +86,7 @@ export default async function Page({
   }
   return (
     <>
-      <SiteNav scanIsHere sampleLive={sampleLive} tagline="What the assistants say about you, who they cite, how often they recommend you, and the three things to do about it." />
+      <SiteNav scanIsHere sampleLive={sampleLive} tagline="What the assistants say about you, who they cite, how often they recommend you, and three ranked actions." />
 
       <main className="wrap">
         {/* ============ 1. HERO ============
@@ -144,7 +144,7 @@ export default async function Page({
             page than any of it and was reachable only by accident until this deploy. */}
         <section>
           <div className="eyebrow">What comes back</div>
-          <h2>Three things, every month</h2>
+          <h2>The answers, the leaderboard, three ranked actions</h2>
           <div className="gets">
             <div className="get">
               <h3>The actual answer, word for word</h3>
@@ -161,8 +161,8 @@ export default async function Page({
               </p>
             </div>
             <div className="get">
-              <h3>Three things to do about it</h3>
-              <p>Ranked, in order, with why that one is first. Not eight. Not a backlog.</p>
+              <h3>Three ranked actions</h3>
+              <p>In order, with why that one is first. Not eight. Not a backlog.</p>
             </div>
           </div>
         </section>

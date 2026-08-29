@@ -59,7 +59,7 @@ export default function AboutPage() {
             Every month we ask five questions across five AI surfaces and record the answers word
             for word. You approve the questions before anything runs. You get the answers
             themselves, who was named, who was recommended, where the assistants got it from, and
-            three things to do about it.
+            three ranked actions.
           </p>
           <p>
             Once a quarter an experienced marketer based in Australia reads it by hand, and adds
