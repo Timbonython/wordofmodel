@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Wordmark } from '@/components/Mark';
 
 /**
@@ -11,6 +14,11 @@ import { Wordmark } from '@/components/Mark';
  * `.masthead` block with a wordmark and a one-line "issue" caption, and nothing linked to
  * anything. /method - the strongest page on the site - was reachable only by accident, from
  * one inline link two thirds of the way down the home page.
+ *
+ * A CLIENT COMPONENT ONLY SO IT KNOWS WHERE IT IS. `usePathname` is the whole reason; every
+ * prop here is a string or a boolean and nothing in it or in Wordmark is server-only, so this
+ * changes no call site. The alternative was passing the current path in from twelve pages,
+ * which is twelve places to forget.
  *
  * `prefetch={false}` on every link, deliberately. /start renders dynamically and writes a
  * funnel row; next/link prefetching it from the home page is what produced 1030
@@ -34,6 +42,11 @@ export function SiteNav({
    */
   sampleLive?: boolean;
 }) {
+  const here = usePathname();
+  // Exact match. Every nav target is a leaf today, and a startsWith would light up "How it
+  // works" on any future /method/* page that is not the one being pointed at.
+  const at = (href: string) => (here === href ? { className: 'sitenav-here', 'aria-current': 'page' as const } : {});
+
   return (
     <header className="sitenav">
       <div className="wrap sitenav-inner">
@@ -42,14 +55,14 @@ export function SiteNav({
         </Link>
 
         <nav className="sitenav-links" aria-label="Main">
-          <Link href="/method" prefetch={false}>
+          <Link href="/method" prefetch={false} {...at('/method')}>
             How it works
           </Link>
-          <Link href="/pricing" prefetch={false}>
+          <Link href="/pricing" prefetch={false} {...at('/pricing')}>
             Pricing
           </Link>
           {sampleLive ? (
-            <Link href="/sample" prefetch={false}>
+            <Link href="/sample" prefetch={false} {...at('/sample')}>
               Sample report
             </Link>
           ) : null}

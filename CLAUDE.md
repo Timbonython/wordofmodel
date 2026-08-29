@@ -1076,3 +1076,37 @@ grid item's background paints straight over it: every internal line vanished exc
 item of each row and column, where nothing came after to cover it. The stylesheet looked right and
 the screenshot was obviously broken. **The picture caught what the code could not**, which is the
 argument for the screenshot step being part of the work rather than a formality.
+
+## The nav was dressed as a caption (29 Aug 2026)
+
+`.sitenav-links` was IBM Plex Mono, `var(--soft)`, 11.5px. So is `.issue`, the page caption
+sitting directly underneath it in the same bar. Same family, same colour, effectively the same
+size, differing only in case and tracking - which at that size in grey is almost no signal. Tim's
+report was that the menu "reads like the byline", and it was literally true rather than
+impressionistic.
+
+Now `var(--font-cond)` 600, 13px, 0.08em, `var(--ink)`.
+
+**Same family as the wordmark, deliberately NOT the same weight.** The wordmark is condensed 700
+at 0.16em. Matching that makes the bar one texture and the wordmark stops being the anchor it
+exists to be.
+
+**The colour is the larger half of the change.** The family is what stops it matching `.issue`;
+`--soft` to `--ink` is what gives it any confidence. Tried both ways in the browser before
+choosing.
+
+**Condensed uppercase was already this design's label register** - `.wizard-field .k`,
+`.locations-tag`, `.wizard-add`. A nav is a row of labels, and it was the only one written as
+caption text.
+
+**And a menu needs to say where you are.** There was no current-page state at all: standing on
+`/pricing`, the word PRICING in the bar looked exactly like the other two. `SiteNav` is now a
+client component for the single purpose of reading `usePathname`, which changes no call site -
+every prop is a string or a boolean and neither it nor `Wordmark` is server-only. The alternative
+was passing the path in from twelve pages, which is twelve places to forget.
+
+Verified: the marker lands on exactly one item per page and never on the green CTA, at 390 and at
+desktop. `.sitenav-links a.button-green` (0,2,1) still beats `.sitenav-links a` (0,1,1), which is
+the specificity trap that made this bar's CTA unreadable once before. Condensed is narrower than
+mono, so at 390 the three labels now fit on one line, and the scan field is above the fold at all
+four heights - 667, 780, 844, 932.

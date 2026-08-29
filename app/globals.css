@@ -1419,15 +1419,41 @@ footer .wrap {
   display: flex;
   align-items: center;
   gap: 22px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11.5px;
+  /* THE WORDMARK'S FAMILY, NOT THE CAPTION'S. The bar was IBM Plex Mono at var(--soft) and
+     11.5px, and so is `.issue` - the page caption sitting directly underneath it. Same font,
+     same colour, same size, differing only in case and tracking, which at that size in grey is
+     almost no signal at all. The navigation was dressed as furniture.
+
+     Condensed uppercase is already this design's LABEL register: .wizard-field .k,
+     .locations-tag and .wizard-add all use it. A nav is a row of labels, and it was the only
+     one written as caption text.
+
+     600 rather than the wordmark's 700, and 0.08em rather than its 0.16em, deliberately. At the
+     wordmark's own weight the bar becomes one texture and the wordmark stops being the anchor
+     - the thing it is there to be. Same family, quieter voice. */
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.08em;
 }
 
 .sitenav-links a {
-  color: var(--soft);
+  /* INK, NOT SOFT, and this is the larger half of the change. Grey at caption size is what made
+     the bar read as a byline; the family stops it matching `.issue`, the colour is what gives
+     it any confidence. */
+  color: var(--ink);
   text-decoration: none;
+}
+
+/* THE PAGE YOU ARE ON. Without it, PRICING in the bar looks identical to the other two while
+   you are standing on /pricing, which is what stops a row of links reading as a menu. Green,
+   because this is the one place a state marker earns the accent: it is never on screen at the
+   same time as another green thing except the Free scan button, and those two are saying
+   different things in the same bar. */
+.sitenav-here {
+  box-shadow: inset 0 -2px 0 var(--green);
+  padding-bottom: 3px;
 }
 
 .sitenav-links a:hover {
