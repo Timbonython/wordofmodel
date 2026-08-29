@@ -2045,3 +2045,11 @@ footer .wrap {
   color: var(--soft);
   max-width: 62ch;
 }
+
+/* ---- /about ---- */
+.about-hero { padding-top: 34px; }
+.about-body { max-width: 64ch; color: var(--soft); }
+.about-body .lede { color: var(--ink); }
+/* Own class rather than `.about-body h2`, which would swallow the heading of anything nested
+   here later - see the descendant-selector rule in scripts/copycheck.mjs. */
+.about-head { margin-top: 40px; }

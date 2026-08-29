@@ -4,10 +4,12 @@ import Link from 'next/link';
  * §3 of the brand brief lists: How it works · Pricing · Sample report · Writing · Contact ·
  * Terms · Privacy.
  *
- * TWO OF THOSE DO NOT EXIST AND ARE NOT LINKED. There is no /writing and no /contact in this
- * repo. A footer link to a 404 is worse than a missing link, so Writing is left out until
- * there is something to point at, and Contact is the reply-to address that already receives
- * mail rather than a page that does not. Both are flagged rather than quietly invented.
+ * WRITING IS STILL NOT LINKED. There is no /writing in this repo, and a footer link to a 404
+ * is worse than a missing link, so it stays out until there is something to point at. Contact
+ * is the reply-to address that already receives mail rather than a page that does not.
+ *
+ * ABOUT AND FAQs ARE IN THE FOOTER, NOT THE HEADER. The bar is four items and its job is to
+ * get somebody to the scan, the method or a price. Neither of these is that.
  *
  */
 export function SiteFooter({ sampleLive = false }: { sampleLive?: boolean }) {
@@ -27,7 +29,10 @@ export function SiteFooter({ sampleLive = false }: { sampleLive?: boolean }) {
             </Link>
           ) : null}
           <Link href="/faq" prefetch={false}>
-            Questions
+            FAQs
+          </Link>
+          <Link href="/about" prefetch={false}>
+            About
           </Link>
           <a href="mailto:hello@wordofmodel.ai">Contact</a>
           <Link href="/terms" prefetch={false}>
