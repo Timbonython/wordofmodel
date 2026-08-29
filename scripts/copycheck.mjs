@@ -258,16 +258,41 @@ for (const dir of ['app', 'components']) {
       // the marker fails like any other bare price. A marker the checker takes on trust is an
       // opt-out with extra steps, and this file already learned that lesson once: the original
       // opt-out was read from the comment-stripped copy and silently excused nothing.
-      if ((rawLines[i - 1] ?? '').includes('price-door: linked')) {
-        const above = rawLines.slice(Math.max(0, i - 4), i).join('\n');
-        const opened = /<(a|Link)\b[^>]*\bhref=/.test(above);
-        const closed = /<\/(a|Link)>/.test(above.slice(above.search(/<(a|Link)\b/)));
-        if (opened && !closed) return;
+      // `price-door: button` is the same claim for a price printed ON the control that buys it,
+      // which an anchor cannot express: the add-a-location button performs the purchase itself.
+      //
+      // VERIFIED BY FINDING THE ENCLOSING ELEMENT, not by looking a few lines up. The first
+      // version used a fixed six line window and failed on the real case it was written for -
+      // the add button's onClick is eight lines long, so its opening tag was outside the window
+      // and a correctly marked price was reported as unmarked. A window is a guess about
+      // formatting; walking up to the nearest tag is the actual question being asked.
+      const marker = (rawLines[i - 1] ?? '').includes('price-door: linked')
+        ? 'linked'
+        : (rawLines[i - 1] ?? '').includes('price-door: button')
+          ? 'button'
+          : null;
+      if (marker) {
+        const want = marker === 'linked' ? ['a', 'Link'] : ['button'];
+        let enclosing = null;
+        for (let k = i - 1; k >= 0 && enclosing === null; k--) {
+          const tags = [...rawLines[k].matchAll(/<(\/?)(a|Link|button)\b([^>]*)/g)];
+          // Last tag on the line first: the nearest one going up is the one that encloses us.
+          for (const t of tags.reverse()) {
+            enclosing = { closing: t[1] === '/', name: t[2], attrs: t[3] ?? '' };
+            break;
+          }
+        }
+        const inside =
+          enclosing !== null &&
+          !enclosing.closing &&
+          want.includes(enclosing.name) &&
+          (marker === 'button' || /\bhref=/.test(enclosing.attrs));
+        if (inside) return;
         failures++;
         console.error(
-          `${rel}:${i + 1}  price-door: linked, but no open href above it  ->  ${line.trim().slice(0, 70)}\n` +
-            '    The marker claims this price is inside a link. It is not. Either wrap it in an\n' +
-            '    anchor with an href, or say `price-door: no purchase path` and mean it.',
+          `${rel}:${i + 1}  price-door: ${marker}, but it is not inside ${marker === 'linked' ? 'a link' : 'a button'}  ->  ${line.trim().slice(0, 56)}\n` +
+            '    The marker claims this price sits inside the control that buys it. It does not.\n' +
+            '    Either put it there, or say `price-door: no purchase path` and mean it.',
         );
         return;
       }

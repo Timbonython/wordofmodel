@@ -3,7 +3,7 @@ import type Stripe from 'stripe';
 import { db } from './db';
 import { locationsForScope } from './locations';
 import { env } from './env';
-import { assertOneInterval, assertPrice, PRICES, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
+import { assertOneInterval, assertPrice, planItem, PRICES, PRICE_KEYS, priceIdFor, stripe, type PriceKey } from './stripe';
 import { attachSessionToClaim, claimFoundingSeat, releaseClaim, CLAIM_MINUTES } from './founding';
 import { DiscountError, validateDiscount, type ValidDiscount } from './discount';
 import { recordFunnel } from './funnel';
@@ -283,7 +283,7 @@ export async function priceKeyOf(
   // Metadata missing means the subscription was made outside the wizard, in the Stripe
   // dashboard. Read the price's own lookup key rather than guessing: guessing premium would
   // overcharge a founding subscriber, guessing founding would give away a capped seat.
-  const item = sub.items.data[0]?.price;
+  const item = planItem(sub)?.price;
   const lookup = item?.lookup_key;
   if (lookup && (PRICE_KEYS as readonly string[]).includes(lookup)) return lookup as PriceKey;
 

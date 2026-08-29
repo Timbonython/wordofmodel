@@ -363,13 +363,52 @@ export async function assertPrice(key: PriceKey): Promise<Stripe.Price> {
  * from the wrong place returns undefined, writes null, and takes the renewal
  * date off the confirmation screen without failing anything.
  */
+/**
+ * The PLAN item on a subscription, as opposed to the additional-location item.
+ *
+ * STRIPE DOES NOT GUARANTEE ITEM ORDER, and from 29 Aug 2026 a subscription can carry two
+ * items: the plan and the location quantity line. Everything that used to read
+ * `items.data[0]` was reading "whichever item Stripe happened to list first", which was
+ * correct only while there was exactly one. On a two item subscription it would sometimes
+ * record the US$30 location price as the subscriber's plan.
+ *
+ * Selected by lookup_key rather than by amount or position, because the lookup key is the
+ * thing this codebase already treats as a price's identity - `priceIdFor` resolves by it and
+ * every price is created with one.
+ */
+export function planItem(sub: Stripe.Subscription): Stripe.SubscriptionItem | null {
+  const items = sub.items?.data ?? [];
+  const plan = items.find((i) => {
+    const key = i.price?.lookup_key;
+    return Boolean(key) && key !== 'location_monthly' && key !== 'location_annual';
+  });
+  // A subscription made in the dashboard may carry no lookup key at all. Falling back to the
+  // first item restores exactly the old behaviour for that case rather than returning nothing,
+  // and the caller's own fallbacks still apply.
+  return plan ?? items[0] ?? null;
+}
+
+/** The additional-location quantity line, or null when the subscriber has one town. */
+export function locationItem(sub: Stripe.Subscription): Stripe.SubscriptionItem | null {
+  const items = sub.items?.data ?? [];
+  return (
+    items.find((i) => i.price?.lookup_key === 'location_monthly' || i.price?.lookup_key === 'location_annual') ??
+    null
+  );
+}
+
+/**
+ * current_period_end is on the ITEM in API version 2026-07-29.dahlia, not on the subscription.
+ * Both items on one subscription share a period, so which item this reads has never mattered
+ * for the value - but reading the plan item means it stays right if that ever stops being true.
+ */
 export function periodEnd(sub: Stripe.Subscription): Date | null {
-  const seconds = sub.items?.data?.[0]?.current_period_end;
+  const seconds = planItem(sub)?.current_period_end;
   return seconds ? new Date(seconds * 1000) : null;
 }
 
 export function periodStart(sub: Stripe.Subscription): Date {
-  const seconds = sub.items?.data?.[0]?.current_period_start ?? sub.start_date;
+  const seconds = planItem(sub)?.current_period_start ?? sub.start_date;
   return new Date(seconds * 1000);
 }
 

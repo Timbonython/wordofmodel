@@ -43,6 +43,12 @@ export interface ScopeRow {
   brand_name: string;
   what_they_sell: string | null;
   website: string | null;
+  /**
+   * The scope's own town, below country level, as the subscriber typed it. Null on a country
+   * scope. Additional towns live in `scope_locations`; this is the first one, and the one the
+   * approved questions actually name.
+   */
+  locality: string | null;
   created_at: string;
 }
 

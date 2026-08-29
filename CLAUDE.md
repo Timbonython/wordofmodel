@@ -644,6 +644,69 @@ per scope, so the new town gets its baseline run within twenty minutes exactly l
 subscriber, rather than waiting up to a month for `report_day`. A self-service "add a location"
 flow on `/account` is the follow-on.
 
+### Adding a location to a live subscription (29 Aug 2026)
+
+`/account` now adds and removes towns self serve. **Both, deliberately** - a page that can add a
+US$30 line and not remove it is not self service, it is a form that only increases the bill.
+
+**Not a second pass through the wizard.** `assertScopeEditable` refuses any scope with runs and
+that guard stays: rewriting an approved question once evidence exists against it destroys
+comparability. A location touches neither the questions nor the competitors, so it gets its own
+path rather than a hole cut in that one.
+
+**The approval mechanic is preserved by a preview.** `previewLocation()` renders the subscriber's
+own five approved questions as they will actually be asked about the new town, and the page shows
+them before anything is charged. It is also the validation: every refusal the charge can hit - no
+locality to substitute against, a question naming no place, a duplicate, the cap - is raised
+before any money moves.
+
+**The order of the two writes is a decision about who loses.** Adding writes the row first, then
+Stripe, and rolls the row back if Stripe refuses. Removing stops the charge first, then deletes
+the row. Both orders err toward OUR cost: a failure between the two steps leaves a town measured
+and not billed (about US$3.69), never billed and not measured (US$30 a month for silence, found
+out by reading a report that never mentions their town). Same direction the founding counter fails
+in when it cannot read its own count.
+
+**Prorated onto the next invoice, not charged immediately.** `always_invoice` can be declined, and
+a declined US$30 would tip a subscription into past_due over an add-on while the town is already
+running. Deferring puts it on the normal cycle where Smart Retries already handle a bad card. Set
+deliberately, like `automatic_tax`.
+
+**Removing a town keeps its runs.** `runs.location_id` is `on delete cascade`, so deleting the row
+takes the town's whole history with it. A subscriber who re-adds Ballarat in March should still see
+January.
+
+### `items.data[0]` was the plan until this feature made it not (29 Aug 2026)
+
+**Stripe does not guarantee subscription item order**, and three places read `items.data[0]` as if
+it were the plan: `upsertSubscription` (twice), `priceKeyOf`, and `periodEnd`/`periodStart`. That
+was correct while every subscription had exactly one item. The location line made two possible, and
+on the wrong ordering `subscriptions.stripe_price_id` would record the US$30 location price as a
+US$249 subscriber's plan.
+
+**Introduced by the 29 Aug locations commit and fixed before anybody bought one.** `planItem()` and
+`locationItem()` in `lib/stripe.ts` select by lookup_key, with a fall back to the first item so a
+dashboard-made subscription carrying no lookup key behaves exactly as before.
+
+### A reconciliation, because the mismatch is silent in both directions
+
+`scope_locations` decides what RUNS. The Stripe subscription item quantity decides what is
+CHARGED. Nothing reconciled them, neither side errors when they disagree, and neither number
+appears on any page. Too few rows and the subscriber pays US$30 a month for a town that is never
+measured - the exact defect this feature exists to remove, reappearing one layer down. Too many and
+we measure a town nobody pays for.
+
+`locationBillingMismatches()` runs in the daily cron and by hand as `npm run locations:billing`.
+Proven on a real test-mode subscription carrying a location quantity of 2: one row reported "PAYING
+FOR A TOWN THEY DO NOT GET", two rows reported clean, three rows reported "running a town nobody
+pays for". All Stripe and database objects removed afterwards.
+
+**It returns `examined` for a reason.** A reconciliation over zero subscriptions reports zero
+mismatches, which reads identically to a reconciliation over fifty that found none. The script
+prints NOTHING TO CHECK rather than "clean" in that case, and a subscription Stripe would not
+answer for is counted as UNKNOWN rather than folded into the clean total. Same lesson as the
+founding count that would have read healthy while pointed at the wrong ledger.
+
 `npm run locations:check` proves all ten guards, each watched refusing. `copycheck` gained
 `price-door: linked`, which asserts a price is inside an anchor and **verifies it** by requiring an
 open `href` above the line; proven by deleting the href and watching the marker fail.

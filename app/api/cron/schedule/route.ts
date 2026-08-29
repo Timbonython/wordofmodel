@@ -25,6 +25,7 @@ import { startRunsForScope, ensureBaselineRun, scopesAwaitingFirstRun } from '@/
 import { dueJobCount } from '@/lib/jobs';
 import { runsStuckAwaitingReport } from '@/lib/reports';
 import { sendOpsAlert } from '@/lib/billing-mail';
+import { locationBillingMismatches } from '@/lib/location-billing';
 import { LIVE_STATUSES } from '@/lib/billing';
 import { db } from '@/lib/db';
 import { proveStripeMode } from '@/lib/stripe';
@@ -115,6 +116,58 @@ async function handle(req: Request): Promise<Response> {
         'check for captures with a null extracted_at, then POST /api/run/extract.',
       ],
     });
+  }
+
+  // DO THE TOWNS WE RUN AND THE TOWNS WE CHARGE FOR AGREE?
+  //
+  // THE MISMATCH IS SILENT IN BOTH DIRECTIONS, which is the whole reason it is asked out loud
+  // on a schedule rather than trusted to the two writes that maintain it. `scope_locations`
+  // decides what runs; the Stripe subscription item quantity decides what is charged. Nothing
+  // reconciles them, neither side errors when they disagree, and neither number appears on any
+  // page the subscriber or we would look at.
+  //
+  //   fewer rows than billed   they pay US$30 a month for a town that is never measured, which
+  //                            is exactly the defect the whole feature was built to remove
+  //   more rows than billed    we measure and pay for a town nobody is charged for
+  //
+  // Daily, alongside the mode proof, and for the same reason: this is a configuration fact, not
+  // an event, and an alert channel that fires every five minutes gets muted.
+  try {
+    const audit = await locationBillingMismatches();
+    const drift = audit.mismatches;
+    if (drift.length || audit.unreadable.length) {
+      await sendOpsAlert({
+        subject: drift.length
+          ? `${drift.length} subscription${drift.length === 1 ? '' : 's'} bill a different number of towns than we run`
+          : `${audit.unreadable.length} subscription${audit.unreadable.length === 1 ? '' : 's'} could not be reconciled`,
+        lines: [
+          'scope_locations decides what runs. The Stripe quantity decides what is charged.',
+          'These disagree, which no error and no page would ever show:',
+          '',
+          ...drift.map(
+            (d) =>
+              `  scope ${d.scopeId}  rows ${d.rows}  billed ${d.billed}  ` +
+              `(${d.rows < d.billed ? 'PAYING FOR A TOWN THEY DO NOT GET' : 'running a town nobody pays for'})  ${d.subscriptionId}`,
+          ),
+          '',
+          ...(audit.unreadable.length
+            ? [
+                'And these could not be read from Stripe at all, so they are UNKNOWN rather than',
+                'clean:',
+                ...audit.unreadable.map((id) => `  ${id}`),
+                '',
+              ]
+            : []),
+          `${audit.examined} live subscription${audit.examined === 1 ? ' was' : 's were'} compared.`,
+          'Fix the side that is wrong, then run npm run locations:billing to confirm.',
+        ],
+      });
+    }
+  } catch (err) {
+    // Never takes the scheduler down. Opening runs is what subscribers are paying for; a
+    // reconciliation that cannot read Stripe is a thing to report, not a reason to skip
+    // everybody's report.
+    console.error('schedule: location billing reconciliation failed', err);
   }
 
   // WHICH STRIPE MODE IS THIS ACTUALLY TALKING TO?

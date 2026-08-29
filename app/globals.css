@@ -1033,6 +1033,55 @@ footer .wrap {
     button in the nav: `.class tag` scores (0,1,1) and beats the (0,1,0) of the class the
     element actually carries. `.wizard-row .field` below is class-to-class, which carries no
     such trap: it cannot be beaten by the element's own class because it contains it. */
+ /* Towns on /account. Every rule is a flat class - no `.locations-list li` - because a
+    descendant selector scoring (0,1,1) is what put grey on the wordmark and made the nav CTA
+    unreadable, and copycheck counts them against a baseline for that reason. */
+.locations-panel {
+  margin: 32px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.locations-list {
+  list-style: none;
+  margin: 12px 0 16px;
+  padding: 0;
+}
+
+.locations-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.locations-name {
+  flex: 1 1 auto;
+}
+
+.locations-tag {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.locations-preview {
+  margin-top: 12px;
+}
+
+.locations-questions {
+  margin: 12px 0 16px;
+  padding-left: 20px;
+}
+
+.locations-question {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
  /* The total IS the button. A separate CTA beside every row would be four buttons in a
     four-row table saying the same thing; the price a visitor just built with the stepper is
     the thing they want to click. */

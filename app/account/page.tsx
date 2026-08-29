@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCurrentAccount } from '@/lib/auth';
 import { getSubscriptionForAccount, LIVE_STATUSES } from '@/lib/billing';
+import { locationsForScope } from '@/lib/locations';
+import { Locations } from '@/components/account/Locations';
 import { getScope } from '@/lib/onboarding';
 import { formatReportDate } from '@/lib/billing-mail';
 import { priceLabel } from '@/lib/scope';
@@ -61,6 +63,7 @@ export default async function AccountPage({
   const scope = subscription ? await getScope(subscription.scope_id) : null;
   const live = subscription ? LIVE_STATUSES.includes(subscription.status) : false;
   const nextReport = formatReportDate(subscription?.current_period_end ?? null);
+  const locations = subscription ? await locationsForScope(subscription.scope_id) : [];
 
   return (
     <Shell>
@@ -135,6 +138,15 @@ export default async function AccountPage({
               <p className="note">
                 Nothing needed from you. The report arrives by email on the same date every month.
               </p>
+            )}
+
+            {/* SELF SERVE BOTH WAYS. A page that can add a US$30 line and not remove it is not a
+                self service page, it is a form that only increases the bill. */}
+            {live && (
+              <Locations
+                mainTown={scope?.locality ?? null}
+                initial={locations.map((l) => ({ id: l.id, locality: l.locality }))}
+              />
             )}
 
             <PortalButton />

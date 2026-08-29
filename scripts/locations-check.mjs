@@ -9,7 +9,7 @@
 
 import { localiseQuestion, LocalisationError } from '../lib/location-text.ts';
 import { parseExtraLocations, InputError } from '../lib/wizard-input.ts';
-import { assertOneInterval, PRICES } from '../lib/stripe.ts';
+import { assertOneInterval, PRICES, planItem, locationItem } from '../lib/stripe.ts';
 import { MAX_EXTRA_LOCATIONS } from '../lib/scope.ts';
 
 let failures = 0;
@@ -65,6 +65,36 @@ ok('annual plan takes the annual location price');
 console.log('\n  now break it');
 refuses('a monthly plan with an annual location line is refused',
   () => assertOneInterval(['main_monthly', 'location_annual']));
+
+console.log('\nthe plan is found by lookup key, not by position');
+// Stripe does not guarantee item order, and from 29 Aug a subscription can carry two items.
+// The location line FIRST is the arrangement that used to record a US$249 subscriber as
+// paying US$30, so that is the order these fixtures use.
+const item = (lookup_key, interval) => ({ id: `si_${lookup_key}`, price: { id: `price_${lookup_key}`, lookup_key, recurring: { interval } } });
+const twoItems = { items: { data: [item('location_monthly', 'month'), item('premium_monthly', 'month')] } };
+planItem(twoItems)?.price.lookup_key === 'premium_monthly'
+  ? ok('plan found with the location line listed first', 'premium_monthly')
+  : bad('plan selection', String(planItem(twoItems)?.price.lookup_key));
+locationItem(twoItems)?.price.lookup_key === 'location_monthly'
+  ? ok('location line found', 'location_monthly') : bad('location selection', 'not found');
+
+const oneItem = { items: { data: [item('main_annual', 'year')] } };
+planItem(oneItem)?.price.lookup_key === 'main_annual'
+  ? ok('single-item subscription unchanged', 'main_annual') : bad('single item', 'wrong');
+locationItem(oneItem) === null
+  ? ok('no location line reports none', 'null, not a stray plan item') : bad('location on a one-item sub', 'found something');
+
+// A dashboard-made subscription carries no lookup key at all. The old behaviour - first item -
+// is the right fallback there, and losing it would break every hand-made subscription.
+const noKeys = { items: { data: [{ id: 'si_x', price: { id: 'price_x' } }] } };
+planItem(noKeys)?.price.id === 'price_x'
+  ? ok('no lookup keys falls back to the first item', 'price_x') : bad('fallback', 'lost it');
+
+console.log('\n  now break it');
+const asPositionDid = twoItems.items.data[0].price.lookup_key;
+asPositionDid === 'location_monthly'
+  ? ok('items.data[0] on this fixture IS the location line', `reading position gives ${asPositionDid}, which is the bug`)
+  : bad('fixture', 'does not reproduce the ordering that caused the defect');
 
 console.log('\nthe price the wizard quotes is the price Stripe charges');
 const perTown = PRICES.location_monthly.amount / 100;

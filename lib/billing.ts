@@ -1,7 +1,7 @@
 import 'server-only';
 import type Stripe from 'stripe';
 import { db } from './db';
-import { FOUNDING_SEATS, idOf, periodEnd, periodStart, type PriceKey } from './stripe';
+import { FOUNDING_SEATS, idOf, periodEnd, periodStart, planItem, type PriceKey } from './stripe';
 import { sendOpsAlert } from './billing-mail';
 
 /**
@@ -275,7 +275,10 @@ export async function upsertSubscription(input: {
         status: sub.status,
         cancel_at_period_end: sub.cancel_at_period_end,
         current_period_end: periodEnd(sub)?.toISOString() ?? null,
-        stripe_price_id: sub.items.data[0]?.price.id ?? existing.stripe_price_id,
+        // THE PLAN'S price, not whichever item Stripe listed first. A two item subscription
+        // carries the location line too, and recording that here would say a US$249 subscriber
+        // is paying US$30.
+        stripe_price_id: planItem(sub)?.price.id ?? existing.stripe_price_id,
         stripe_event_at: eventAt.toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -293,7 +296,7 @@ export async function upsertSubscription(input: {
       scope_id: input.scopeId,
       stripe_subscription_id: sub.id,
       stripe_customer_id: idOf(sub.customer) ?? '',
-      stripe_price_id: sub.items.data[0]?.price.id ?? '',
+      stripe_price_id: planItem(sub)?.price.id ?? '',
       price_key: input.priceKey,
       scan_id: input.scanId ?? null,
       discount_code: input.discountCode ?? null,
