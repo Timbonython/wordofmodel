@@ -16,7 +16,7 @@
  */
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { BRAND } = await import(join(here, '../lib/brand.ts'));
@@ -109,6 +109,87 @@ if (JSON.stringify(tiersWithOffers) !== JSON.stringify(declaredTiers)) {
   );
 }
 
+// ---------------------------------------------------------------------------------------
+// THE RENDER KIT IS THE THIRD AND FOURTH COPY OF THE PALETTE.
+//
+// brand/ generates every Facebook, LinkedIn, ad and favicon asset. Its Python scripts write
+// the colours as hex literals inside HTML strings handed to Playwright - they cannot import
+// lib/brand.ts any more than the stylesheet can - and brand/README.md prints the palette a
+// fourth time as documentation.
+//
+// NOT ONE FILE, SIX. The brief for this check named gen_g.py's BASE block, which is where the
+// :root line lives. In fact the palette is written across gen_g.py, gen_ads.py,
+// gen_brand_social.py, gen_favicon.py and all three gen_video*.py - eleven distinct values,
+// every one of them a BRAND token. Checking only gen_g.py would be a guard reporting healthy
+// while five other files drifted, which is this repo's most expensive recurring shape.
+//
+// The rule is deliberately the strong one: EVERY hex literal anywhere in brand/scripts must be
+// a BRAND value. Not "the ones we listed" - any colour that is not in lib/brand.ts is either
+// drift or a new token that belongs there first.
+const BRAND_HEXES = new Map(
+  Object.entries(BRAND).map(([k, v]) => [String(v).toLowerCase(), k]),
+);
+
+/** #fff and #FFFFFF are the same colour and only one of them is written in lib/brand.ts. */
+function normaliseHex(h) {
+  const v = h.toLowerCase();
+  return v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
+}
+
+const kitDir = join(here, '../brand/scripts');
+let kitFiles = [];
+try {
+  kitFiles = readdirSync(kitDir).filter((f) => f.endsWith('.py')).sort();
+} catch {
+  problems.push('brand/scripts is missing. The render kit is committed; its absence is a mistake, not a pass.');
+}
+// A scan that examined nothing must not report clean. Same reason the location reconciliation
+// returns `examined`.
+if (kitFiles.length === 0 && !problems.some((p) => p.startsWith('brand/scripts is missing'))) {
+  problems.push('brand/scripts contains no .py files, so this check proved nothing.');
+}
+
+let kitHexCount = 0;
+for (const file of kitFiles) {
+  const src = readFileSync(join(kitDir, file), 'utf8');
+  src.split('\n').forEach((line, i) => {
+    for (const m of line.matchAll(/#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b/g)) {
+      kitHexCount++;
+      const hex = normaliseHex(m[0]);
+      if (!BRAND_HEXES.has(hex)) {
+        problems.push(
+          `brand/scripts/${file}:${i + 1} uses ${m[0]}, which is not a colour in lib/brand.ts. ` +
+            `Add it there and to app/globals.css, or use the token that was meant.`,
+        );
+      }
+    }
+  });
+}
+
+// The README prints the palette as documentation, which is the copy most likely to be edited by
+// somebody who is not editing code and least likely to be noticed when it goes stale.
+const READ_ME_KEYS = {
+  paper: 'paper', ink: 'ink', line: 'line', faint: 'faint',
+  green: 'green', soft: 'soft', mute: 'mute', 'cell-dark': 'cellDark',
+};
+let readmePairs = 0;
+try {
+  const readme = readFileSync(join(here, '../brand/README.md'), 'utf8');
+  for (const m of readme.matchAll(/(?:--)?([a-z][a-z-]*)\s+(#[0-9A-Fa-f]{6})\b/g)) {
+    const key = READ_ME_KEYS[m[1]];
+    if (!key) continue;
+    readmePairs++;
+    if (String(BRAND[key]).toLowerCase() !== m[2].toLowerCase()) {
+      problems.push(`brand/README.md documents ${m[1]} as ${m[2]}, but lib/brand.ts ${key} is ${BRAND[key]}.`);
+    }
+  }
+} catch {
+  problems.push('brand/README.md is missing.');
+}
+if (readmePairs === 0 && !problems.some((p) => p.startsWith('brand/README.md is missing'))) {
+  problems.push('brand/README.md declared no palette pairs, so that copy went unchecked.');
+}
+
 if (problems.length) {
   console.error(`brandcheck: ${problems.length} problem(s).\n`);
   for (const p of problems) console.error(`  - ${p}`);
@@ -116,4 +197,8 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`brandcheck: clean. ${Object.keys(MAP).length} tokens agree between lib/brand.ts and app/globals.css.`);
+console.log(
+  `brandcheck: clean. ${Object.keys(MAP).length} tokens agree between lib/brand.ts and ` +
+    `app/globals.css; ${kitHexCount} hex literals across ${kitFiles.length} render-kit scripts ` +
+    `and ${readmePairs} documented in brand/README.md are all BRAND values.`,
+);

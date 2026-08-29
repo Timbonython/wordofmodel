@@ -1246,3 +1246,52 @@ exists to convince them.
 invented data. This means "a stranger is reading it with no other way in". Setting `SAMPLE_RUN_ID`
 publishes a REAL report at `/sample` - not a specimen, and still needing the way out. Collapsing
 them would silently drop the block on the day this page first shows a real customer.
+
+## The brand render kit is in the repo, and brandcheck now reads it (30 Aug 2026)
+
+`brand/` is the generator for every Facebook, LinkedIn, ad and favicon asset. Fonts are embedded
+as base64 in `scripts/fonts.json`, so it runs offline with Python, Playwright and (for video)
+ffmpeg. 49 files, 4.5MB. Without it, changing a headline or adding a size means rebuilding the
+whole thing.
+
+### The palette was in four places, not three
+
+The brief for this said `gen_g.py`'s `BASE` block was the third copy. It is spread across **six
+scripts** - `gen_g.py`, `gen_ads.py`, `gen_brand_social.py`, `gen_favicon.py` and all three
+`gen_video*.py` - and `brand/README.md` prints it a fourth time as documentation. Eleven distinct
+values, every one of them a `BRAND` token.
+
+Checking only `gen_g.py` would have been a guard reporting healthy while five other files drifted,
+which is this repo's most expensive recurring shape.
+
+**The rule is the strong one: every hex literal anywhere in `brand/scripts` must be a value in
+`lib/brand.ts`.** Not a listed subset - any colour that is not a token is either drift or a new
+token that belongs in `lib/brand.ts` first. `#fff` is normalised to `#FFFFFF` so the two spellings
+cannot diverge silently.
+
+Proven by breaking it three ways: a one-digit change to `--green` in `gen_g.py`'s BASE block
+(caught with file and line), a wrong `--ink` in the README table (caught separately), and moving
+`brand/scripts` away entirely - which reports *"the render kit is committed; its absence is a
+mistake, not a pass"* rather than a clean run over zero files. `npm run check` exits 1 in each
+case.
+
+### Two things the kit records that no check can enforce
+
+`brand/README.md` documents two deliberate departures from §2 of the site brief, and both are the
+kind of thing a tidy-up reverts.
+
+**Green on one word, not a panel** - still true, `.thesis-lit`.
+
+**Nav tracking below the spec's `.14em`** - and this one had already gone stale. The README said
+`.11em`, which was right while the nav was mono. The bar moved to IBM Plex Sans Condensed 600 on
+29 Aug and the tracking with it, to `.08em`, because a narrower face needs less tracking to read
+as caps. The README and `app/globals.css` now both carry the reasoning and both say plainly that
+**nothing enforces a tracking value** - those two paragraphs are the whole defence.
+
+### The live ad creatives are still on the old lockup
+
+All four carry the five-in-a-row mark, not the 3+2 grid. Deliberate when written - change it at
+the next render rather than re-uploading mid-flight - and still outstanding. `gen_g.py`'s `bars()`
+is what the ad scripts call, so the next render reproduces the old mark unless somebody
+deliberately switches to `grid_mark()` from `gen_brand_social.py`. `brandcheck` cannot catch this:
+the mark is drawn by geometry, not by a colour token.

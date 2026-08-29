@@ -1480,7 +1480,15 @@ footer .wrap {
 
      600 rather than the wordmark's 700, and 0.08em rather than its 0.16em, deliberately. At the
      wordmark's own weight the bar becomes one texture and the wordmark stops being the anchor
-     - the thing it is there to be. Same family, quieter voice. */
+     - the thing it is there to be. Same family, quieter voice.
+
+     0.08em IS A DEPARTURE FROM THE BRAND SPEC AND IS MEANT TO BE. §2 sets .14em for mono caps,
+     which is written for short eyebrows on their own line; at nav length it hurts scanning and
+     costs width. brand/README.md records this as one of two deliberate departures and explains
+     why the number moved from .11em when the family changed from mono to condensed - a narrower
+     face needs less tracking to read as caps. NOTHING ENFORCES A TRACKING VALUE, so that note
+     and this one are the only things standing between the current bar and a tidy-up that
+     "restores" the spec. */
   font-family: var(--font-cond), var(--font-sans), sans-serif;
   font-weight: 600;
   font-size: 13px;
