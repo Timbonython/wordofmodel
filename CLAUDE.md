@@ -579,6 +579,15 @@ never as movement. Delta reporting has to read all three.
   `lib/method.ts`. A low rate is a finding about the subscriber's category: Google
   declining to answer means classic search still carries the weight for their buyers.
   Stated plainly it is intelligence; buried it reads as an excuse.
+- **Multiple scopes per account — Session 5.** The schema and the whole run pipeline already
+  support it: nothing built in Session 3 needs changing, `scopes.account_id` has no unique
+  constraint, `subscriptions` carries both ids, and RLS matches on account. Three application
+  blockers: `upsertScope()` reuses the account's FIRST scope, so a second market overwrites the
+  first or silently no-ops; `getSubscriptionForAccount()` and `/account` render exactly one
+  subscription; and the Customer Portal is not configured for an account with several
+  subscriptions, so cancelling one market and keeping the other is a support email. The founding
+  counter part of this was fixed 20 Aug 2026.
+
 ## Additional locations, built 29 Aug 2026 (migration 0022)
 
 **The price list sold this for a day and a half and nothing implemented it.** `/pricing` offered
@@ -638,15 +647,6 @@ flow on `/account` is the follow-on.
 `npm run locations:check` proves all ten guards, each watched refusing. `copycheck` gained
 `price-door: linked`, which asserts a price is inside an anchor and **verifies it** by requiring an
 open `href` above the line; proven by deleting the href and watching the marker fail.
-
-- **Multiple scopes per account — Session 5.** The schema and the whole run pipeline already
-  support it: nothing built in Session 3 needs changing, `scopes.account_id` has no unique
-  constraint, `subscriptions` carries both ids, and RLS matches on account. Three application
-  blockers: `upsertScope()` reuses the account's FIRST scope, so a second market overwrites the
-  first or silently no-ops; `getSubscriptionForAccount()` and `/account` render exactly one
-  subscription; and the Customer Portal is not configured for an account with several
-  subscriptions, so cancelling one market and keeping the other is a support email. The founding
-  counter part of this was fixed 20 Aug 2026.
 
 ## Environment, decided 19 Aug 2026
 
