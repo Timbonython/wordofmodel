@@ -33,6 +33,7 @@
 
 import 'server-only';
 import { REPORT_CSS } from './report-css';
+import { env } from './env';
 import { SLOT_LABEL } from './scope';
 import { countWord } from './actions';
 import { BELOW_FLOOR_NOTE } from './metric';
@@ -55,7 +56,19 @@ const num = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(
 const monthName = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-export function renderReport(r: ReportData): string {
+export interface RenderOptions {
+  /**
+   * True only for the PUBLIC sample at /sample.
+   *
+   * Not the same question as `r.specimen`. A specimen is invented data; this is "is this
+   * document being shown to a stranger who has no other way into the site". Setting
+   * SAMPLE_RUN_ID publishes a REAL report at /sample, which is not a specimen and still needs
+   * the way out - so the two flags cannot be collapsed into one.
+   */
+  publicSample?: boolean;
+}
+
+export function renderReport(r: ReportData, options: RenderOptions = {}): string {
   // A SPECIMEN CARRIES NO DATE AND NO RUN ID. Both would imply an execution that never
   // happened, and the whole value of the page is that a reader can trust what it says about
   // itself. See ReportData.specimen.
@@ -75,7 +88,7 @@ export function renderReport(r: ReportData): string {
 <body>
 ${r.specimen ? specimenBanner() : ''}
 <header class="masthead"><div class="wrap">
-  <div class="wordmark"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></div>
+  <div class="wordmark"><a class="masthead-home" href="${esc(env.siteUrl)}/"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a></div>
   <div class="issue">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
 </div></header>
 
@@ -93,6 +106,7 @@ ${sectionEvidence(r)}
 ${sectionMethod(r)}
 </main>
 
+${options.publicSample ? closingBlock() : ''}
 <footer><div class="wrap note">
   Word of Model&trade; &middot; ${r.specimen ? 'specimen, not a real run' : `${esc(period)} &middot; run ${esc(r.run.id.slice(0, 8))}`} &middot;
   headline v${r.versions.metric} &middot; thresholds v${r.versions.threshold} &middot; reading v${r.versions.extraction}
@@ -480,6 +494,32 @@ function sectionMethod(r: ReportData): string {
  * is not (the format, the questions, the method). Only saying the first half would make the
  * page useless as evidence; only saying the second would make it a lie.
  */
+/**
+ * The way out, at the end of the sample.
+ *
+ * PLACED AT THE BOTTOM ON PURPOSE. Somebody who has read to here has read a whole report and is
+ * the warmest traffic this site gets; somebody who bounced off the top was never going to be
+ * persuaded by a button. It is also the only position that does not interrupt the document,
+ * which is the thing being demonstrated.
+ *
+ * THE FREE SCAN LEADS, NOT THE PRICE. This page is indexable and is the one most likely to be
+ * forwarded, so a good share of the people reading it have never seen the home page. Sending a
+ * stranger straight at a US$69 subscription skips the free thing that exists to convince them.
+ */
+function closingBlock(): string {
+  const url = env.siteUrl;
+  return `<section class="wrap closing">
+  <h2>That is the whole report.</h2>
+  <p>One arrives every month, on the same date, built the same way. Yours would carry your five
+  questions, your competitors and your own answers, captured word for word.</p>
+  <p class="closing-actions">
+    <a class="closing-cta" href="${esc(url)}/#scan">Run a free scan</a>
+    <a class="closing-link" href="${esc(url)}/pricing">What it costs</a>
+    <a class="closing-link" href="${esc(url)}/method">How it is measured</a>
+  </p>
+</section>`;
+}
+
 function specimenBanner(): string {
   return `<div class="specimen-banner">
   <strong>Sample report.</strong> The business and every competitor named here are invented, and

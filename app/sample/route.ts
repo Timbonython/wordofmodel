@@ -34,6 +34,16 @@ import { SAMPLE_REPORT } from '@/lib/sample-report';
 export const dynamic = 'force-dynamic';
 
 const HTML = { 'content-type': 'text/html; charset=utf-8' };
+
+/**
+ * THIS ROUTE, NOT THE SPECIMEN FLAG, DECIDES WHETHER THE WAY OUT IS SHOWN.
+ *
+ * They are different questions. `specimen` means invented data; this means "a stranger is
+ * reading it and has no other way into the site". Setting SAMPLE_RUN_ID publishes a REAL report
+ * here, which is not a specimen and still needs the closing block - so collapsing the two would
+ * silently drop it on the day this page starts showing a real customer.
+ */
+const SAMPLE = { publicSample: true } as const;
 const PUBLIC = {
   // Cached hard: it is one document that changes when a human changes it, and it is the page
   // most likely to be linked from somewhere we do not control.
@@ -43,12 +53,12 @@ const PUBLIC = {
 
 export async function GET(): Promise<Response> {
   const runId = env.sampleRunId;
-  if (!runId) return new Response(renderReport(SAMPLE_REPORT), { headers: { ...HTML, ...PUBLIC } });
+  if (!runId) return new Response(renderReport(SAMPLE_REPORT, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
 
   const run = await getRunById(runId);
   if (!run) {
     console.error(`sample: SAMPLE_RUN_ID ${runId} does not match a run. Serving the specimen.`);
-    return new Response(renderReport(SAMPLE_REPORT), { headers: { ...HTML, ...PUBLIC } });
+    return new Response(renderReport(SAMPLE_REPORT, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
   }
 
   // Same path the subscriber's own copy takes, so the sample cannot quietly become a nicer
@@ -57,5 +67,5 @@ export async function GET(): Promise<Response> {
   const row = await saveReport(rebuilt, run);
   const report = await asIssued(rebuilt, row);
 
-  return new Response(renderReport(report), { headers: { ...HTML, ...PUBLIC } });
+  return new Response(renderReport(report, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
 }

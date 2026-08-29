@@ -270,6 +270,22 @@ export const REPORT_CSS = `
   .suppressed{border-left:3px solid var(--pen);padding:14px 0 14px 18px;margin:0 0 18px;
     font-size:15px;color:var(--ink-soft);max-width:66ch}
   .method{font-family:var(--mono);font-size:12.5px;line-height:1.8;color:var(--ink-soft);white-space:pre-wrap;max-width:80ch}
+  /* THE WAY OUT OF THE SAMPLE. Lives in the REPORT's stylesheet, not the site's, because the
+     two share twenty five class names - wrap, issue, wordmark, lockup, masthead, card, note,
+     lede, eyebrow among them - and loading both on one document is the cascade collision this
+     build has already paid for twice. The sample stays one self-contained document. */
+  .masthead-home{text-decoration:none;color:inherit}
+  .masthead-home:hover .lockup-text{text-decoration:underline;text-underline-offset:3px}
+  .closing{border-top:2px solid var(--ink);padding-top:26px;margin-top:12px}
+  .closing h2{margin:0 0 10px}
+  .closing p{max-width:62ch;color:var(--ink-soft)}
+  .closing-actions{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;margin-top:20px}
+  .closing-cta{display:inline-block;background:var(--ink);color:var(--paper);text-decoration:none;
+    padding:11px 20px;font-family:var(--cond);font-weight:600;font-size:14px;
+    text-transform:uppercase;letter-spacing:.08em}
+  .closing-cta:hover{background:var(--good)}
+  .closing-link{color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-size:15px}
+
   @media (max-width:640px){
     .pair{grid-template-columns:1fr}
     .stats{grid-template-columns:1fr}

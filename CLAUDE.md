@@ -1215,3 +1215,34 @@ at 860, where it breaks after "and three".
 **Three alternatives were rendered and rejected.** Balanced two lines broke mid-phrase, at "how /
 often", and `text-wrap: balance` cannot fix that in a monospace face. Moving the line below the
 rule into the hero orphaned it from the brand it describes.
+
+## /sample was a dead end, and the site nav cannot go on it (30 Aug 2026)
+
+`/sample` is a `route.ts` returning a whole document from `renderReport` - the same function
+`/report/[runId]` uses. It is indexable, it is the page most likely to be forwarded, and it had no
+link anywhere back into the site.
+
+**The obvious fix is the one that cannot be done.** Putting the site nav above the report means
+loading `globals.css` and `REPORT_CSS` on one document, and **twenty five class names are defined
+in both**: `wrap`, `issue`, `wordmark`, `lockup`, `masthead`, `card`, `note`, `lede`, `eyebrow`
+among them. That is the cascade collision this build has already paid for twice - the wordmark
+going grey under `.wordmark span`, and the nav CTA going unreadable under `.sitenav-links a`. The
+sample stays one self-contained document.
+
+**What was done instead, both inside the report's own stylesheet:**
+
+- The masthead wordmark is now a link home. Zero visual change, works on a subscriber's own
+  report too, and it is what people click by instinct.
+- A closing block at the END of the sample. Somebody who read that far read a whole report and is
+  the warmest traffic on the site; somebody who bounced off the top was never going to be
+  persuaded by a button. It is also the only position that does not interrupt the document, which
+  is the thing being demonstrated.
+
+**The free scan leads, not the price.** A good share of the people on this page have never seen
+the home page, and sending a stranger straight at a US$69 subscription skips the free thing that
+exists to convince them.
+
+**`publicSample` is a separate flag from `specimen` and must stay separate.** `specimen` means
+invented data. This means "a stranger is reading it with no other way in". Setting `SAMPLE_RUN_ID`
+publishes a REAL report at `/sample` - not a specimen, and still needing the way out. Collapsing
+them would silently drop the block on the day this page first shows a real customer.
