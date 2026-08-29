@@ -417,16 +417,45 @@ select.field {
    section carried seven; with three, the fourth cell of the second row had no .get in it and
    the container's own --line background showed through as a grey rectangle. A gap-as-hairline
    grid only works when the items fill the rows. Caught in a full-page screenshot. */
+ /* HAIRLINE GRIDS, INVERTED 29 Aug 2026. The item carries the line; the container no longer
+    shows through.
+
+    The old shape was `gap: 1px` over a container painted `--line`, so the gaps revealed the
+    container and became the dividing lines. Elegant, and wrong the moment a row is not full:
+    the leftover cells reveal the container too, and `--line` across a whole cell is a grey
+    rectangle. That shipped twice in one session - in `.gets` with four items across three
+    columns, and in `.cards` where a global `section { margin-bottom: 88px }` was moving grid
+    items around.
+
+    Now each item draws its OWN top and left line, and a matching negative margin pulls that
+    line onto the neighbour it shares an edge with - so adjacent items collapse to one hairline
+    and the first row and column collapse onto the container's border. Net displacement is zero:
+    one pixel of border against one pixel of negative margin.
+
+    A short row is simply a short row. The empty area is card colour because there is no line
+    behind it to reveal, and the container's own border still closes the box. No :nth-child
+    counting, so the column count can change at a breakpoint without this rule knowing.
+
+    BOX-SHADOW WAS TRIED FIRST AND IS WRONG, which the screenshot showed and the code did not.
+    A shadow paints outside the border box, so the next grid item's background paints straight
+    over it: every internal line vanished except the ones on the last item in each row and
+    column, where nothing came after to cover them. It looked plausible in the stylesheet and
+    was obviously broken in the picture. Borders cannot be overpainted by a sibling. */
 .gets {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--line);
+  gap: 0;
+  background: var(--card);
+  /* Clips each item's overhanging right and bottom line at the container border. */
+  overflow: hidden;
   border: 1px solid var(--line);
 }
 
 .get {
   background: var(--card);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: -1px 0 0 -1px;
   padding: 26px 24px;
 }
 
@@ -1033,6 +1062,14 @@ footer .wrap {
     button in the nav: `.class tag` scores (0,1,1) and beats the (0,1,0) of the class the
     element actually carries. `.wizard-row .field` below is class-to-class, which carries no
     such trap: it cannot be beaten by the element's own class because it contains it. */
+ /* A URL shape quoted inside a sentence, on the 404. Its own class rather than a <code> tag,
+    because styling the tag would reach every <code> on the site including the report. */
+.urlbit {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.92em;
+  color: var(--soft);
+}
+
  /* Towns on /account. Every rule is a flat class - no `.locations-list li` - because a
     descendant selector scoring (0,1,1) is what put grey on the wordmark and made the nav CTA
     unreadable, and copycheck counts them against a baseline for that reason. */
@@ -1721,13 +1758,18 @@ footer .wrap {
   margin: 0 0 26px;
   padding: 0;
   display: grid;
-  gap: 1px;
-  background: var(--line);
+  gap: 0;
+  background: var(--card);
+  /* Clips each item's overhanging right and bottom line at the container border. */
+  overflow: hidden;
   border: 1px solid var(--line);
 }
 
 .tiers li {
   background: var(--card);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: -1px 0 0 -1px;
   padding: 20px 22px;
   display: grid;
   gap: 6px;
@@ -1798,8 +1840,10 @@ footer .wrap {
 /* ---- the two cards ---- */
 .cards {
   display: grid;
-  gap: 1px;
-  background: var(--line);
+  gap: 0;
+  background: var(--card);
+  /* Clips each item's overhanging right and bottom line at the container border. */
+  overflow: hidden;
   border: 1px solid var(--line);
   margin-bottom: 44px;
 }
@@ -1815,6 +1859,9 @@ footer .wrap {
    when the items fill the row. Found by measuring the DOM, not by reading the CSS. */
 .card {
   background: var(--card);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: -1px 0 0 -1px;
   padding: 30px 28px;
   margin-bottom: 0;
 }
@@ -1983,8 +2030,10 @@ footer .wrap {
 /* ---- the plan chooser on the wizard's pay step. Two options, generated from TIERS. ---- */
 .plan-choice {
   display: grid;
-  gap: 1px;
-  background: var(--line);
+  gap: 0;
+  background: var(--card);
+  /* Clips each item's overhanging right and bottom line at the container border. */
+  overflow: hidden;
   border: 1px solid var(--line);
   margin-bottom: 26px;
 }
@@ -1997,6 +2046,9 @@ footer .wrap {
 
 .plan-option {
   background: var(--card);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: -1px 0 0 -1px;
   border: 0;
   text-align: left;
   padding: 18px 20px;
@@ -2049,8 +2101,10 @@ footer .wrap {
 /* ---- PriceCard. One component, two densities, a CTA that cannot be omitted. ---- */
 .pricecards {
   display: grid;
-  gap: 1px;
-  background: var(--line);
+  gap: 0;
+  background: var(--card);
+  /* Clips each item's overhanging right and bottom line at the container border. */
+  overflow: hidden;
   border: 1px solid var(--line);
   margin-bottom: 22px;
 }
@@ -2063,6 +2117,9 @@ footer .wrap {
 
 .pricecard {
   background: var(--card);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: -1px 0 0 -1px;
   margin-bottom: 0;
   display: grid;
   align-content: start;

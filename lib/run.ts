@@ -11,7 +11,7 @@
  */
 
 import 'server-only';
-import { db } from './db';
+import { db, isUuid } from './db';
 import { locationsForScope } from './locations';
 import { env } from './env';
 import { sendOpsAlert } from './billing-mail';
@@ -177,6 +177,9 @@ export async function getRun(
 }
 
 export async function getRunById(runId: string): Promise<RunRow | null> {
+  // A report link is made to be forwarded, so a truncated one arrives here regularly. Without
+  // this the lookup throws on the malformed id and the reader gets a 500. See isUuid.
+  if (!isUuid(runId)) return null;
   const { data, error } = await db().from('runs').select('*').eq('id', runId).limit(1);
   if (error) throw new Error(`Run lookup failed: ${error.message}`);
   return (data?.[0] as RunRow | undefined) ?? null;

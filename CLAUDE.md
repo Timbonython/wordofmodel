@@ -1041,3 +1041,38 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## A mistyped link is not a server error, and a 404 is a page (29 Aug 2026)
+
+**`/scan/<malformed-id>` returned 500.** Postgres does not answer "no such row" for a string that
+is not a uuid - it rejects the comparison, PostgREST returns 22P02, and `getScan` throws. Every
+caller turns a null into a clean 404 and an exception into a 500, so a truncated link produced
+"our site is broken" when the truth was "your link is wrong". `isUuid()` in `lib/db.ts` now asks
+the shape question before the query, in `getScan` and in `getRunById`.
+
+**Deliberately a shape check and NOT a try/catch around the query.** Catching would also swallow a
+real database failure, which is the guard-that-makes-a-broken-thing-look-healthy shape this build
+keeps finding.
+
+**There was no `app/not-found.tsx` at all**, so every unmatched URL got Next's own default: right
+in its status code, mute about what to do. Almost everybody who lands there arrived from a link
+somebody SENT them - scan results and reports are both built to be forwarded, both end in a uuid,
+and a uuid is exactly what an email client truncates. So the page guesses out loud, names the two
+link shapes that exist in the wild, and carries the scan CTA, because a stranger who followed a
+forwarded link is the warmest traffic this site gets.
+
+## The hairline grids are inverted: the item carries the line (29 Aug 2026)
+
+Five grids drew their dividers with `gap: 1px` over a container painted `--line`, so the gaps
+revealed the container. Elegant, and wrong the moment a row is not full: the leftover cells reveal
+it too, and `--line` across a whole cell is a grey rectangle. That shipped twice in one session.
+
+Now each item draws its own top and left border and a matching `margin: -1px 0 0 -1px` pulls it
+onto the neighbour, so adjacent edges collapse to one hairline and the first row and column
+collapse onto the container's border. Net displacement zero. A short row is just a short row.
+
+**BOX-SHADOW WAS TRIED FIRST AND WAS WRONG.** A shadow paints outside the border box, so the next
+grid item's background paints straight over it: every internal line vanished except on the last
+item of each row and column, where nothing came after to cover it. The stylesheet looked right and
+the screenshot was obviously broken. **The picture caught what the code could not**, which is the
+argument for the screenshot step being part of the work rather than a formality.

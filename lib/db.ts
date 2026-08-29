@@ -58,7 +58,26 @@ export async function findCachedScan(domain: string): Promise<ScanRow | null> {
   return (data?.[0] as ScanRow | undefined) ?? null;
 }
 
+/**
+ * Could this string be one of our ids at all?
+ *
+ * ASKED BEFORE THE QUERY, because Postgres does not answer "no such row" for a string that is
+ * not a uuid - it rejects the comparison, PostgREST returns 22P02, and the lookup throws. Every
+ * caller here turns a null into a clean 404 and an exception into a 500, so a mistyped or
+ * truncated link produced a server error page: "our site is broken" when the truth is "your
+ * link is wrong". These links are made to be forwarded, so a truncated one is the ordinary
+ * case rather than an attack.
+ *
+ * Deliberately shape only, and deliberately NOT a try/catch around the query. Swallowing the
+ * error would also swallow a real database failure, and this build has been bitten before by a
+ * guard that made a broken thing look healthy.
+ */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function getScan(id: string): Promise<ScanRow | null> {
+  if (!isUuid(id)) return null;
   const { data, error } = await db().from('scans').select('*').eq('id', id).limit(1);
   if (error) throw new Error(`Scan lookup failed: ${error.message}`);
   return (data?.[0] as ScanRow | undefined) ?? null;
