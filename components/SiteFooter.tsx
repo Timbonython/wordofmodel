@@ -26,6 +26,9 @@ export function SiteFooter({ sampleLive = false }: { sampleLive?: boolean }) {
               Sample report
             </Link>
           ) : null}
+          <Link href="/faq" prefetch={false}>
+            Questions
+          </Link>
           <a href="mailto:hello@wordofmodel.ai">Contact</a>
           <Link href="/terms" prefetch={false}>
             Terms

@@ -2030,3 +2030,18 @@ footer .wrap {
   .pricecard-card .pricecard-figure { font-size: 32px; }
   .four-steps { font-size: 11.5px; margin-bottom: 26px; }
 }
+
+.pricing-method-link {
+  border-top: 1px solid var(--line);
+  padding-top: 26px;
+  margin: 0 0 8px;
+}
+
+/* ---- /faq ---- */
+.faq-hero { padding-top: 34px; }
+.faq-end {
+  border-top: 1px solid var(--line);
+  padding-top: 26px;
+  color: var(--soft);
+  max-width: 62ch;
+}

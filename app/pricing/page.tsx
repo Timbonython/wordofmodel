@@ -70,10 +70,10 @@ export default async function PricingPage() {
               cta={{ label: 'Take a founding place', plan: 'premium_founding' }}
             >
               <p>
-                {/* FIRST PERSON, §3. It read "time with Tim" and "20 is what he can do". */}
-                Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is
-                what I can do. Open until 30 September 2026, or until the{' '}
-                {FOUNDING_SEATS_PUBLIC} are taken.
+                {/* THE REASON IS CAPACITY, NOT A PERSON - see the note on the home page. */}
+                Capped because each one includes a quarterly review done by hand, and{' '}
+                {FOUNDING_SEATS_PUBLIC} is the most we can do properly. Open until 30 September
+                2026, or until the {FOUNDING_SEATS_PUBLIC} are taken.
               </p>
               {/* A COUNT ONLY ONCE ONE IS TAKEN, §3. "All 20 are open" volunteers that nobody
                   has bought yet; "20 founding places" is already a complete statement. */}
@@ -98,21 +98,13 @@ export default async function PricingPage() {
           </div>
         </section>
 
-        <section>
-          <div className="eyebrow">What is not on the list</div>
-          <h2>There is no free tier</h2>
-          <p>
-            A recurring free plan costs API spend every month for somebody who has already
-            decided not to pay, and gives them a reason to stay put rather than move up. The
-            free scan is the shopfront: one question, two engines, no account. It is not a tier
-            and it is not going away.
-          </p>
-          <p>
-            <Link href="/method" prefetch={false}>
-              How we measure, including what we have not measured
-            </Link>
-          </p>
-        </section>
+        {/* The /method link survived the free-tier section it used to live inside. It is the
+            strongest page on the site and the one that earns the price above it. */}
+        <p className="pricing-method-link">
+          <Link href="/method" prefetch={false}>
+            How we measure, including what we have not measured
+          </Link>
+        </p>
       </main>
 
       <SiteFooter sampleLive />

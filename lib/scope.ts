@@ -143,8 +143,8 @@ export const TIERS: readonly Tier[] = [
     tier: 'premium',
     name: 'Monitoring + Review',
     line:
-      'Everything in Monitoring, every month, unchanged - plus a quarterly deep read from Tim ' +
-      'that adds Claude and Microsoft Copilot by hand.',
+      'Everything in Monitoring, every month, unchanged - plus a quarterly deep read by hand ' +
+      'from one of our experienced marketers in Australia, adding Claude and Microsoft Copilot.',
   },
 ];
 
@@ -234,7 +234,7 @@ export const MAIN_FEATURES: readonly string[] = [
 ];
 
 export const PREMIUM_ADDITIONS: readonly string[] = [
-  'A quarterly deep read from Tim, by hand, on your actual answers',
+  'A quarterly deep read of your actual answers, by hand, by an experienced marketer',
   'Claude and Microsoft Copilot read manually - the two surfaces no API can honestly reach',
   'Your questions revisited each quarter as your market moves',
 ];

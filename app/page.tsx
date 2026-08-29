@@ -276,10 +276,14 @@ export default async function Page({
                 cta={{ label: 'Take a founding place', plan: 'premium_founding' }}
               >
                 <p className="pricecard-line">
-                  {/* FIRST PERSON. This read "time with Tim" and "20 is what he can do" -
-                      third person, on Tim's own site. §3. */}
-                  Capped because each one includes time with me, and {FOUNDING_SEATS_PUBLIC} is
-                  what I can do.
+                  {/* THE REASON IS CAPACITY, NOT A PERSON. §3 requires the cap to say WHY it
+                      is capped, and it read "time with me, and 20 is what I can do" until
+                      29 Aug 2026. Naming an individual was decided against: the review is done
+                      by a marketer on the team rather than by one named person, and the cap has
+                      to survive the team growing. Capacity is the honest reason either way -
+                      a quarterly read by hand does not scale with a slider. */}
+                  Capped because each one includes a quarterly review done by hand, and{' '}
+                  {FOUNDING_SEATS_PUBLIC} is the most we can do properly.
                   {/* A COUNT ONLY ONCE ONE IS TAKEN. "All 20 are open" is true and volunteers
                       that nobody has bought yet - the same self-inflicted emptiness that
                       "first 20 subscribers" avoided from the other direction. §3. */}
