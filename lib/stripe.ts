@@ -135,8 +135,8 @@ export const PRODUCTS: Record<TierKey, { name: string; description: string }> = 
     name: 'Word of Model - Monitoring + Review',
     description:
       'Everything in Monitoring every month, unchanged, plus a quarterly deep read by hand from ' +
-      'one of our experienced marketers, adding Claude and Microsoft Copilot - the two surfaces ' +
-      'no API can honestly reach.',
+      'an experienced marketer based in Australia, adding Claude and Microsoft Copilot - the two ' +
+      'surfaces no API can honestly reach.',
   },
   location: {
     name: 'Word of Model - Additional location',
