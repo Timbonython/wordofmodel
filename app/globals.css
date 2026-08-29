@@ -1468,9 +1468,16 @@ footer .wrap {
   color: var(--paper);
   border: 0;
   padding: 9px 16px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
+  /* THE SAME TYPE AS THE REST OF THE BAR. It was IBM Plex Mono, sentence case, 0.04em - the
+     only item in the nav still wearing the old caption face after the bar moved to condensed
+     caps, which made the one thing we most want clicked look like it belonged to a different
+     design. Used nowhere but SiteNav, both instances, so it is changed here rather than
+     overridden in the nav. */
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   text-decoration: none;
   display: inline-block;
 }
@@ -1482,11 +1489,13 @@ footer .wrap {
 /* THE CTA STAYS SENTENCE CASE, on purpose. With the links in caps, a capitalised button
    becomes a fourth label and the eye stops separating things to read from the thing to click.
    Same logic as one lit cell in the mark: the exception is what carries the meaning. */
+ /* COLOUR ONLY, and it has to stay. `.sitenav-links a` scores (0,1,1) and beats `.button-green`
+    at (0,1,0), so without this the ink colour wins and the label goes near-black on green. That
+    is the exact specificity bug that made this button unreadable once already, in the other
+    direction. Everything else it used to undo - the case, the tracking, the size - is now what
+    we want, so it is gone. */
 .sitenav-links a.button-green {
   color: var(--paper);
-  text-transform: none;
-  letter-spacing: 0.03em;
-  font-size: 12.5px;
 }
 
 .sitenav-links a.button-green:hover {
@@ -1642,20 +1651,24 @@ footer .wrap {
 }
 
 /* ---- "what we don't claim": three lines, no bullets, hairline separated ---- */
-.nots {
+ /* Was `.nots`, for the "three things this is not" block that this replaced. Renamed because a
+    class named after content it no longer holds is a small lie that survives every later edit. */
+.findings {
   list-style: none;
   margin: 0 0 22px;
   padding: 0;
   max-width: 62ch;
+  /* The top rule lives on the container rather than on a :first-child, so the row rule needs
+     no pseudo and the item can carry its own class. Two fewer descendant selectors than the
+     block this replaced. */
+  border-top: 1px solid var(--line);
 }
 
-.nots li {
+.finding {
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
   color: var(--soft);
 }
-
-.nots li:first-child { border-top: 1px solid var(--line); }
 
 /* ---- THE THESIS. The sentence the positioning rests on, reversed out of ink. ----
 

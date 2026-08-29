@@ -1110,3 +1110,33 @@ desktop. `.sitenav-links a.button-green` (0,2,1) still beats `.sitenav-links a` 
 the specificity trap that made this bar's CTA unreadable once before. Condensed is narrower than
 mono, so at 390 the three labels now fit on one line, and the scan field is above the fold at all
 four heights - 667, 780, 844, 932.
+
+## The home page had nothing about sources (29 Aug 2026)
+
+"Three things this is not" came off the home page. It summarised three claims each argued
+properly somewhere else: the score out of 100 and the API substitution are both on `/about`, and
+"why we don't check every day" is a whole section on `/method` with four cited studies behind it.
+A summary of arguments made better on two other pages was holding space on the most valuable
+screen on the site.
+
+**What replaced it was a gap, not a preference.** The word "source" did not appear on the home
+page once, and where an answer comes from is half the product - section 5 of every report is the
+cited domains, per surface. `aiOverviewCoverage()` has been telling subscribers that their
+category's trigger rate is itself a finding since Session 4, and the site never said so.
+
+**Every number in the new section is ours and measured**, from the run recorded in
+`lib/method.ts`: comparison questions 0/3, `how_do_people` 3/3, and the earlier bake-off on a
+different category at 10/10. Nothing there is a number the pipeline did not produce.
+
+**And the nav's green button was the last thing wearing the old face.** After the bar moved to
+condensed caps, `.button-green` was still IBM Plex Mono, sentence case, 0.04em - so the one item
+we most want clicked looked like it belonged to a different design. It is used nowhere but
+`SiteNav`, so it changed at the source rather than by another override. `.sitenav-links
+a.button-green` survives for the colour alone, and must: `.sitenav-links a` scores (0,1,1) and
+beats `.button-green` at (0,1,0), which is the exact specificity bug that made this button
+unreadable once already, in the other direction.
+
+**The descendant-selector baseline only ever shrinks.** It was 53; `.nots li` and
+`.nots li:first-child` came off when the block was replaced and the new list gave its rows a
+class. The comment no longer states the count - a number written beside a list is a number that
+goes stale the first time the list changes, and that one already had.

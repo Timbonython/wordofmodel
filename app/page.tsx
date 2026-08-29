@@ -191,24 +191,44 @@ export default async function Page({
           <p className="redacted-verdict">You were not in this answer.</p>
         </section>
 
-        {/* ============ 4. WHAT WE DON'T CLAIM ============
-            §4: three lines, then /method. The differentiator against every competitor in the
-            category, who all sell a score out of 100. */}
+        {/* ============ 4. THE CATEGORY ============
+            REPLACED "Three things this is not", 29 Aug 2026. That block summarised three claims
+            that are each made properly somewhere else - the score out of 100 and the API
+            substitution are both on /about, and "why we don't check every day" is a whole
+            section on /method with four cited studies behind it. A summary of things argued
+            better on two other pages was earning its space on the most valuable screen we have.
+
+            WHAT WENT IN INSTEAD WAS A GAP, not a preference. The word "source" did not appear on
+            this page once, and where an answer comes from is half the product: section 5 of
+            every report is the cited domains, per surface.
+
+            EVERY NUMBER HERE IS OURS AND MEASURED. See aiOverviewCoverage() in lib/method.ts for
+            the run it comes from - 20 Aug 2026, eSIM, US, three samples a question. No number
+            appears here that the pipeline did not produce. */}
         <section>
-          <div className="eyebrow">What we don&rsquo;t claim</div>
-          <h2>Three things this is not</h2>
-          <ul className="nots">
-            <li>
-              We do not give you a score out of 100. There is no such number, and inventing one would make this
-              easier to sell and impossible to trust.
+          <div className="eyebrow">Your category</div>
+          <h2>Every category is fed by different sources</h2>
+          <p className="lede">
+            Assistants do not have one set of sources they trust. They have a different set for
+            each category, and the gap between two categories is bigger than the gap between two
+            months in the same one.
+          </p>
+          <ul className="findings">
+            <li className="finding">
+              In the category we measured first, Google produced an AI Overview for none of the
+              plain comparison questions and for every question about how people actually go
+              about it. In a different category it answered every question we asked. Same five
+              slots, same method, a completely different picture.
             </li>
-            <li>
-              We do not check every day. These answers move on their own, and reading noise as movement is how you end
-              up chasing it.
+            <li className="finding">
+              Your report names the domains each surface actually cited, surface by surface, for
+              your five questions. It is usually not your site, and usually not your
+              competitors&rsquo; either.
             </li>
-            <li>
-              We do not run an API and file the answer under an assistant&rsquo;s name. A surface is only ever recorded
-              from itself, which is why two of the seven are read by hand.
+            <li className="finding">
+              Which changes what you should do. If the assistants are not answering your
+              buyers&rsquo; questions yet, your report says so plainly, rather than selling you a
+              problem you do not have.
             </li>
           </ul>
           <p>

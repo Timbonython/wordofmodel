@@ -125,10 +125,15 @@ for (const dir of DIRS) {
 // matches the lockup. What fixes it is giving the element its own class, or qualifying the
 // tag: `.sitenav-links a.button-green`, `.wordmark > span:not(.lockup)`.
 //
-// BASELINED, NOT ENFORCED RETROSPECTIVELY. The 53 below exist and are mostly harmless -
+// BASELINED, NOT ENFORCED RETROSPECTIVELY. The ones below exist and are mostly harmless -
 // `.totals th` will only ever hold its own markup. Rewriting all of them is a large diff with
-// no defect behind it. What this rule stops is the FIFTY-FOURTH, written next month by
-// somebody who has not read any of this.
+// no defect behind it. What this rule stops is the NEXT one, written next month by somebody
+// who has not read any of this.
+//
+// THE LIST ONLY EVER SHRINKS. It was 53; `.nots li` and `.nots li:first-child` came off it on
+// 29 Aug when that block was replaced and the new one gave its rows a class. Deliberately not
+// written as a count in this sentence any more: a number in a comment beside a list is a number
+// that goes stale the first time the list changes, and this one already had.
 //
 // If you are here because the check failed: give the element a class of its own and target
 // that, or qualify the tag. Add to the baseline only when the container genuinely cannot ever
@@ -139,7 +144,7 @@ const DESCENDANT_BASELINE = new Set([
   '.features li', '.features li::before', '.founding-block h2', '.founding-block p',
   '.gate-list li', '.gate-list li::before', '.get h3', '.get p', '.legal a:not(.button)',
   '.legal h1', '.legal h2', '.legal h3', '.legal p', '.legal section', '.locations h3',
-  '.locations p', '.nots li', '.nots li:first-child', '.offer p', '.question-list li',
+  '.locations p', '.offer p', '.question-list li',
   '.question-list li:last-child', '.redacted li', '.redacted li::before',
   '.redacted li:nth-child(2) .redacted-bar', '.redacted li:nth-child(3) .redacted-bar',
   '.scan-quote cite', '.scan-quote p', '.sitefooter-links a', '.sitefooter-links a:hover',
