@@ -676,6 +676,27 @@ deliberately, like `automatic_tax`.
 takes the town's whole history with it. A subscriber who re-adds Ballarat in March should still see
 January.
 
+### A location is US$30 on every plan, premium included. Decided 29 Aug 2026
+
+The additional location is its own Stripe product with its own two prices, so it is independent
+of the plan and `createCheckout` pairs it with whichever plan was chosen, matching the interval.
+"On either plan" on `/pricing` is true.
+
+**The margin is not the same on both, and that was accepted deliberately.** On Monitoring a town
+costs about US$3.69 of captures against US$30, roughly 8x. On Monitoring + Review the real cost is
+the HUMAN HOUR - the quarterly hand read across Claude and Copilot, ten hand captures per town per
+quarter - and US$30 does not buy a second town's worth of that. Tim took the risk knowingly rather
+than pricing a premium location differently or excluding towns from the review.
+
+**Revisit when the quarterly hand-capture pipeline is actually built.** It is decided and not
+built today (`app/method/page.tsx` says so), so this costs nothing yet. The moment it exists, a
+premium subscriber with four extra towns is fifty hand captures a quarter against US$120 a month
+of add-on revenue, and that is the arithmetic to look at again.
+
+Related: the founding trial coupon is scoped to the Monitoring PRODUCT, so a subscriber on three
+free months still pays US$30 a town from day one. Correct - the trial is on the plan - but it will
+be the only line on their first invoice.
+
 ### `items.data[0]` was the plan until this feature made it not (29 Aug 2026)
 
 **Stripe does not guarantee subscription item order**, and three places read `items.data[0]` as if
