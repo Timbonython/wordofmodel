@@ -113,7 +113,7 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
   }
 
   const lines = [`We asked ${joinList(engineNames)} the question above.`];
-  lines.push(`**${countPhrase(competitor_count)} named. You weren't one of them.**`);
+  lines.push(`**${countWasNamed(competitor_count)} named. You weren't one of them.**`);
   if (top) lines.push(`${ENGINE_LABEL[top.engine]} recommended **${top.brand}** first.`);
 
   return {
@@ -128,7 +128,21 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
   };
 }
 
+/**
+ * The bare noun phrase: "1 company", "6 companies".
+ *
+ * IT CARRIES NO VERB, and that is the correction. It used to return "1 company was" / "6
+ * companies were", which reads correctly in exactly one of its four call sites - "6 companies
+ * were named" - and produced "6 companies were came up" in the other three. That sentence was
+ * live on the free scan result, which is the hero of the home page and the only thing most
+ * visitors ever read. The verb belongs to the sentence, so each sentence supplies its own.
+ */
 function countPhrase(n: number): string {
+  return n === 1 ? '1 company' : `${n} companies`;
+}
+
+/** The same phrase where the sentence needs the copula: "1 company was named". */
+function countWasNamed(n: number): string {
   return n === 1 ? '1 company was' : `${n} companies were`;
 }
 
