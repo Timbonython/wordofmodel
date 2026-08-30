@@ -4,6 +4,8 @@ import { headers } from 'next/headers';
 import { env } from '@/lib/env';
 import { metaAllowedFor } from '@/lib/meta';
 import { MetaPixel } from '@/components/MetaPixel';
+import { JsonLd } from '@/components/reviews/JsonLd';
+import { organisationSchema, websiteSchema } from '@/lib/schema';
 import './globals.css';
 import { BRAND } from '@/lib/brand';
 
@@ -85,6 +87,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${sans.variable} ${condensed.variable} ${mono.variable}`}>
       <body>
+        {/* WHO WE ARE, ONCE, FOR EVERY PAGE. The site carried no structured data at all before
+            30 Aug 2026. Deliberately carries NO rating: Google does not allow self-serving
+            reviews for Organization, so a rating here would be ineligible rather than merely
+            unrewarded. It lives on the SoftwareApplication entity or nowhere. See lib/schema.ts. */}
+        <JsonLd schema={[organisationSchema(env.siteUrl), websiteSchema(env.siteUrl)]} />
         {children}
         {pixel ? <MetaPixel pixelId={pixel} /> : null}
       </body>

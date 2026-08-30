@@ -6,6 +6,8 @@ import { PricingCards } from '@/components/PricingCards';
 import { PriceCard } from '@/components/PriceCard';
 import { ScanPanel } from '@/components/scan/ScanPanel';
 import { foundingOfferOrNull } from '@/lib/billing';
+import { JsonLd } from '@/components/reviews/JsonLd';
+import { productSchema } from '@/lib/schema';
 import { FOUNDING_SEATS_PUBLIC, TIERS, priceLabel } from '@/lib/scope';
 import { env } from '@/lib/env';
 
@@ -37,6 +39,11 @@ export default async function PricingPage() {
 
   return (
     <>
+      {/* THE PRODUCT AND ITS REAL PRICES. No rating passed: /pricing is not where reviews are
+          collected or shown, and the aggregate belongs on the one page that renders it. The
+          prices come from the same PRICE_USD constant the cards render, so the structured data
+          cannot quote a number the page does not. */}
+      <JsonLd schema={productSchema(env.siteUrl)} />
       <SiteNav sampleLive issue="Pricing" />
 
       <main className="wrap">

@@ -18,16 +18,17 @@ conversation until now.
 
 | File | What it is |
 |---|---|
-| `wordofmodel-offer-sheet.md` | Tiers, what lands in the inbox monthly, onboarding flow, free scan. The commercial spine |
 | `wordofmodel-free-scan-spec.md` | Scan flow, prompts, engines, email gate. **Build this first** |
 | `wordofmodel-site-copy.md` | Page copy, sections 1–10, plus the copy rules block |
 | `wordofmodel-report-template.html` | The design system. IBM Plex, highlighter on competitors, red pen on absence |
 | `wordofmodel-onboarding-billing-spec.md` | Stripe, the wizard, the five question slots, founding-rate counter logic |
-| `wordofmodel-ad-copy.md` | Meta, LinkedIn, Google Search, cold email, organic, retargeting |
-| `wordofmodel-site.html` | Static one-pager. Scan field wired to a waitlist, `// TODO` where the POST goes |
 
-Both HTML files are fragments (no `<html>`/`<body>` wrapper) — they start at `<meta>` and render
-fine as-is. Drop `wordofmodel-site.html` in as `index.html` and it works.
+`wordofmodel-report-template.html` is a fragment (no `<html>`/`<body>` wrapper) — it starts at
+`<meta>` and renders fine as-is.
+
+Three further artifacts were listed here from the first commit until 30 Aug 2026 and have never
+existed in this repo: an offer sheet, an ad-copy file and a static one-pager. See the dated
+section at the end of this file. `npm run check` now opens every file this table names.
 
 ## Next move
 
@@ -1317,3 +1318,106 @@ archive too.
 
 **They are meant to stay failing.** Fixing them is the next ad's job: swap the call for
 `grid_mark()` and delete the stub in that file only.
+
+## A file list that nothing opens is not an inventory (30 Aug 2026)
+
+The Files table above listed seven artifacts. Four were on disk. Three — `wordofmodel-offer-sheet.md`,
+`wordofmodel-ad-copy.md`, `wordofmodel-site.html` — were not, and never had been.
+
+Not deleted, not renamed, never in the repo. `git rev-list --all` piped through `git cat-file -e`
+finds no tree on any branch containing any of the three paths. No path matching `offer`, `ad-copy`
+or `site.html` has ever been added in any commit. The first commit, 0c2d740 (17 Aug 2026), already
+contained the table in exactly the form it had on 30 Aug: `git log -S'wordofmodel-offer-sheet.md' --
+CLAUDE.md` returns that one commit and no other, so the table was written once, wrong on three of
+seven rows, and never touched again. They are also not anywhere else under the connected folder.
+
+The likely cause is in the header of this file: the seven artifacts were built inside a claude.ai
+conversation on 1 Aug and "existed **only** inside that conversation" until the 10 Aug recovery.
+Four made it into the repo. Three did not, and the table went in describing all seven. That is a
+guess about the cause. The absence itself is measured.
+
+What it cost: twelve days in which the commercial spine of the product was listed as a file in the
+repo and was not one, and the first thing any session did was read this table.
+
+The rule. **A list of filenames is a claim about the filesystem, and an unchecked claim decays
+silently.** The failure mode is specifically quiet — a name that resolves to nothing renders exactly
+like a name that resolves to a file, in every reader, until someone types `ls`.
+
+The guard: `scripts/docscheck.mjs`, wired into `npm run check`. It opens every path the table names,
+and every backticked `wordofmodel-*.md`/`.html` token in the prose, because the sentence under the
+table made the same claim about the same absent file. Two absences are made loud rather than quiet:
+a missing `## Files` section fails, and a section that parses to zero rows fails, since an empty
+table and a satisfied one would otherwise print the same clean pass. Watched failing on 30 Aug 2026
+against the three real absences before the rows came out, and again by deleting a listed file.
+
+Not restored, because there is nothing to restore from. The three rows were removed. If the offer
+sheet or the ad copy is recoverable from the 1 Aug conversation, it comes back as a file first and
+a row second — in that order, or the check fails, which is the point.
+
+## First-party reviews (30 Aug 2026, migration 0023)
+
+`/review` collects them, `scripts/reviews.sh` moderates them, `/reviews` shows them. Built on the
+existing architecture throughout: no new SaaS, no CMS, no new auth.
+
+**What is deliberately NOT collected.** No surname, job title, company, company URL, LinkedIn or
+photograph. Not brevity - the subject matter is unflattering to the reviewer. "I found out I was
+invisible on ChatGPT" is not a sentence a business wants its name against, and full attribution
+would suppress the honest reviews and select for the bland ones. `category` and `location` are the
+product's own vocabulary (`scopes.category_term`, `scopes.locality`), so a subscriber's can be
+prefilled from their scope later.
+
+**RLS: on, no policies at all**, the same shape as `capture_jobs`. The brief asked for anonymous
+PostgREST inserts; that means a publishable key in a browser, and nothing in this build has ever
+talked to Supabase from one. Submission goes through `POST /api/review` on the secret key, where
+the rate limit, honeypot and consent check have to live anyway. **An unapproved review cannot
+leak because no key outside this server can read the table at all**, and separately because
+`approvedReviews()` is the only public read and hardcodes the status.
+
+**Consent is a CHECK constraint, not a column to read later.** A review that may not be published
+is personal data with no purpose, so the row cannot exist without it - true even from a script
+somebody writes in six months.
+
+### The two places the brief was changed
+
+**Review gating.** It said to offer the third-party step "after someone submits a *positive*
+review". That is soliciting public reviews only from happy customers, which Google's review
+policies prohibit and the FTC's testimonial guidance covers. The rating is not consulted in
+`/api/review` and there is no branch to remove later.
+
+**"Posted" versus "clicked".** No platform tells us whether a review was actually left. The
+column is `external_clicks`, the event is `external_review_clicked`, and the naming holds all the
+way down. A column called `external_posted` would be the confident wrong number this repo keeps
+finding.
+
+### Schema, and why the rating is not on the Organization
+
+Google does not allow self-serving reviews for `Organization` or `LocalBusiness` - reviews
+collected on your own site about yourself are exactly that, so marking them up there is
+**ineligible**, not merely unrewarded. `SoftwareApplication` is a supported type where
+first-party reviews do qualify, so the rating lives on the product entity or nowhere.
+
+**And it stays off until `REVIEWS_MIN_FOR_AGGREGATE` (5) approved reviews.** A five out of five
+over two people is a number with no error bars, on the site whose method page refuses to print a
+score out of 100 because inventing one "would make this easier to sell and impossible to trust".
+`/reviews` 404s below the threshold rather than rendering a thin page. One featured quote is
+shown from the first approved review, because one testimonial presented as one claims nothing.
+
+The site had **no structured data at all** before this. `Organization` + `WebSite` now render
+site-wide and `SoftwareApplication` with the real prices on `/pricing`.
+
+**A review body is user-submitted text going into a `<script>` tag.** `jsonldText()` escapes `<`,
+proven by putting `</script><img src=x onerror=...>` in a review body and watching it come out as
+`\u003c`.
+
+### `review_form_view` is fired from the browser, not counted on the server
+
+`/start` recorded every render and accumulated 1030 rows against 2 real scans in 48 hours, because
+a crawler and a person are the same thing to a server. `/review` will be linked from report emails
+and crawled like anything else. A browser executing JavaScript is a far better proxy for a person
+than any user-agent string - which is the conclusion 0020 reached expensively - so the two form
+events post from the client. It undercounts anybody with scripts off, which is the safe direction.
+
+`funnel_events` gained a `detail` column for the click destination. **Deliberately not
+`utm_content`**: that is ad attribution and is what separates hook A from hook C in every report.
+
+`npm run reviews:check` proves all fifteen guards, each watched refusing.

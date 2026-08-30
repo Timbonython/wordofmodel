@@ -34,7 +34,19 @@ export type FunnelEvent =
   | 'scan_completed'
   | 'wizard_started'
   | 'checkout_started'
-  | 'subscription_active';
+  | 'subscription_active'
+  /* ------------------------------------------------------------------ reviews, 30 Aug 2026 */
+  | 'review_form_view'
+  | 'review_form_started'
+  | 'review_submitted'
+  /**
+   * A CLICK THROUGH to Google, G2 or Trustpilot. Not a post.
+   *
+   * No platform tells us whether a review was actually left, so this counts the only thing
+   * anybody can observe. Reading it as "reviews posted elsewhere" would be inventing a number,
+   * which is the one thing this table has already been rebuilt once for doing.
+   */
+  | 'external_review_clicked';
 
 /**
  * The click-time identifiers, in the order they are looked for.
@@ -120,6 +132,12 @@ export function isClick(touch: Partial<TouchParams> | null | undefined): boolean
  */
 export async function recordFunnel(input: {
   event: FunnelEvent;
+  /**
+   * A qualifier for events that need one - today, which platform an external_review_clicked
+   * went to. NEVER attribution: the utm columns are what carry that, and writing a platform
+   * name into utm_content would corrupt the ad reporting this table exists for.
+   */
+  detail?: string | null;
   scanId?: string | null;
   accountId?: string | null;
   /**
@@ -150,6 +168,7 @@ export async function recordFunnel(input: {
       .from('funnel_events')
       .insert({
         event: input.event,
+        detail: input.detail ?? null,
         scan_id: input.scanId ?? null,
         account_id: input.accountId ?? null,
         utm_source: touch?.utm_source ?? null,
@@ -238,13 +257,21 @@ export async function funnelTable(days = 30): Promise<FunnelRow[]> {
         })
         .get(key)!;
 
+    // THIS TABLE IS THE ACQUISITION FUNNEL AND ONLY THAT. The review events share the
+    // funnel_events table because they are the same kind of thing to record, but a review is
+    // not a step between landing and subscribing - it happens to people who already arrived,
+    // sometimes months later. Adding them as columns would widen the table with numbers that
+    // do not belong in the same row and cannot be read as a progression. Counted elsewhere.
+    if (!(e.event in row)) continue;
+
     // Distinct scans per step. A null scan id is its own occurrence and cannot be deduplicated,
     // which is exactly what "we could not attribute this" means.
     const bucket = (row.seen[e.event] ??= new Set<string>());
     const identity = e.scan_id ?? `anon:${e.created_at}`;
     if (bucket.has(identity)) continue;
     bucket.add(identity);
-    row[e.event] += 1;
+    const counts = row as unknown as Record<string, number>;
+    counts[e.event] = (counts[e.event] ?? 0) + 1;
   }
 
   return [...rows.values()]

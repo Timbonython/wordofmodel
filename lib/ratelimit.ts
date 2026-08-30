@@ -98,7 +98,7 @@ export interface RateVerdict {
  * do not call this, so a repeat visitor reading their own result is never
  * refused.
  */
-export async function checkRateLimit(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login' | 'wizard'): Promise<RateVerdict> {
+export async function checkRateLimit(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login' | 'wizard' | 'review'): Promise<RateVerdict> {
   const applicable =
     kind === 'scan'
       ? LIMITS
@@ -207,6 +207,6 @@ export async function recordEmailAttempt(emailHash: string, kind: 'reveal'): Pro
   await db().from('rate_events').insert({ ip_hash: 'email', kind, email_hash: emailHash });
 }
 
-export async function recordAttempt(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login' | 'wizard'): Promise<void> {
+export async function recordAttempt(ipHash: string, kind: 'scan' | 'reveal' | 'waitlist' | 'login' | 'wizard' | 'review'): Promise<void> {
   await db().from('rate_events').insert({ ip_hash: ipHash, kind });
 }

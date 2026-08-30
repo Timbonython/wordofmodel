@@ -157,6 +157,26 @@ export default function PrivacyPage() {
         </section>
 
         <section>
+          <h2>If you leave a review</h2>
+          <p>
+            A review is the one thing on this site we publish on purpose. We ask for a star
+            rating, what you want to say, your first name, and optionally what you do and where
+            you are. We do not ask for a surname, a company, a job title, a photograph or a
+            LinkedIn profile, and there is nowhere to give us one.
+          </p>
+          <p>
+            Nothing appears anywhere until a person has read it. If we publish it, what appears
+            is exactly those fields and nothing else. Reply to any email from us and we will take
+            it down, without asking why.
+          </p>
+          <p>
+            If you choose to post the same words on Google, G2 or Trustpilot afterwards, that is
+            entirely optional, it makes no difference to whether we publish yours, and what
+            happens there is between you and them. We record that you clicked through to a
+            platform. We have no way of knowing whether you actually posted, and we do not claim
+            to.
+          </p>
+
           <h2>Who else sees it</h2>
           <p>
             Running the product means sending some of this to other companies. These are all of

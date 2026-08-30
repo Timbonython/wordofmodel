@@ -1117,6 +1117,253 @@ footer .wrap {
   color: var(--soft);
 }
 
+ /* ---------- reviews. Flat classes throughout: no `.class tag`, which is what put grey on the
+    wordmark and made the nav CTA unreadable, and what copycheck counts against a baseline. ---- */
+.review-form {
+  display: grid;
+  gap: 22px;
+  max-width: 52ch;
+  margin-top: 26px;
+}
+
+.review-stars {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.review-star-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+ /* A real radio each, visually hidden, so the row is keyboard navigable and reads correctly to
+    a screen reader. The stars are decoration; the input is the control. */
+.review-star {
+  cursor: pointer;
+  line-height: 1;
+}
+
+.review-star-on,
+.review-star-off {
+  font-size: 34px;
+  line-height: 1;
+  display: block;
+  transition: none;
+}
+
+.review-star-on {
+  color: var(--green);
+}
+
+.review-star-off {
+  color: var(--line);
+}
+
+.review-star:hover .review-star-off {
+  color: var(--faint);
+}
+
+.review-textarea {
+  min-height: 140px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.review-pair {
+  display: grid;
+  gap: 22px;
+}
+
+@media (min-width: 560px) {
+  .review-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+ /* Off-screen rather than display:none, which some bots test for. aria-hidden and tabIndex -1
+    in the markup keep it away from anybody using a keyboard or a screen reader. */
+.review-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.review-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--soft);
+  cursor: pointer;
+}
+
+.review-consent-box {
+  margin-top: 3px;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--green);
+}
+
+.review-consent-text {
+  flex: 1 1 auto;
+}
+
+ /* ---------- after they send it ---------- */
+.review-done {
+  max-width: 60ch;
+}
+
+.review-share {
+  margin-top: 34px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.review-quote {
+  border-left: 3px solid var(--green);
+  padding: 12px 0 12px 18px;
+  margin: 18px 0;
+  color: var(--ink);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.review-platforms {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.review-platform {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.review-platform-hint {
+  font-size: 13px;
+  color: var(--soft);
+  flex: 1 1 12ch;
+}
+
+ /* ---------- reviews, displayed ---------- */
+.review-aggregate {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.review-aggregate-score {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-size: 19px;
+}
+
+.review-aggregate-count {
+  color: var(--soft);
+}
+
+.review-card,
+.review-featured {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 22px 24px;
+}
+
+.review-featured {
+  border-left: 3px solid var(--green);
+}
+
+.review-card-rating,
+.review-featured-rating {
+  color: var(--green);
+  letter-spacing: 0.12em;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.review-featured-rating {
+  font-size: 20px;
+}
+
+.review-card-quote,
+.review-featured-quote {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.review-featured-quote {
+  font-size: 21px;
+  line-height: 1.5;
+}
+
+.review-card-by,
+.review-featured-by {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.review-card-cite {
+  display: block;
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+ /* THE SENTENCE A MACHINE READS, and a person can too. Quiet, not hidden: text positioned
+    off-screen for crawlers is the thing this build refuses to do, so it is simply small. */
+.review-card-said {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  color: var(--soft);
+}
+
+ /* A scroll-snapped run, not a carousel. No script, no timer, nothing to hydrate, and every
+    card is in the HTML from the first byte. */
+.review-row {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0 0 12px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(280px, 360px);
+  gap: 18px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+.review-row-item {
+  scroll-snap-align: start;
+}
+
+.review-wall {
+  display: grid;
+  gap: 18px;
+  margin: 26px 0 34px;
+}
+
+@media (min-width: 720px) {
+  .review-wall {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
  /* Towns on /account. Every rule is a flat class - no `.locations-list li` - because a
     descendant selector scoring (0,1,1) is what put grey on the wordmark and made the nav CTA
     unreadable, and copycheck counts them against a baseline for that reason. */

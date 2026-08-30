@@ -180,6 +180,28 @@ export const env = {
     return v ? v : null;
   },
   /**
+   * Where a reviewer can also post their review, once those listings exist.
+   *
+   * ALL THREE ARE UNSET UNTIL SOMEBODY CREATES THE LISTING. Google needs a Business Profile,
+   * and G2 and Trustpilot each need a claimed page before a review URL exists at all. A
+   * platform with no URL is not rendered - a button that goes nowhere is worse than an absent
+   * one, which is the same rule this build applies to a price with no purchase path.
+   *
+   * Read through one getter so the review page and the ops tooling cannot disagree about which
+   * ones are live.
+   */
+  get reviewPlatformUrls(): Record<string, string | null> {
+    const one = (v: string | undefined) => {
+      const t = v?.trim();
+      return t ? t : null;
+    };
+    return {
+      google: one(process.env.REVIEW_URL_GOOGLE),
+      g2: one(process.env.REVIEW_URL_G2),
+      trustpilot: one(process.env.REVIEW_URL_TRUSTPILOT),
+    };
+  },
+  /**
    * Where failed payments, held reports and every other ops alert get reported.
    *
    * IT MUST NOT BE ON THE SENDING DOMAIN, and that is not a style preference. It was
