@@ -4,6 +4,7 @@ import { attachDelta, buildReport } from '@/lib/report';
 import { asIssued, saveReport } from '@/lib/reports';
 import { renderReport } from '@/lib/report-html';
 import { SAMPLE_REPORT } from '@/lib/sample-report';
+import { reviewsLive } from '@/lib/reviews';
 
 /**
  * The sample report. §3 of the brand brief.
@@ -44,6 +45,11 @@ const HTML = { 'content-type': 'text/html; charset=utf-8' };
  * silently drop it on the day this page starts showing a real customer.
  */
 const SAMPLE = { publicSample: true } as const;
+
+/** The same question the site nav asks, so the two bars cannot show different items. */
+async function sampleOptions() {
+  return { ...SAMPLE, reviewsLive: await reviewsLive() };
+}
 const PUBLIC = {
   // Cached hard: it is one document that changes when a human changes it, and it is the page
   // most likely to be linked from somewhere we do not control.
@@ -53,12 +59,12 @@ const PUBLIC = {
 
 export async function GET(): Promise<Response> {
   const runId = env.sampleRunId;
-  if (!runId) return new Response(renderReport(SAMPLE_REPORT, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
+  if (!runId) return new Response(renderReport(SAMPLE_REPORT, await sampleOptions()), { headers: { ...HTML, ...PUBLIC } });
 
   const run = await getRunById(runId);
   if (!run) {
     console.error(`sample: SAMPLE_RUN_ID ${runId} does not match a run. Serving the specimen.`);
-    return new Response(renderReport(SAMPLE_REPORT, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
+    return new Response(renderReport(SAMPLE_REPORT, await sampleOptions()), { headers: { ...HTML, ...PUBLIC } });
   }
 
   // Same path the subscriber's own copy takes, so the sample cannot quietly become a nicer
@@ -67,5 +73,5 @@ export async function GET(): Promise<Response> {
   const row = await saveReport(rebuilt, run);
   const report = await asIssued(rebuilt, row);
 
-  return new Response(renderReport(report, SAMPLE), { headers: { ...HTML, ...PUBLIC } });
+  return new Response(renderReport(report, await sampleOptions()), { headers: { ...HTML, ...PUBLIC } });
 }

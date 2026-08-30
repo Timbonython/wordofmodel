@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 /**
  * A scan that is not there, reported as not there.
@@ -12,7 +12,7 @@ import { SiteNav } from '@/components/SiteNav';
 export default function ScanNotFound() {
   return (
     <>
-      <SiteNav sampleLive issue="Scan" />
+      <Nav issue="Scan" />
 
       <main className="wrap legal">
         <section>

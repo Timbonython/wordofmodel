@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 import { FOUNDING_SEATS_PUBLIC } from '@/lib/scope';
 
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <SiteNav sampleLive issue="About" />
+      <Nav issue="About" />
 
       <main className="wrap">
         <section className="hero about-hero">

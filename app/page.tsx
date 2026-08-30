@@ -7,7 +7,7 @@ import { headers } from 'next/headers';
 import { env } from '@/lib/env';
 import { isClick, recordFunnel, touchFrom } from '@/lib/funnel';
 import { PriceCard } from '@/components/PriceCard';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 
 /**
@@ -86,7 +86,7 @@ export default async function Page({
   }
   return (
     <>
-      <SiteNav scanIsHere sampleLive={sampleLive} tagline="What the assistants say about you, who they cite, how often they recommend you, and three ranked actions." />
+      <Nav scanIsHere tagline="What the assistants say about you, who they cite, how often they recommend you, and three ranked actions." />
 
       <main className="wrap">
         {/* ============ 1. HERO ============

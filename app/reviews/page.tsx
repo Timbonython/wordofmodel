@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { AggregateBadge } from '@/components/reviews/AggregateBadge';
@@ -51,7 +51,7 @@ export default async function ReviewsPage() {
   return (
     <>
       <JsonLd schema={schema} />
-      <SiteNav sampleLive issue="Reviews" />
+      <Nav issue="Reviews" />
 
       <main className="wrap">
         <section>

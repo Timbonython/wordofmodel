@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export default function FaqPage() {
   return (
     <>
-      <SiteNav sampleLive issue="FAQs" />
+      <Nav issue="FAQs" />
 
       <main className="wrap">
         <section className="hero faq-hero">

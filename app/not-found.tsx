@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <>
-      <SiteNav sampleLive issue="Not found" />
+      <Nav issue="Not found" />
 
       <main className="wrap legal">
         <section>

@@ -4,7 +4,7 @@ import { stripe, idOf } from '@/lib/stripe';
 import { getSubscriptionByStripeId } from '@/lib/billing';
 import { getScope } from '@/lib/onboarding';
 import { monthlySurfaceList, ordinal, quarterlySurfaceList } from '@/lib/billing-mail';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +58,7 @@ export default async function ConfirmedPage({
 
   return (
     <>
-      <SiteNav sampleLive issue="Confirmed" />
+      <Nav issue="Confirmed" />
 
       <main className="wrap">
         <section className="wizard-step">

@@ -9,7 +9,7 @@ import { formatReportDate } from '@/lib/billing-mail';
 import { priceLabel } from '@/lib/scope';
 import SignIn from '@/components/wizard/SignIn';
 import PortalButton from '@/components/wizard/PortalButton';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -178,7 +178,7 @@ function statusLine(status: string, cancelling: boolean): string {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SiteNav sampleLive issue="Account" />
+      <Nav issue="Account" />
       <main className="wrap">{children}</main>
     </>
   );

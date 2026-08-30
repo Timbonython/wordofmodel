@@ -66,6 +66,12 @@ export interface RenderOptions {
    * the way out - so the two flags cannot be collapsed into one.
    */
   publicSample?: boolean;
+  /**
+   * Whether /reviews exists yet. Passed in rather than read here, because this module renders
+   * an email-adjacent document and should not be making database calls; app/sample/route.ts
+   * asks the same reviewsLive() the site nav asks, so the two bars cannot disagree.
+   */
+  reviewsLive?: boolean;
 }
 
 export function renderReport(r: ReportData, options: RenderOptions = {}): string {
@@ -87,7 +93,7 @@ export function renderReport(r: ReportData, options: RenderOptions = {}): string
 </head>
 <body>
 ${r.specimen ? specimenBanner() : ''}
-${options.publicSample ? siteBar(env.siteUrl) : ''}
+${options.publicSample ? siteBar(env.siteUrl, Boolean(options.reviewsLive)) : ''}
 <header class="masthead"><div class="wrap">
   ${options.publicSample ? '' : `<div class="wordmark"><a class="masthead-home" href="${esc(env.siteUrl)}/"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a></div>`}
   <div class="issue">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
@@ -509,11 +515,13 @@ function sectionMethod(r: ReportData): string {
  * issue line - brand, market, period - which is exactly how the site is arranged: SiteNav, then
  * the caption underneath.
  *
- * NO LINK TO /reviews. That page 404s until there are five approved reviews, and a nav item
- * pointing at a 404 is worse than an absent one. "Sample report" is the page you are on, marked
- * as current rather than linked to itself.
+ * THE REVIEWS LINK APPEARS ONLY ONCE /reviews EXISTS. That page 404s until five approved
+ * reviews, and a nav item pointing at a 404 is worse than an absent one - the same rule
+ * sampleLive was written for. The flag comes from the same reviewsLive() the site nav uses, so
+ * the two bars turn it on in the same minute. "Sample report" is the page you are on, marked as
+ * current rather than linked to itself.
  */
-function siteBar(siteUrl: string): string {
+function siteBar(siteUrl: string, reviewsLive: boolean): string {
   const u = esc(siteUrl);
   return `<header class="rnav"><div class="wrap rnav-inner">
   <a class="rnav-brand wordmark" href="${u}/"><span class="lockup">${markSvg(20)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a>
@@ -521,6 +529,7 @@ function siteBar(siteUrl: string): string {
     <a class="rnav-link" href="${u}/method">How it works</a>
     <a class="rnav-link" href="${u}/pricing">Pricing</a>
     <span class="rnav-here">Sample report</span>
+    ${reviewsLive ? `<a class="rnav-link" href="${u}/reviews">Reviews</a>` : ''}
     <a class="rnav-cta" href="${u}/#scan">Free scan</a>
   </nav>
 </div></header>`;

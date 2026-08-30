@@ -41,6 +41,7 @@ export function SiteNav({
   /** Home page suppresses its own "Free scan" link - the scan is already the hero. */
   scanIsHere = false,
   sampleLive = false,
+  reviewsLive = false,
 }: {
   issue?: string;
   tagline?: string;
@@ -51,6 +52,12 @@ export function SiteNav({
    * as a dead end. Set SAMPLE_RUN_ID and it appears.
    */
   sampleLive?: boolean;
+  /**
+   * Whether /reviews has enough approved reviews to exist. Below the threshold that route calls
+   * notFound(), so the link must follow the page rather than the other way round. Decided in
+   * components/Nav.tsx, never at a call site.
+   */
+  reviewsLive?: boolean;
 }) {
   const here = usePathname();
   // Exact match. Every nav target is a leaf today, and a startsWith would light up "How it
@@ -74,6 +81,11 @@ export function SiteNav({
           {sampleLive ? (
             <Link href="/sample" prefetch={false} {...at('/sample')}>
               Sample report
+            </Link>
+          ) : null}
+          {reviewsLive ? (
+            <Link href="/reviews" prefetch={false} {...at('/reviews')}>
+              Reviews
             </Link>
           ) : null}
           {scanIsHere ? (

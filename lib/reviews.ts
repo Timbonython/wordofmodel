@@ -134,6 +134,42 @@ export async function reviewStats(): Promise<ReviewStats> {
   };
 }
 
+/**
+ * Is there a /reviews page to link to yet?
+ *
+ * THE NAV MUST NOT POINT AT A 404. /reviews does not exist below the threshold - it calls
+ * notFound() - so a link to it before then is a dead item in the bar on every page of the site.
+ * That is the same rule `sampleLive` exists for, and the reason this is a function rather than a
+ * constant somebody has to remember to flip.
+ *
+ * CACHED FOR SIXTY SECONDS because it is now read on every page render. The count changes only
+ * when a review is approved by hand, so a minute of staleness costs nothing and the alternative
+ * is a query per page view for a number that moves twice a month. Same trade the founding count
+ * makes on the home page.
+ *
+ * Fails CLOSED. If the count cannot be read, the link does not render: a missing nav item is a
+ * smaller failure than one that 404s, and this build errs toward its own cost every time.
+ */
+let liveCache: { at: number; value: boolean } | null = null;
+const LIVE_TTL_MS = 60_000;
+
+export async function reviewsLive(): Promise<boolean> {
+  if (liveCache && Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.value;
+  try {
+    const { count, error } = await db()
+      .from('reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'approved');
+    if (error) throw new Error(error.message);
+    const value = (count ?? 0) >= REVIEWS_MIN_FOR_AGGREGATE;
+    liveCache = { at: Date.now(), value };
+    return value;
+  } catch (err) {
+    console.error('reviewsLive failed; hiding the link rather than risking a 404 in the nav', err);
+    return false;
+  }
+}
+
 /** The platforms that actually have a URL configured. Empty until somebody creates the listings. */
 export function livePlatforms() {
   return platforms(env.reviewPlatformUrls);

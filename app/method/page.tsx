@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MONTHLY_SURFACES, QUARTERLY_SURFACES, SURFACES } from '@/lib/scope';
 import { SAMPLES } from '@/lib/engines';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 export const metadata: Metadata = {
   title: 'How we measure - Word of Model',
@@ -59,7 +59,7 @@ function list(names: string[]): string {
 export default function MethodPage() {
   return (
     <>
-      <SiteNav sampleLive issue="How we measure" />
+      <Nav issue="How we measure" />
 
       <main className="wrap legal">
         <section>

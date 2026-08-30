@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ABN, ENTITY, CONTACT_EMAIL, LAST_UPDATED } from '@/lib/legal';
 import { metaMode } from '@/lib/meta';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 export const metadata: Metadata = {
   title: 'Privacy - Word of Model',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <>
-      <SiteNav sampleLive issue="Privacy" />
+      <Nav issue="Privacy" />
 
       <main className="wrap legal">
         <section>

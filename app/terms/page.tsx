@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ABN, CONTACT_EMAIL, ENTITY, JURISDICTION, LAST_UPDATED } from '@/lib/legal';
 import { FOUNDING_SEATS_PUBLIC as FOUNDING_SEATS, PRICE_USD } from '@/lib/scope';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 
 export const metadata: Metadata = {
   title: 'Terms - Word of Model',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
-      <SiteNav sampleLive issue="Terms" />
+      <Nav issue="Terms" />
 
       <main className="wrap legal">
         <section>

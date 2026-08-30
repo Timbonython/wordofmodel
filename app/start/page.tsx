@@ -7,7 +7,7 @@ import { getScan } from '@/lib/db';
 import { recordFunnel, touchFrom } from '@/lib/funnel';
 import { foundingOfferOrNull } from '@/lib/billing';
 import Wizard, { type WizardProfileInput } from '@/components/wizard/Wizard';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { planTierFrom } from '@/lib/scope';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +88,7 @@ export default async function StartPage({
 
   return (
     <>
-      <SiteNav sampleLive issue="Setup" />
+      <Nav issue="Setup" />
 
       <main className="wrap">
         <Wizard

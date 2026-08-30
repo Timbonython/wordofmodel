@@ -1457,3 +1457,32 @@ Two notes for whoever writes CSS in `lib/report-css.ts` next: the whole styleshe
 template literal, so **a backtick in a comment ends it** - that is how this block failed to compile
 first time. And the last declaration in a minified block has no trailing semicolon, which is how
 `brandcheck`'s own parser first reported a `letter-spacing` that was plainly there as missing.
+
+## The nav decides its own items now (30 Aug 2026)
+
+The Reviews link appears in the bar the minute there are five approved reviews, and not before -
+`/reviews` calls `notFound()` below the threshold, and a nav item pointing at a 404 is worse than
+an absent one. That is the rule `sampleLive` was written for.
+
+**The interesting part is that adding it the obvious way would have doubled an existing problem.**
+`sampleLive` was passed by hand at **fourteen call sites, every one of them the literal `true`**.
+A second conditional item done the same way makes twenty-eight places to forget, and a rule that
+depends on being remembered on every new page is not a rule.
+
+So `components/Nav.tsx` is a server component that asks the questions once and renders `SiteNav`
+with the answers. Every page now renders `<Nav issue="..." />` and knows nothing. `SiteNav` stays
+a client component because it reads `usePathname` to mark the current page; `Nav` is the server
+half that can reach the database.
+
+`reviewsLive()` is **cached for sixty seconds** - it is read on every page render now, and the
+count moves twice a month. It **fails closed**: if the count cannot be read the link does not
+render, because a missing item is a smaller failure than one that 404s.
+
+**The sample page's bar asks the same function**, passed in through `renderReport`'s options
+rather than read inside it - that module renders a document and should not be making database
+calls. The two bars therefore turn the link on in the same minute rather than drifting apart.
+
+Proven both ways against a real database: at zero approved reviews, zero links across `/`,
+`/pricing`, `/method`, `/about` and `/sample`, and `/reviews` 404s. At five, one link on each of
+the five surfaces, `/reviews` 200s, and the item carries `aria-current="page"` when you are on it.
+Probe rows removed afterwards.

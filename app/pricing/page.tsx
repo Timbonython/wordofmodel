@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 import { PricingCards } from '@/components/PricingCards';
 import { PriceCard } from '@/components/PriceCard';
@@ -44,7 +44,7 @@ export default async function PricingPage() {
           prices come from the same PRICE_USD constant the cards render, so the structured data
           cannot quote a number the page does not. */}
       <JsonLd schema={productSchema(env.siteUrl)} />
-      <SiteNav sampleLive issue="Pricing" />
+      <Nav issue="Pricing" />
 
       <main className="wrap">
         <section className="hero pricing-hero">

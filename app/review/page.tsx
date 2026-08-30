@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { SiteNav } from '@/components/SiteNav';
+import { Nav } from '@/components/Nav';
 import { SiteFooter } from '@/components/SiteFooter';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
 import { livePlatforms } from '@/lib/reviews';
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 export default function ReviewPage() {
   return (
     <>
-      <SiteNav sampleLive issue="Review" />
+      <Nav issue="Review" />
 
       <main className="wrap">
         <section className="wizard-step">
