@@ -274,6 +274,38 @@ export const REPORT_CSS = `
      two share twenty five class names - wrap, issue, wordmark, lockup, masthead, card, note,
      lede, eyebrow among them - and loading both on one document is the cascade collision this
      build has already paid for twice. The sample stays one self-contained document. */
+  /* THE SITE NAV, REBUILT INSIDE THE REPORT'S OWN STYLESHEET.
+
+     Not sitenav-*. The site stylesheet and this one define twenty five class names in common -
+     wrap, issue, wordmark, lockup, masthead, card, note, lede and eyebrow among them - so
+     loading both on one document is the cascade collision this build has paid for twice. These
+     are rnav-*, which collide with nothing, and the sample stays one self-contained file.
+
+     No backticks in this comment, deliberately: the whole stylesheet is a TypeScript template
+     literal and a backtick here ends it. That is how this block failed to compile the first
+     time it was written.
+
+     The duplication is real and is GUARDED: brandcheck asserts the four type values below
+     against .sitenav-links in app/globals.css. Nothing enforced tracking anywhere until 30 Aug,
+     and a value here drifting from the site's is precisely how one bar ends up looking like two
+     different designs on two pages. */
+  .rnav{border-bottom:1px solid var(--rule);padding:12px 0 14px;margin-bottom:26px}
+  .rnav-inner{display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .rnav-brand{text-decoration:none;color:inherit}
+  .rnav-links{display:flex;align-items:baseline;gap:22px;
+    font-family:var(--cond);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .rnav-link{color:var(--ink);text-decoration:none}
+  .rnav-link:hover{text-decoration:underline;text-underline-offset:3px}
+  .rnav-here{color:var(--ink);box-shadow:inset 0 -2px 0 var(--good);padding-bottom:3px}
+  .rnav-cta{background:var(--good);color:var(--paper);border:0;padding:9px 16px;text-decoration:none;
+    display:inline-block;
+    font-family:var(--cond);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .rnav-cta:hover{opacity:.9}
+  @media (max-width:640px){
+    .rnav-links{gap:10px;font-size:11px;letter-spacing:.08em;width:100%;flex-wrap:wrap;white-space:nowrap}
+    .rnav-cta{font-size:11px;padding:8px 11px}
+  }
+
   .masthead-home{text-decoration:none;color:inherit}
   .masthead-home:hover .lockup-text{text-decoration:underline;text-underline-offset:3px}
   .closing{border-top:2px solid var(--ink);padding-top:26px;margin-top:12px}

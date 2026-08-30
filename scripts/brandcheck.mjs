@@ -190,6 +190,77 @@ if (readmePairs === 0 && !problems.some((p) => p.startsWith('brand/README.md is 
   problems.push('brand/README.md declared no palette pairs, so that copy went unchecked.');
 }
 
+// ---------------------------------------------------------------------------------------
+// THE SAMPLE PAGE'S NAV IS A SECOND COPY OF THE SITE'S, AND THIS IS WHAT STOPS IT DRIFTING.
+//
+// /sample returns a whole document from renderReport with its own stylesheet, because the site
+// stylesheet and the report one define twenty five class names in common and loading both is a
+// cascade collision this build has paid for twice. So the bar is rebuilt as .rnav-* inside
+// REPORT_CSS rather than shared - which means the type values exist twice.
+//
+// The palette was already covered. Tracking, weight and size were not: brand/README.md recorded
+// the nav at .11em for a day after it moved to .08em, in a file nobody was checking. A number
+// written twice and enforced nowhere is a number that goes stale, so these four are compared.
+const reportCss = readFileSync(join(here, '../lib/report-css.ts'), 'utf8');
+const siteCss = readFileSync(join(here, '../app/globals.css'), 'utf8');
+
+function declarationsOf(css, selector) {
+  const at = css.indexOf(selector + '{') >= 0 ? css.indexOf(selector + '{') : css.indexOf(selector + ' {');
+  if (at < 0) return null;
+  const body = css.slice(at, css.indexOf('}', at));
+  const out = {};
+  // The final declaration in a minified block has no trailing semicolon, which is how this
+  // helper first reported letter-spacing as missing on a rule that plainly had it.
+  for (const m of body.matchAll(/([a-z-]+)\s*:\s*([^;{}]+)(?:;|$)/g)) out[m[1]] = m[2].trim();
+  return out;
+}
+
+/**
+ * Do two CSS values mean the same thing, written to two files' conventions?
+ *
+ * `.08em` and `0.08em` are one value; `uppercase` and `uppercase` are another. Comparing with
+ * parseFloat alone made every keyword NaN and therefore unequal to itself, which is how this
+ * check first failed on `text-transform: uppercase` against `text-transform: uppercase`.
+ */
+function sameValue(a, b) {
+  if (a === undefined || b === undefined) return false;
+  const na = parseFloat(a);
+  const nb = parseFloat(b);
+  if (Number.isNaN(na) || Number.isNaN(nb)) return a.trim() === b.trim();
+  return na === nb && a.replace(/[\d.\s]/g, '') === b.replace(/[\d.\s]/g, '');
+}
+
+const siteNav = declarationsOf(siteCss, '.sitenav-links');
+const reportNav = declarationsOf(reportCss, '.rnav-links');
+const reportCta = declarationsOf(reportCss, '.rnav-cta');
+const siteCta = declarationsOf(siteCss, '.button-green');
+
+if (!siteNav || !reportNav) {
+  problems.push('Could not read .sitenav-links or .rnav-links, so the sample nav went unchecked.');
+} else {
+  // Not font-family: the site writes var(--font-cond) and the report writes var(--cond), because
+  // each names the token its own stylesheet defines. The RENDERED type is what has to agree.
+  for (const prop of ['font-weight', 'font-size', 'text-transform', 'letter-spacing']) {
+    const a = siteNav[prop];
+    const b = reportNav[prop];
+    if (!sameValue(a, b)) {
+      problems.push(
+        `The sample page's nav has ${prop}: ${b ?? 'nothing'} but the site's .sitenav-links has ` +
+          `${a ?? 'nothing'}. One bar, two pages, two designs.`,
+      );
+    }
+  }
+}
+if (siteCta && reportCta) {
+  for (const prop of ['font-weight', 'font-size', 'letter-spacing', 'padding']) {
+    const a = siteCta[prop];
+    const b = reportCta[prop];
+    if (!sameValue(a, b)) {
+      problems.push(`The sample page's Free scan button has ${prop}: ${b} but the site's has ${a}.`);
+    }
+  }
+}
+
 if (problems.length) {
   console.error(`brandcheck: ${problems.length} problem(s).\n`);
   for (const p of problems) console.error(`  - ${p}`);
@@ -200,5 +271,6 @@ if (problems.length) {
 console.log(
   `brandcheck: clean. ${Object.keys(MAP).length} tokens agree between lib/brand.ts and ` +
     `app/globals.css; ${kitHexCount} hex literals across ${kitFiles.length} render-kit scripts ` +
-    `and ${readmePairs} documented in brand/README.md are all BRAND values.`,
+    `and ${readmePairs} documented in brand/README.md are all BRAND values; the sample page's ` +
+    `nav matches the site's.`,
 );

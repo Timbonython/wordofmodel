@@ -1223,6 +1223,12 @@ rule into the hero orphaned it from the brand it describes.
 `/report/[runId]` uses. It is indexable, it is the page most likely to be forwarded, and it had no
 link anywhere back into the site.
 
+**AMENDED 30 Aug 2026 - the nav was built after all, and the first fix did not work.** The
+wordmark link and the closing block below are still there and still correct, but on their own they
+left the page a dead end in practice: the link looked identical to plain text, and the closing
+block sat at 5,461px of a 5,801px document, 94% down. A fix nobody can see is not a fix. See the
+section below.
+
 **The obvious fix is the one that cannot be done.** Putting the site nav above the report means
 loading `globals.css` and `REPORT_CSS` on one document, and **twenty five class names are defined
 in both**: `wrap`, `issue`, `wordmark`, `lockup`, `masthead`, `card`, `note`, `lede`, `eyebrow`
@@ -1421,3 +1427,33 @@ events post from the client. It undercounts anybody with scripts off, which is t
 `utm_content`**: that is ad attribution and is what separates hook A from hook C in every report.
 
 `npm run reviews:check` proves all fifteen guards, each watched refusing.
+
+## The sample page has the real nav now, rebuilt rather than shared (30 Aug 2026)
+
+The first attempt gave `/sample` a wordmark that linked home and a CTA at the end. Both shipped,
+both were invisible: a link with no affordance is not discoverable, and 94% down a 5,801px page is
+not a way out. Tim asked three times before this was actually done.
+
+**The stylesheets still cannot be merged** - twenty five shared class names, unchanged - so the bar
+is rebuilt as `.rnav-*` inside `REPORT_CSS`. No collision, and the sample stays one self-contained
+document.
+
+**The duplication is guarded.** `brandcheck` now compares `font-weight`, `font-size`,
+`text-transform` and `letter-spacing` between `.rnav-links` and `.sitenav-links`, plus the button's
+padding. Proven by drifting the tracking to `.11em` - the exact value that had gone stale in
+`brand/README.md` a day earlier - and by changing the button padding, and watching each fail.
+
+**Two defects a screenshot caught and the code did not.** The first build put the nav's wordmark
+above the report masthead's wordmark: two identical marks stacked. The masthead now drops its
+wordmark when the bar is present and keeps only its issue line, which is exactly how the site is
+arranged. And the nav linked to `/reviews`, which 404s until five approved reviews exist - a nav
+item pointing at a 404 is worse than an absent one. It says "Sample report", marked as the current
+page.
+
+**Sample only.** A subscriber reading their own report arrived signed in from an email and does not
+need Pricing and a Free scan button over their own numbers.
+
+Two notes for whoever writes CSS in `lib/report-css.ts` next: the whole stylesheet is a TypeScript
+template literal, so **a backtick in a comment ends it** - that is how this block failed to compile
+first time. And the last declaration in a minified block has no trailing semicolon, which is how
+`brandcheck`'s own parser first reported a `letter-spacing` that was plainly there as missing.

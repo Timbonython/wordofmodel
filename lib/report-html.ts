@@ -87,8 +87,9 @@ export function renderReport(r: ReportData, options: RenderOptions = {}): string
 </head>
 <body>
 ${r.specimen ? specimenBanner() : ''}
+${options.publicSample ? siteBar(env.siteUrl) : ''}
 <header class="masthead"><div class="wrap">
-  <div class="wordmark"><a class="masthead-home" href="${esc(env.siteUrl)}/"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a></div>
+  ${options.publicSample ? '' : `<div class="wordmark"><a class="masthead-home" href="${esc(env.siteUrl)}/"><span class="lockup">${markSvg(22)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a></div>`}
   <div class="issue">${esc(r.scope.brandName)} &middot; ${esc(r.scope.market)} &middot; ${esc(period)}</div>
 </div></header>
 
@@ -494,6 +495,37 @@ function sectionMethod(r: ReportData): string {
  * is not (the format, the questions, the method). Only saying the first half would make the
  * page useless as evidence; only saying the second would make it a lie.
  */
+/**
+ * The site bar, on the public sample only.
+ *
+ * ON /sample AND NOT ON A SUBSCRIBER'S OWN REPORT. A stranger reading the sample has no other
+ * way into the site and every reason to want one. Somebody reading their own report arrived
+ * signed in from an email and does not need Pricing and a Free scan button over the top of
+ * their own numbers.
+ *
+ * THE REPORT'S OWN MASTHEAD DROPS ITS WORDMARK WHEN THIS BAR IS PRESENT. The first version
+ * shipped both and put two identical marks on the screen, one above the other, which a
+ * screenshot caught and the code did not. The bar carries the brand and the masthead keeps its
+ * issue line - brand, market, period - which is exactly how the site is arranged: SiteNav, then
+ * the caption underneath.
+ *
+ * NO LINK TO /reviews. That page 404s until there are five approved reviews, and a nav item
+ * pointing at a 404 is worse than an absent one. "Sample report" is the page you are on, marked
+ * as current rather than linked to itself.
+ */
+function siteBar(siteUrl: string): string {
+  const u = esc(siteUrl);
+  return `<header class="rnav"><div class="wrap rnav-inner">
+  <a class="rnav-brand wordmark" href="${u}/"><span class="lockup">${markSvg(20)}<span class="lockup-text">Word of Model&trade;<span class="lockup-suffix">.ai</span></span></span></a>
+  <nav class="rnav-links" aria-label="Main">
+    <a class="rnav-link" href="${u}/method">How it works</a>
+    <a class="rnav-link" href="${u}/pricing">Pricing</a>
+    <span class="rnav-here">Sample report</span>
+    <a class="rnav-cta" href="${u}/#scan">Free scan</a>
+  </nav>
+</div></header>`;
+}
+
 /**
  * The way out, at the end of the sample.
  *
