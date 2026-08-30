@@ -3,6 +3,25 @@
  *
  *   npm run pixel:check                     against a local production build
  *   npm run pixel:check -- https://...      against a deployment
+ *   PIXEL_CHECK_DOMAIN=x.com npm run pixel:check   use a different already-scanned domain
+ *   PIXEL_CHECK_PAID=yes npm run pixel:check       allow a run that asks real engines
+ *
+ * WHAT THE DEFAULT RUN COVERS, AND WHY IT IS USUALLY FREE. On 27 Aug 2026 Lead was moved off
+ * Wizard mount - where it meant "somebody loaded /start" and the campaign was optimising toward
+ * page renders - and into the reveal's success branch in ScanResult.tsx, where a person has
+ * given a working address and had a real result returned. That was the right move and it has a
+ * consequence for this file: reaching that branch means going through the scan.
+ *
+ * That is FREE on a domain this environment has already scanned - /api/detect returns the stored
+ * result and no engine is asked - and costs about US$0.37 on one it has not. The Lead case
+ * detects which it got and REPORTS ITSELF AS SKIPPED rather than quietly spending. A check that
+ * costs money every time is a check nobody runs; one that silently stops covering something is
+ * worse than one that says so.
+ *
+ * This file said Lead was at Wizard.tsx:121 for three days after that move, and reported a
+ * failure that was the check being wrong rather than the code. A test describing behaviour the
+ * code deliberately stopped having is the same defect as a stale comment, and it costs more,
+ * because somebody acts on it.
  *
  * Needs Playwright and a real Chrome, neither of which is a dependency of this project:
  *   npm i --no-save playwright && NODE_PATH=./node_modules npm run pixel:check
@@ -41,14 +60,6 @@ const BASE = process.argv[2] ?? 'http://localhost:3000';
  */
 const CASES = [
   {
-    event: 'Lead',
-    where: 'components/wizard/Wizard.tsx:121, useMetaEvent on wizard mount',
-    async run(page) {
-      await page.goto(`${BASE}/start`, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(6000);
-    },
-  },
-  {
     event: 'PageView',
     where: 'components/MetaPixel.tsx, snippet on load plus MetaRouteChange on soft navigation',
     async run(page) {
@@ -62,6 +73,59 @@ const CASES = [
       await page.waitForTimeout(4000);
     },
   },
+  {
+    event: 'Lead',
+    where: 'components/scan/ScanResult.tsx, the reveal success branch - moved there 27 Aug 2026',
+    /*
+     * FREE ON A DOMAIN THAT HAS ALREADY BEEN SCANNED, AND THAT IS THE WHOLE TRICK.
+     *
+     * /api/detect does not merely detect. On a domain with a stored scan it returns the RESULT,
+     * cached, and the profile confirmation screen never appears - no engines run and nothing is
+     * spent. On an unscanned domain it stops at that screen and agreeing to it asks two engines,
+     * about US$0.37 and up to two minutes.
+     *
+     * So this races the two outcomes rather than assuming either. That was learned the annoying
+     * way: written for the confirmation step, it failed twice against a cached domain and the
+     * error said the button had not appeared, which was true and completely misleading.
+     *
+     * PIXEL_CHECK_DOMAIN must therefore name a domain this environment has scanned before. If it
+     * has not, the case reports itself as costing money and skips, rather than quietly spending.
+     */
+    async run(page, { allowPaid }) {
+      await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+      await page.locator('#scan input').first().fill(process.env.PIXEL_CHECK_DOMAIN ?? 'holafly.com');
+      await page.locator('#scan button').first().click();
+
+      const confirm = page.getByRole('button', { name: /yes, run it/i });
+      const reveal = page.locator('#reveal-email');
+      let cached = true;
+      await Promise.race([
+        confirm.waitFor({ timeout: 90000 }).then(() => { cached = false; }),
+        reveal.waitFor({ timeout: 90000 }).then(() => { cached = true; }),
+      ]).catch(() => {
+        throw new Error(
+          'Neither the confirmation nor a result appeared. /api/detect is slow or failed - open ' +
+            'the page by hand before believing anything about the pixel.',
+        );
+      });
+
+      if (!cached) {
+        if (!allowPaid) {
+          return { skipped: 'that domain has no stored scan here, so this run would ask two engines and cost about US$0.37. PIXEL_CHECK_PAID=yes to allow it, or point PIXEL_CHECK_DOMAIN at a domain already scanned in this environment.' };
+        }
+        await confirm.click();
+        // Two engines. The slowest single capture measured 120s, so this is generous on purpose.
+        await reveal.waitFor({ timeout: 300000 }).catch(() => {
+          throw new Error('The scan never produced a result, so the reveal was never reached.');
+        });
+      }
+
+      await reveal.fill(process.env.PIXEL_CHECK_EMAIL ?? 'pixel-check@example.com');
+      await reveal.press('Enter');
+      await page.waitForTimeout(9000);
+      return {};
+    },
+  },
 ];
 
 const browser = await chromium.launch({
@@ -70,6 +134,8 @@ const browser = await chromium.launch({
 });
 
 let failures = 0;
+let skipped = 0;
+const runPaid = process.env.PIXEL_CHECK_PAID === 'yes';
 
 for (const c of CASES) {
   const seen = [];
@@ -94,7 +160,14 @@ for (const c of CASES) {
     }
   });
 
-  await c.run(page);
+  const outcome = (await c.run(page, { allowPaid: runPaid })) ?? {};
+  if (outcome.skipped) {
+    skipped++;
+    console.log(`SKIP  ${c.event.padEnd(18)} ${c.where}`);
+    console.log(`        ${outcome.skipped}`);
+    await context.close();
+    continue;
+  }
   // Leaving the page is what a real visitor does, and modern fbevents can hold a batch until
   // then. Without this a real send looks like a missing one.
   await page.goto('about:blank', { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -112,9 +185,17 @@ for (const c of CASES) {
 
 await browser.close();
 
-console.log(
-  failures
-    ? `\n${failures} event(s) never reached the wire.`
-    : '\nEvery named event put a request on the wire.',
-);
+// A SKIPPED CASE IS REPORTED, NEVER FOLDED INTO A PASS. "Every named event put a request on the
+// wire" over one of two cases reads identically to the same line over both, and this build has
+// been bitten by exactly that shape more than once - a reconciliation over zero subscriptions, a
+// brandcheck over no files. Say what was covered.
+const ran = CASES.length - skipped;
+if (failures) {
+  console.log(`\n${failures} event(s) never reached the wire.`);
+} else if (skipped) {
+  console.log(`\n${ran} of ${CASES.length} events put a request on the wire. ${skipped} SKIPPED and unverified.`);
+  console.log('PIXEL_CHECK_PAID=yes npm run pixel:check   to cover the rest, at about US$0.37.');
+} else {
+  console.log('\nEvery named event put a request on the wire.');
+}
 process.exitCode = failures ? 1 : 0;

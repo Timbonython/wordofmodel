@@ -1486,3 +1486,38 @@ Proven both ways against a real database: at zero approved reviews, zero links a
 `/pricing`, `/method`, `/about` and `/sample`, and `/reviews` 404s. At five, one link on each of
 the five surfaces, `/reviews` 200s, and the item carries `aria-current="page"` when you are on it.
 Probe rows removed afterwards.
+
+## pixel:check was testing an event the code deliberately stopped firing (30 Aug 2026)
+
+It reported `FAIL Lead ... nothing reached Meta at all` and the failure was the check being wrong.
+On 27 Aug, `7a5110a` moved `Lead` off Wizard mount - where it meant "somebody loaded /start",
+ungated and re-fired on every reload, so the live campaign was optimising toward page renders -
+into the reveal's success branch in `ScanResult.tsx`. The check was never updated, still opened
+`/start`, and waited for an event that had correctly been taken away.
+
+**A test describing behaviour the code deliberately stopped having is the same defect as a stale
+comment, and it costs more, because somebody acts on it.** Same shape as the `.11em` in
+`brand/README.md`.
+
+### Two things I got wrong before getting it right
+
+**I ran it wrong first.** The script's own header says
+`META_PIXEL_ID=1000000000000001 npm run start` - a throwaway id against a production build,
+because the real pixel trips Meta's automation detection and returns a false negative. I ran it
+against `npm run dev` with no id, so both events failed for a reason that had nothing to do with
+the code.
+
+**Then I designed the fix around an assumption I had not tested.** I built a paid/skip gate on the
+belief that reaching the reveal always costs a scan. It does not: **`/api/detect` returns the
+stored RESULT for a domain already scanned in that environment**, the confirmation screen never
+appears, and no engine is asked. Written for the confirmation step, the check failed twice against
+a cached domain with an error saying the button had not appeared - true, and completely
+misleading.
+
+The Lead case now RACES the two outcomes rather than assuming either. Free on a scanned domain;
+on an unscanned one it reports itself skipped with the reason and the cost rather than quietly
+spending US$0.37. A skip is never folded into the pass line - the summary says how many of how
+many actually ran, for the same reason the location reconciliation returns `examined`.
+
+Proven both ways: `holafly.com` (stored) passes PageView and Lead free in one run; `ubigi.com`
+(not stored) passes PageView and skips Lead. Probe email cleared from the scan row afterwards.
