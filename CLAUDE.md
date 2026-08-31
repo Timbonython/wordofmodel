@@ -1521,3 +1521,45 @@ many actually ran, for the same reason the location reconciliation returns `exam
 
 Proven both ways: `holafly.com` (stored) passes PageView and Lead free in one run; `ubigi.com`
 (not stored) passes PageView and skips Lead. Probe email cleared from the scan row afterwards.
+
+## ViewContent is the completed free scan (31 Aug 2026)
+
+It fired two lines above `Lead`, in the reveal's success branch, so **both events described one
+action - somebody giving an email - under two names**. Meta had two conversions to bid on and no
+way to tell them apart, and a campaign optimised for either was optimising for the identical
+thing. The comment in `MetaPixel.tsx` still described the arrangement from before 27 Aug, which is
+the second time that list has been wrong; it now names the file each event fires from.
+
+Now:
+
+| event | where | what it means |
+|---|---|---|
+| `ViewContent` | `ScanPanel.tsx` | the free result is on screen |
+| `Lead` | `ScanResult.tsx` | an email was given and the gated result returned |
+| `InitiateCheckout` | `Wizard.tsx` | just before a Stripe session |
+| `PageView` | `MetaPixel.tsx` | load and every soft navigation |
+| `Purchase` | nowhere | server-side only, and the CAPI token needs a business portfolio |
+
+**A cached result still counts.** The visitor typed a domain, agreed the profile and saw a result;
+whether we paid an engine for it is our business and not a fact about their intent.
+
+**Why it matters commercially.** Since the 28 Aug cutover: 8 scans completed, **0 reveals**. Five
+reveals all time. Meta needs roughly fifty conversions per ad set per week to leave the learning
+phase, so optimising for `Lead` would have left an ad set in learning permanently. ViewContent at
+about nineteen a week is still short of that but is the right order of magnitude and grows with
+spend.
+
+`pixel:check` gained a ViewContent case that stops at the result, and the walk to that point is
+now ONE function shared with the Lead case - written twice, the two would eventually test
+different journeys, which is the exact failure the file exists to catch reproduced inside it.
+
+### Three things that cost time, all mine
+
+**A stale build.** The check failed against a server started before the change. **A dead server.**
+`pkill -f "next start"` matched nothing, the old process kept port 3000, and `next start` failed
+with EADDRINUSE into a log I was not reading - so the browser got 500s for chunks of a `.next` I
+had just deleted, and reported a ChunkLoadError I spent two rounds treating as a page bug. Check
+the port is free, not that a pkill returned. **And "already scanned" means within 24 hours**, not
+ever: `findCachedScan` uses a rolling day, so a domain that was free yesterday costs US$0.37
+today. The skip message said "no stored scan", which sent me looking for a missing row that was
+there and merely too old.

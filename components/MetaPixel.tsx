@@ -101,8 +101,15 @@ type BrowserEvent = 'ViewContent' | 'Lead' | 'InitiateCheckout' | 'PageView';
 /**
  * Fire one standard event, if the pixel is there at all.
  *
- * Standard names rather than custom ones, so Meta's optimiser can actually bid on them:
- * ViewContent for a completed scan, Lead for a wizard start, InitiateCheckout for a session.
+ * Standard names rather than custom ones, so Meta's optimiser can actually bid on them. Where
+ * each one fires, as of 31 Aug 2026 - this list has been wrong twice, so it names the file:
+ *
+ *   ViewContent       ScanPanel, the free result on screen
+ *   Lead              ScanResult, the reveal succeeding - an email given
+ *   InitiateCheckout  Wizard, just before a Stripe session is created
+ *   PageView          here, on load and on every soft navigation
+ *
+ * Purchase is deliberately absent from the type below; see lib/meta.ts.
  * A custom event is invisible to the thing we are paying to optimise. All four names above are
  * Meta standard events, which is why this uses fbq('track', ...) and never trackCustom - a
  * custom name sent through track is discarded silently, and a standard name sent through

@@ -58,6 +58,55 @@ const BASE = process.argv[2] ?? 'http://localhost:3000';
  * a deferred script has defined fbq. Lead is the one that lives on a mount rather than a
  * click, so it is the canary for that ordering and it is checked first.
  */
+/*
+ * "Already scanned" means WITHIN THE LAST 24 HOURS, not ever. findCachedScan in lib/db.ts uses a
+ * rolling day, so a domain scanned yesterday morning stops being free this morning. Worth saying
+ * in the message: an earlier version said "has no stored scan here", which sent me looking for a
+ * missing row that was sitting right there and merely too old.
+ */
+const SKIP_REASON =
+  'that domain has no scan from the last 24 hours here, so this run would ask two engines and ' +
+  'cost about US$0.37. PIXEL_CHECK_PAID=yes to allow it, or point PIXEL_CHECK_DOMAIN at a domain ' +
+  'scanned in this environment today.';
+
+/**
+ * Walk the home page as far as the free result.
+ *
+ * ONE IMPLEMENTATION FOR BOTH CASES. ViewContent stops here and Lead carries on to the email,
+ * and if the walk were written twice the two would eventually test different journeys without
+ * anybody noticing - which is the whole failure this file exists to catch, reproduced inside it.
+ *
+ * Returns 'skip' when the domain has no stored scan and spending was not permitted.
+ */
+async function runScan(page, allowPaid) {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.locator('#scan input').first().fill(process.env.PIXEL_CHECK_DOMAIN ?? 'holafly.com');
+  await page.locator('#scan button').first().click();
+
+  const confirm = page.getByRole('button', { name: /yes, run it/i });
+  const reveal = page.locator('#reveal-email');
+  let cached = true;
+  await Promise.race([
+    confirm.waitFor({ timeout: 90000 }).then(() => { cached = false; }),
+    reveal.waitFor({ timeout: 90000 }).then(() => { cached = true; }),
+  ]).catch(() => {
+    throw new Error(
+      'Neither the confirmation nor a result appeared. /api/detect is slow or failed - open the ' +
+        'page by hand before believing anything about the pixel.',
+    );
+  });
+
+  if (!cached) {
+    if (!allowPaid) return 'skip';
+    await confirm.click();
+    // Two engines. The slowest single capture measured 120s, so this is generous on purpose.
+    await reveal.waitFor({ timeout: 300000 }).catch(() => {
+      throw new Error('The scan never produced a result, so the reveal was never reached.');
+    });
+  }
+  return cached ? 'cached' : 'ran';
+}
+
 const CASES = [
   {
     event: 'PageView',
@@ -71,6 +120,20 @@ const CASES = [
         await page.waitForURL('**/start**', { timeout: 15000 }).catch(() => {});
       }
       await page.waitForTimeout(4000);
+    },
+  },
+  {
+    event: 'ViewContent',
+    where: 'components/scan/ScanPanel.tsx, the free result on screen - moved there 31 Aug 2026',
+    /*
+     * STOPS AT THE RESULT. It used to fire two lines from Lead in the reveal branch, so the two
+     * were one action under two names and this file could not have told them apart either. The
+     * check now walks only as far as the free result, which is exactly what the event claims.
+     */
+    async run(page, { allowPaid }) {
+      const cached = await runScan(page, allowPaid);
+      if (cached === 'skip') return { skipped: SKIP_REASON };
+      return {};
     },
   },
   {
@@ -92,34 +155,9 @@ const CASES = [
      * has not, the case reports itself as costing money and skips, rather than quietly spending.
      */
     async run(page, { allowPaid }) {
-      await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-      await page.locator('#scan input').first().fill(process.env.PIXEL_CHECK_DOMAIN ?? 'holafly.com');
-      await page.locator('#scan button').first().click();
-
-      const confirm = page.getByRole('button', { name: /yes, run it/i });
+      const cached = await runScan(page, allowPaid);
+      if (cached === 'skip') return { skipped: SKIP_REASON };
       const reveal = page.locator('#reveal-email');
-      let cached = true;
-      await Promise.race([
-        confirm.waitFor({ timeout: 90000 }).then(() => { cached = false; }),
-        reveal.waitFor({ timeout: 90000 }).then(() => { cached = true; }),
-      ]).catch(() => {
-        throw new Error(
-          'Neither the confirmation nor a result appeared. /api/detect is slow or failed - open ' +
-            'the page by hand before believing anything about the pixel.',
-        );
-      });
-
-      if (!cached) {
-        if (!allowPaid) {
-          return { skipped: 'that domain has no stored scan here, so this run would ask two engines and cost about US$0.37. PIXEL_CHECK_PAID=yes to allow it, or point PIXEL_CHECK_DOMAIN at a domain already scanned in this environment.' };
-        }
-        await confirm.click();
-        // Two engines. The slowest single capture measured 120s, so this is generous on purpose.
-        await reveal.waitFor({ timeout: 300000 }).catch(() => {
-          throw new Error('The scan never produced a result, so the reveal was never reached.');
-        });
-      }
-
       await reveal.fill(process.env.PIXEL_CHECK_EMAIL ?? 'pixel-check@example.com');
       await reveal.press('Enter');
       await page.waitForTimeout(9000);

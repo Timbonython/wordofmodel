@@ -77,9 +77,15 @@ export function ScanResult({
         error?: string;
       };
       if (!response.ok || !body.gated) throw new Error(body.error || 'That did not work. Try again.');
-      // A genuine result, on screen. Not a page load and not a failed scan: this line is
-      // inside the success branch for the same reason scan_completed is.
-      metaTrack('ViewContent');
+      /*
+       * VIEWCONTENT MOVED OUT OF HERE ON 31 Aug 2026, to the completed scan in ScanPanel.
+       *
+       * It fired two lines above Lead, in this same branch, so both events described one
+       * action - somebody giving an email - under two names. Meta had two conversions to bid
+       * on and no way to tell them apart, and the comment in MetaPixel.tsx still described the
+       * arrangement from before 27 Aug. A completed scan and a surrendered email are different
+       * sizes of commitment and are now different events.
+       */
       // LEAD LIVES HERE, moved from the wizard on 27 Aug 2026. It sat on Wizard mount, which
       // meant a Lead was "somebody loaded /start" - ungated, once per mount, and inflated by
       // next/link prefetching the page from the home page. Meta was being asked to optimise

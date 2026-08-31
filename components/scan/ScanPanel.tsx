@@ -6,6 +6,7 @@ import { readNdjson } from '@/lib/stream';
 import type { FreeResult, ManualReason, Profile, ScanEvent } from '@/lib/types';
 import { ScanProgress, type Step, type StepState } from './ScanProgress';
 import { ScanResult } from './ScanResult';
+import { metaTrack } from '@/components/MetaPixel';
 
 type Phase = 'idle' | 'detecting' | 'confirm' | 'running' | 'result';
 
@@ -155,6 +156,23 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
           question: event.question,
         });
         setPhase('result');
+        /*
+         * VIEWCONTENT IS THE COMPLETED FREE SCAN, from 31 Aug 2026.
+         *
+         * It used to fire in the reveal's success branch, two lines from Lead - so the two
+         * were the same conversion under two names, and a campaign optimised for either was
+         * optimising for the identical action. Meta cannot bid on a distinction that does not
+         * exist in the data.
+         *
+         * Here it means the free result is on the visitor's screen: they typed a domain,
+         * agreed to the profile, and two engines answered. That is the cheapest real signal
+         * this site produces and the one worth buying more of. Lead stays where it is, on the
+         * email, which is a strictly larger commitment.
+         *
+         * A CACHED RESULT STILL COUNTS. The visitor did the same thing and saw the same page;
+         * whether we paid an engine for it is our business and not a fact about their intent.
+         */
+        metaTrack('ViewContent');
         break;
 
       case 'error':
