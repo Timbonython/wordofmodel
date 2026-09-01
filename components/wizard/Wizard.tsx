@@ -16,6 +16,8 @@ import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
 import { iso2 } from '@/lib/domain';
 import { metaTrack } from '@/components/MetaPixel';
+import { BusinessFacts } from '@/components/BusinessFacts';
+import { fact } from '@/lib/profile';
 
 /**
  * The onboarding wizard.
@@ -447,13 +449,32 @@ export default function Wizard({
             <>
               <div className="wizard-fields">
                 <Field label="Brand name" value={profile.brand_name} onChange={(v) => set('brand_name', v)} />
-                <Field
-                  label="What you sell"
-                  hint="One line, the way a customer would say it"
-                  value={profile.what_they_sell}
-                  onChange={(v) => set('what_they_sell', v)}
+
+                {/* THE SAME COMPONENT THE FREE SCAN'S CONFIRM CARD USES. §5 of the grounding
+                    brief: the wizard collects the same three facts, and two hand-written
+                    renderings of one truth is how the pricing pages drifted. In particular the
+                    rule about absence lives in one place - a field nobody filled looks empty and
+                    says so, here as well as there. */}
+                <BusinessFacts
+                  heading="What we will ask about"
+                  value={{
+                    sells: fact(profile.what_they_sell, 'confirmed'),
+                    buyer: fact(profile.buyer, 'confirmed'),
+                    location: fact(profile.locality, 'confirmed'),
+                  }}
+                  onFieldBlur={(key) => {
+                    if (key === 'location') void checkLocality();
+                  }}
+                  onChange={(next) => {
+                    setProfile((p) => ({
+                      ...p,
+                      what_they_sell: next.sells?.value ?? '',
+                      buyer: next.buyer?.value ?? '',
+                      locality: next.location?.value ?? '',
+                    }));
+                    setLocalityStatement(null);
+                  }}
                 />
-                <Field label="Who buys it" value={profile.buyer} onChange={(v) => set('buyer', v)} />
                 <label className="wizard-field">
                   <span className="k">Where your buyers are</span>
                   <span className="h">
@@ -485,21 +506,9 @@ export default function Wizard({
                     </span>
                   )}
                 </label>
-                <label className="wizard-field">
-                  <span className="k">Anywhere more specific?</span>
-                  <span className="h">
-                    Optional. A town or a city works best: Geelong, Coventry, Sacramento
-                  </span>
-                  <input
-                    className="field"
-                    value={profile.locality}
-                    onChange={(e) => {
-                      set('locality', e.target.value);
-                      setLocalityStatement(null);
-                    }}
-                    onBlur={checkLocality}
-                  />
-                </label>
+                {/* The locality INPUT is now the card's third row. What stays here is everything
+                    specific to the paid path: what the gazetteer matched, what the town does to
+                    five questions across five surfaces, and the additional-location billing. */}
                 {localityStatement && <p className="wizard-note">{localityStatement}</p>}
                 {profile.locality.trim() && (
                   <p className="wizard-note">

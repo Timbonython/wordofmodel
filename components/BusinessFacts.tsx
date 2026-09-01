@@ -19,11 +19,23 @@ export function BusinessFacts({
   value,
   onChange,
   brandName,
+  heading,
+  onFieldBlur,
 }: {
   value: BusinessProfile;
   onChange: (next: BusinessProfile) => void;
   /** Shown in the heading so the card reads as being about them, not about a form. */
   brandName?: string;
+  /** The wizard is not confirming a read; it is collecting. Same fields, different sentence. */
+  heading?: string;
+  /**
+   * Fired when a row loses focus.
+   *
+   * Exists for one caller: /start resolves a typed locality against the SERP gazetteer on blur
+   * and shows what it matched. Optional, because the scan has nothing to resolve against and
+   * should not pretend to.
+   */
+  onFieldBlur?: (key: 'sells' | 'buyer' | 'location') => void;
 }) {
   const rows = [
     {
@@ -48,7 +60,9 @@ export function BusinessFacts({
 
   return (
     <div className="facts">
-      <div className="eyebrow">We read {brandName ? `${brandName}'s site` : 'your site'} as</div>
+      <div className="eyebrow">
+        {heading ?? `We read ${brandName ? `${brandName}'s site` : 'your site'} as`}
+      </div>
       <div className="facts-rows">
         {rows.map((row) => {
           const held = value[row.key];
@@ -62,6 +76,7 @@ export function BusinessFacts({
                   value={held?.value ?? ''}
                   placeholder={row.hint}
                   onChange={(e) => onChange({ ...value, [row.key]: confirmFact(held, e.target.value) })}
+                  onBlur={() => onFieldBlur?.(row.key)}
                 />
                 {/* SAYS SO, rather than sitting quietly empty and looking like a design choice. */}
                 {empty ? <span className="facts-missing">{row.missing}</span> : null}
