@@ -25,6 +25,8 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 
 interface ScanBody {
+  /** The question already written in /api/detect. Absent when the visitor corrected a fact. */
+  question?: string;
   domain?: string;
   profile?: Partial<ConfirmedProfile>;
   edited?: boolean;
@@ -137,9 +139,22 @@ export async function POST(request: Request) {
     }
     await recordAttempt(ipHash, 'scan');
 
-    // ---- step 3: the question, on screen before anything is asked ----
-    emit({ type: 'stage', stage: 'writing', label: 'Writing the question a buyer would ask' });
-    const question = await writeQuestion(profile);
+    /*
+     * ---- step 3: the question ----
+     *
+     * WRITTEN IN /api/detect NOW, so the confirm card can sit between it and the engines - see
+     * §5 of the grounding brief. The client hands the question back with the profile it was
+     * shown alongside.
+     *
+     * It hands back NOTHING if the visitor edited any of the three facts, which is the only
+     * case that needs a rewrite and the only case that pays for one. A question written from
+     * facts the visitor has since corrected is exactly the wrong question to ask.
+     */
+    let question = body.question?.trim() || '';
+    if (!question) {
+      emit({ type: 'stage', stage: 'writing', label: 'Writing the question a buyer would ask' });
+      question = await writeQuestion(profile);
+    }
     emit({ type: 'question', question });
 
     // First touch, from the URL the visitor landed on, passed up by the client. Stored on the

@@ -1,4 +1,6 @@
 import { brandFromDomain, normaliseDomain } from '@/lib/domain';
+import { fact } from '@/lib/profile';
+import { MissingFactError, writeBuyerQuestion } from '@/lib/question';
 import { detectBusiness, needsManualEntry } from '@/lib/detect';
 import { findCachedScan } from '@/lib/db';
 import { checkRateLimit, clientIp, hashIp } from '@/lib/ratelimit';
@@ -95,6 +97,38 @@ export async function POST(request: Request) {
       ? { ...profile, brand_name: profile.brand_name ?? fallback.brand_name }
       : fallback;
 
-    emit({ type: 'detected', profile: out, needs_manual: reason !== null, manual_reason: reason });
+    /*
+     * THE QUESTION IS WRITTEN HERE, BEFORE THE VISITOR IS ASKED ANYTHING.
+     *
+     * §5 of the grounding brief puts the confirm card at the seam between "Writing the question a
+     * buyer would ask" and "Asking the engines", because nothing should be asked of the visitor
+     * until the machine has demonstrated it read their site. That seam only exists if the
+     * question is written before the card, so it moved from /api/scan to here.
+     *
+     * The cost is four short draws on a visitor who abandons at the card. Accepted: it is a
+     * fraction of one web search, and it buys the only moment where a correction reads as
+     * control rather than as a form.
+     *
+     * A profile with no buyer produces NO question rather than a guessed one - §4. The card is
+     * where that field gets filled, and the run continues from there.
+     */
+    let question: string | null = null;
+    if (!reason) {
+      emit({ type: 'stage', stage: 'writing', label: 'Writing the question a buyer would ask' });
+      try {
+        const { question: q } = await writeBuyerQuestion(
+          { sells: fact(out.what_they_sell || out.category_term, 'extracted'),
+            buyer: fact(out.buyer, 'extracted'),
+            location: fact(out.location, 'extracted') },
+          out.brand_name ?? domain,
+        );
+        question = q;
+      } catch (err) {
+        // Missing facts are not an error here, they are what the card is for.
+        if (!(err instanceof MissingFactError)) throw err;
+      }
+    }
+
+    emit({ type: 'detected', profile: out, question, needs_manual: reason !== null, manual_reason: reason });
   });
 }

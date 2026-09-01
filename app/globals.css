@@ -1117,6 +1117,74 @@ footer .wrap {
   color: var(--soft);
 }
 
+ /* ---------- the three facts, shared by the scan's confirm card and /start step one ----------
+    Flat classes: no `.class tag`, which copycheck counts against a baseline. */
+.facts {
+  margin: 26px 0 0;
+}
+
+.facts-rows {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0 0;
+  max-width: 52ch;
+}
+
+.facts-row {
+  display: grid;
+  gap: 6px;
+}
+
+@media (min-width: 560px) {
+  .facts-row {
+    grid-template-columns: 13ch 1fr;
+    align-items: start;
+    gap: 14px;
+  }
+}
+
+.facts-label {
+  font-family: var(--font-cond), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 11px;
+}
+
+.facts-field {
+  display: block;
+}
+
+.facts-input {
+  width: 100%;
+}
+
+ /* AN EMPTY FIELD MUST NOT LOOK LIKE A FILLED ONE. Principle 5. A dashed rule and a muted ground
+    so the difference survives a glance, plus its own line of text below saying what is missing -
+    the card this replaced rendered "buyers in your category" in the same weight as a real
+    answer, which is the defect wearing the customer's clothes. */
+.facts-input-empty {
+  border-style: dashed;
+  border-color: var(--faint);
+  background: transparent;
+}
+
+.facts-missing {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--pen);
+}
+
+.facts-note {
+  max-width: 52ch;
+  margin: 18px 0 0;
+  font-size: 14px;
+  color: var(--soft);
+}
+
  /* ---------- reviews. Flat classes throughout: no `.class tag`, which is what put grey on the
     wordmark and made the nav CTA unreadable, and what copycheck counts against a baseline. ---- */
 .review-form {

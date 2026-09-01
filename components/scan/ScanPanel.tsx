@@ -6,6 +6,8 @@ import { readNdjson } from '@/lib/stream';
 import type { FreeResult, ManualReason, Profile, ScanEvent } from '@/lib/types';
 import { ScanProgress, type Step, type StepState } from './ScanProgress';
 import { ScanResult } from './ScanResult';
+import { BusinessFacts } from '@/components/BusinessFacts';
+import { fact } from '@/lib/profile';
 import { metaTrack } from '@/components/MetaPixel';
 
 type Phase = 'idle' | 'detecting' | 'confirm' | 'running' | 'result';
@@ -14,11 +16,14 @@ interface Editable {
   brand_name: string;
   what_they_sell: string;
   buyer: string;
+  /** The engines' search locale. Not shown on the card; not the question's geography. */
   country: string;
+  /** Quoted from the page or typed on the card. Empty string here means null on the wire. */
+  location: string;
   category_term: string;
 }
 
-const BLANK: Editable = { brand_name: '', what_they_sell: '', buyer: '', country: '', category_term: '' };
+const BLANK: Editable = { brand_name: '', what_they_sell: '', buyer: '', country: '', location: '', category_term: '' };
 
 /**
  * Say which thing went wrong, in the visitor's terms, and never imply the fault
@@ -53,6 +58,7 @@ function toEditable(profile: Profile): Editable {
     what_they_sell: profile.what_they_sell ?? '',
     buyer: profile.buyer ?? '',
     country: profile.country ?? '',
+    location: profile.location ?? '',
     category_term: profile.category_term ?? '',
   };
 }
@@ -71,6 +77,14 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   const [manualReason, setManualReason] = useState<ManualReason>(null);
   const [edited, setEdited] = useState(false);
   const [question, setQuestion] = useState<string | null>(null);
+  /**
+   * The question /api/detect wrote from the UNEDITED facts.
+   *
+   * Handed back only when the visitor changed nothing. The moment a fact is corrected this is
+   * dropped and the server writes a new one - a question built from facts the visitor has since
+   * fixed is precisely the wrong question to ask, and reusing it would make the card decorative.
+   */
+  const [writtenQuestion, setWrittenQuestion] = useState<string | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -115,6 +129,9 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
         setProfile(toEditable(event.profile));
         setManual(event.needs_manual);
         setManualReason(event.manual_reason);
+        // Written in the detect stream from 1 Sep 2026, so the card sits between it and the
+        // engines. Held so it can be handed back unchanged when nothing was corrected.
+        setWrittenQuestion(event.question);
         setPhase('confirm');
         break;
 
@@ -241,7 +258,13 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
       // Read at submit rather than on mount: the parameters are on the URL the visitor landed
       // on, and this is the first server call that can store them somewhere that survives a
       // cleared browser or a hop to a laptop.
-      await stream('/api/scan', { domain, profile, edited, touch: touchFromUrl() });
+      await stream('/api/scan', {
+        domain,
+        profile,
+        edited,
+        question: edited ? undefined : (writtenQuestion ?? undefined),
+        touch: touchFromUrl(),
+      });
       setPhase((current) => (current === 'running' ? 'confirm' : current));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That did not work.');
@@ -280,7 +303,11 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   const showProgress = phase === 'detecting' || phase === 'running';
 
   return (
-    <div className="scan" ref={scanRegion} id="scan">
+    /* NO id HERE. app/page.tsx and app/pricing/page.tsx each wrap this in <div id="scan">, which
+       is what every "Free scan" link in the nav and the footer anchors to. This carried the same
+       id, so both pages shipped two elements with one id - invalid HTML, and it breaks any
+       selector that expects one. The wrapper owns the anchor; this owns the class. */
+    <div className="scan" ref={scanRegion}>
       {/* ---------- step 1: the field ---------- */}
       {phase === 'idle' || phase === 'detecting' ? (
         <form className="inline-form" onSubmit={onDetect}>
@@ -341,40 +368,61 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
               </p>
             </>
           ) : (
-            <>
-              <div className="eyebrow">Before we ask anything</div>
-              <p className="confirm-lede">
-                You sell <strong>{profile.what_they_sell || profile.category_term}</strong> to{' '}
-                <strong>{profile.buyer || 'buyers in your category'}</strong> in{' '}
-                <strong>{profile.country || 'your market'}</strong>. Right?
-              </p>
-              <p className="note">
-                Correct anything that is wrong. The question is built from this, and a question you would not ask makes
-                the answer worthless.
-              </p>
-            </>
+            /*
+             * REPLACED 1 Sep 2026 by the shared card. What was here read:
+             *
+             *   You sell {what_they_sell} to {buyer || 'buyers in your category'} in
+             *   {country || 'your market'}. Right?
+             *
+             * A missing buyer and a missing market rendered as plausible prose in the same
+             * weight as a found fact, and the field below it carried the placeholder
+             * "Australia". Principle §5, three times in one screen.
+             */
+            null
           )}
 
-          <div className="confirm-grid">
-            {field('brand_name', 'Your brand name', 'How customers say it')}
-            {field('what_they_sell', 'What you sell', 'Plain and specific')}
-            {field('buyer', 'Who buys it', 'The person deciding')}
-            {field('country', 'Main market', 'Australia')}
-            {field('category_term', 'What a buyer would search', 'Six words at most')}
-          </div>
+          {manual ? (
+            <div className="confirm-grid">
+              {field('brand_name', 'Your brand name', 'How customers say it')}
+              {field('what_they_sell', 'What you sell', 'Plain and specific')}
+              {field('buyer', 'Who buys it', 'The person deciding')}
+              {field('country', 'Main market', '')}
+              {field('category_term', 'What a buyer would search', 'Six words at most')}
+            </div>
+          ) : (
+            <BusinessFacts
+              brandName={profile.brand_name || undefined}
+              value={{
+                sells: fact(profile.what_they_sell || profile.category_term, 'extracted'),
+                buyer: fact(profile.buyer, 'extracted'),
+                location: fact(profile.location, 'extracted'),
+              }}
+              onChange={(next) => {
+                setEdited(true);
+                setProfile((p) => ({
+                  ...p,
+                  what_they_sell: next.sells?.value ?? '',
+                  buyer: next.buyer?.value ?? '',
+                  location: next.location?.value ?? '',
+                }));
+              }}
+            />
+          )}
 
           <div className="confirm-actions">
             <button className="button" type="submit">
-              {edited ? 'That is right, run it' : 'Yes, run it'}
+              {edited ? 'That is right - ask the engines' : 'Looks right - ask the engines'}
             </button>
             <span className="note">Two engines, about forty seconds.</span>
           </div>
         </form>
       ) : null}
 
+      {/* `|| 'your market'` was here too - a missing market rendered as a plausible phrase. The
+          sentence now says what is true without naming a place it may not have. */}
       {phase === 'running' && !question ? (
         <p className="note" style={{ marginTop: 18 }}>
-          Writing a question a buyer in {profile.country || 'your market'} would actually type.
+          Writing a question a buyer would actually type.
         </p>
       ) : null}
 

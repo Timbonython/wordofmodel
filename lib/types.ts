@@ -144,7 +144,12 @@ export type ManualReason = 'unreachable' | 'thin' | 'unclear' | 'detect_failed' 
 export type ScanEvent =
   | { type: 'stage'; stage: string; label: string }
   | { type: 'site_fetched'; urls: string[]; chars: number }
-  | { type: 'detected'; profile: Profile; needs_manual: boolean; manual_reason: ManualReason }
+  /**
+   * `question` is written in the detect stream from 1 Sep 2026, so the confirm card can sit at
+   * the seam the brief specifies. Null when the profile was too thin to write one - which is not
+   * an error, it is what the card is for.
+   */
+  | { type: 'detected'; profile: Profile; question: string | null; needs_manual: boolean; manual_reason: ManualReason }
   | { type: 'question'; question: string }
   | { type: 'engine_started'; engine: EngineId; label: string }
   | { type: 'engine_done'; engine: EngineId; label: string; ms: number; model: string; citations: number }
