@@ -188,10 +188,25 @@ export function metaAllowedFor(country: string | null | undefined): boolean {
  * An unknown country is untrackable, same as the pixel. Vercel sets the header on every request
  * it serves, so a missing value means something is in front of us that we do not understand,
  * and the safe reading of that is "assume Europe".
+ *
+ * A PRESENT VALUE CAN ALSO MEAN UNKNOWN, and until 2 Sep 2026 that case was tracked. XX is what
+ * Vercel sends when it cannot place the request, and ZZ is the ISO 3166 user-assigned code that
+ * conventionally means the same. Neither is in NO_TRACK, so both were allowed - the paragraph
+ * above said an undetermined visitor must be assumed European, and the code recorded them. That
+ * is the failure this project keeps meeting from a different direction: a value that means
+ * "we do not know" behaving as though it means "we know, and it is fine".
+ *
+ * Anything that is not two letters is refused for the same reason. It is not a country code, so
+ * whatever produced it is not the header we think we are reading.
  */
+const UNKNOWN_COUNTRY = new Set(['XX', 'ZZ']);
+
 export function analyticsAllowedFor(country: string | null | undefined): boolean {
   if (!country) return false;
-  return !NO_TRACK.has(country.toUpperCase());
+  const code = country.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return false;
+  if (UNKNOWN_COUNTRY.has(code)) return false;
+  return !NO_TRACK.has(code);
 }
 
 /** Lowercased, trimmed, sha256. Meta never receives an address in the clear. */

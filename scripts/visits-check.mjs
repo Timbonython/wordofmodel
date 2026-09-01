@@ -138,6 +138,28 @@ check('the table is created if absent', /create table if not exists public\.visi
 check('RLS is enabled', /alter table public\.visits enable row level security/.test(sql));
 check('and no browser-side role is granted anything', /revoke all on table public\.visits from anon/.test(sql) && /revoke all on table public\.visits from authenticated/.test(sql));
 
+console.log('\nthe region gate: who may be recorded at all\n');
+
+// BEHAVIOURAL, not a grep. Until 2 Sep 2026 nothing exercised this function - pixel-check only
+// mentions it in a comment - and the case it got wrong was a country code that means "unknown".
+const { analyticsAllowedFor } = await import(join(root, 'lib/meta.ts'));
+
+check('an Australian visitor may be recorded', analyticsAllowedFor('AU') === true);
+check('an American visitor may be recorded', analyticsAllowedFor('US') === true);
+check('a German visitor may not', analyticsAllowedFor('DE') === false);
+check('nor an Irish one - English-speaking and easy to forget', analyticsAllowedFor('IE') === false);
+check('nor a Swiss one - not in the EEA, own regime, deliberately on the list', analyticsAllowedFor('CH') === false);
+check('lowercase is the same country', analyticsAllowedFor('de') === false);
+// The three ways of not knowing. All three used to differ, and two of them tracked.
+check('a missing country fails closed', analyticsAllowedFor(null) === false);
+check('an empty country fails closed', analyticsAllowedFor('') === false);
+check(
+  'XX fails closed - what Vercel sends when it cannot place the request',
+  analyticsAllowedFor('XX') === false,
+);
+check('ZZ fails closed - the ISO user-assigned "unknown"', analyticsAllowedFor('ZZ') === false);
+check('and anything that is not a country code at all', analyticsAllowedFor('AUS') === false && analyticsAllowedFor('1') === false);
+
 console.log('\nthe recorder: tagging a session that may not be recorded\n');
 
 // THE RULE THAT MAKES THE WRAPPER LOAD-BEARING. One file may touch the vendor. If a second one
