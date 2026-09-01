@@ -1773,3 +1773,93 @@ that produced a scan has to stay knowable through the purchase.
 `.button.secondary` was reached for first, to make one door quieter. It turned out to be defined
 only inside `.code-row`, so it styled nothing here - and a hierarchy is the opposite of what these
 two need. Both doors get the same treatment.
+
+## The site had no traffic measurement at all (1 Sep 2026, migration 0025)
+
+Asked how many unique visitors the site had taken, the honest answer was that nobody knew and
+nobody could find out. Read from the live document rather than from the dependency list: the only
+third-party script on `wordofmodel.ai` was `connect.facebook.net/en_US/fbevents.js`. No Vercel Web
+Analytics - that requires `@vercel/analytics` and an `<Analytics />` in the root layout, neither of
+which existed. No Plausible, no GA.
+
+**The runtime log could not answer it after the fact either**, which is the part worth writing down
+because it is the instinct everybody has first. Vercel keeps runtime logs for **one hour on Hobby
+and one day on Pro**; thirty days needs the Observability Plus add-on. The ad week was already gone.
+And runtime logs cover function and middleware invocations plus cached static requests, so a
+statically served page can produce no line at all - it would have undercounted even inside the
+window.
+
+**Why `funnel_events` was the wrong place to fix it.** Since 0020 a `landed` row requires a click
+id, which makes it a count of paid clicks. That is the correct definition and it is deliberately
+blind to every organic visitor, who arrives with no click id. Widening the landing gate to include
+them is the 0019 mistake in reverse, and it would corrupt the one number the ad test is read from.
+So traffic got its own instrument.
+
+`visits`, one row per visitor per **Adelaide** day, written from `proxy.ts`:
+
+- **The primary key is the guard.** `(day, visitor_hash)` - a visitor cannot be counted twice in a
+  day, enforced by Postgres rather than by the application remembering. 0020 assumed dedup existed
+  and it did not.
+- **The day is inside the hash.** `sha256(salt : day : ip : user-agent)`, so the same person
+  tomorrow is an unrelated value. Nothing here is a durable identifier and no consent banner is
+  needed. It also means daily uniques can never be summed into a monthly unique count, and
+  `scripts/visits.mjs` says so under the total rather than leaving it to be assumed.
+- **`ip_hash` is the join key**, and the one deliberate departure from the brief. It is the
+  static-salt hash from `lib/ratelimit.ts`, byte for byte, so a visit can be joined to the scan it
+  produced without a cookie. Without it the table says how many people came and nothing about what
+  they did, which is the complaint that produced it. The formula is duplicated because
+  `lib/ratelimit.ts` is `server-only` and drags the Supabase client behind it;
+  `scripts/visits-check.mjs` recomputes it and fails if the copies drift. **A silent divergence
+  would make the visit-to-scan rate zero rather than throwing.**
+- **Server side, and that is the whole point.** A browser script is the ordinary way to count
+  visitors and the one thing that cannot answer this question, because the open worry was whether
+  ad traffic executes our JavaScript at all. An instrument that only works when the page's
+  JavaScript works cannot tell you the page's JavaScript is not working.
+- **It is not on the response path.** The row is handed to `event.waitUntil`, so it is written
+  after the response has gone. Awaiting it would put a Supabase round trip on every navigation to
+  buy a number nobody reads until 8am.
+- **The prefetch is the thing that would have ruined it.** `next/link` prefetches on hover and on
+  viewport entry, so one visitor scrolling the home page issues several requests. Counted, that is
+  the phantom 4.6x again. `lib/visits.ts` drops prefetch and RSC requests and
+  `scripts/visits-check.mjs` holds the headers in place through a Next upgrade.
+
+`lib/touch.ts` was carved out of `lib/funnel.ts` for this: `proxy.ts` needs the URL parsing and must
+not pull `server-only` and the whole database client into the bundle that runs ahead of the front
+page. `lib/funnel.ts` re-exports it, so no caller changed.
+
+### Meta's landing page views are modelled, and the docs were reasoning from them
+
+Both project documents concluded "100+ landing page views, zero `ViewContent`, therefore visitors
+are not engaging with the scan". That inference rested on a premise that stopped being true in
+**July 2025**: Meta no longer requires a pixel to report a landing page view. It models them, from
+the outbound click and how long before the person returns to the app. **A landing page view is
+therefore not evidence that a browser ran our code.**
+
+So the first number to read is not the funnel. It is Events Manager's `PageView` total activity
+against Ads Manager's landing page views for the same window. If those agree, it is a landing-page
+finding. If `PageView` is a fraction of the other, no change to the page can fix it. Same class of
+error as 0019: a measurement believed because of what it was named.
+
+### Microsoft Clarity, and the sentence it would have made false
+
+Added behind `NEXT_PUBLIC_CLARITY_ID`, unset by default, to answer where visitors stop between the
+ad and the free result - four unlogged deaths, including the grounding confirmation step and the
+"that does not look like a website address" rejection, which fires with no event and no server
+request at all.
+
+`app/privacy/page.tsx` said, in so many words, **"No analytics. No Google Analytics, no session
+recording, no heatmaps."** One environment variable would have made that false with nothing failing
+and nobody touching the file - the exact drift the privacy page's own header says it exists to
+prevent. The claim and the disclosure are now two branches of one condition read from
+`env.clarityProjectId`, on the same pattern the advertising paragraph already used for `metaMode()`,
+and `scripts/visits-check.mjs` fails if either branch is deleted. **There is no state of the
+environment in which that page is wrong about it.**
+
+Every field that can hold an email address carries `data-clarity-mask="true"`. Clarity's default
+masking is a setting on somebody else's dashboard and can be changed by whoever is logged in; the
+guarantee has to be in the page. `analyticsAllowedFor()` was split out of `metaAllowedFor()` so the
+region list stays in one place - reusing the latter would have made Clarity depend on whether a Meta
+pixel id was set, which is a coupling nobody would guess from the call site.
+
+**It comes back out when the question is answered.** Instrumentation that outlives its question
+becomes furniture nobody audits.

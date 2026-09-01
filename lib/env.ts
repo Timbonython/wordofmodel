@@ -121,6 +121,26 @@ export const env = {
   get metaCapiToken(): string | null {
     return process.env.META_CAPI_TOKEN || null;
   },
+  /**
+   * Microsoft Clarity: session replay, scroll maps and rage clicks. Unset by default, same
+   * failure direction as the pixel above - forgetting it means no script is served.
+   *
+   * WHY IT IS HERE AT ALL, and it is a narrow reason with an end date. On 1 Sep 2026 the
+   * campaign had taken 100+ landing page views and zero ViewContent, and every remaining
+   * explanation was about what visitors DO: whether they reach the field, what they type, and
+   * whether the grounding confirmation step is where they stop. No table answers that. A
+   * recording does, in an afternoon.
+   *
+   * It is a third-party recorder on a page that collects an email address, so read the masking
+   * note in components/Clarity.tsx before turning it on, and take it back out when the question
+   * is answered. Instrumentation that outlives its question becomes furniture nobody audits.
+   *
+   * NEXT_PUBLIC_ because the id is rendered into the page and is not a secret - it identifies
+   * the project, the way the pixel id does.
+   */
+  get clarityProjectId(): string | null {
+    return process.env.NEXT_PUBLIC_CLARITY_ID || null;
+  },
   get resendKey() {
     return required('RESEND_API_KEY');
   },

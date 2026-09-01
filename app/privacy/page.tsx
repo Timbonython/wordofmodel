@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ABN, ENTITY, CONTACT_EMAIL, LAST_UPDATED } from '@/lib/legal';
 import { metaMode } from '@/lib/meta';
+import { env } from '@/lib/env';
 import { Nav } from '@/components/Nav';
 
 export const metadata: Metadata = {
@@ -34,10 +35,21 @@ export const metadata: Metadata = {
  * reasonably decide something about. metaMode() decides which sentence renders, so turning
  * the token on later changes the page in the same deploy as it changes the behaviour.
  *
+ * THE SESSION-RECORDING SENTENCE READS THE CONFIGURATION TOO, from 1 Sep 2026. Microsoft
+ * Clarity can be switched on with one environment variable, and the bullet below said in so
+ * many words that there was no session recording and no heatmaps. A deploy that set the
+ * variable would have made this page false without touching it - the exact drift this file
+ * exists to prevent, and the kind that is invisible because nothing fails. So the claim and
+ * the disclosure are two branches of one condition: whichever is true is the one that
+ * renders, and there is no state of the environment in which this page is wrong about it.
+ *
  * If any of this changes, this page changes in the same commit. That is not a style rule: a
  * privacy policy that drifts from the code is a statement somebody relied on.
  */
 export default function PrivacyPage() {
+  // Read here rather than asserted in the copy. See the note above.
+  const recording = Boolean(env.clarityProjectId);
+
   return (
     <>
       <Nav issue="Privacy" />
@@ -100,8 +112,19 @@ export default function PrivacyPage() {
           <h2>What we do not do</h2>
           <ul className="plain">
             <li>
-              <strong>No analytics.</strong> No Google Analytics, no session recording, no
-              heatmaps, nothing watching how you move around the page.
+              {recording ? (
+                <>
+                  <strong>No Google Analytics.</strong> We do not run a general analytics
+                  package, and we do not build a profile of you across other websites. We are
+                  currently recording sessions on the marketing pages, which is described
+                  below.
+                </>
+              ) : (
+                <>
+                  <strong>No analytics.</strong> No Google Analytics, no session recording, no
+                  heatmaps, nothing watching how you move around the page.
+                </>
+              )}
             </li>
             <li>We do not sell your information, and we do not share it for anyone else&apos;s marketing.</li>
             <li>
@@ -154,6 +177,20 @@ export default function PrivacyPage() {
             would rather not be counted at all, an ad blocker stops the pixel, and you can email
             us to have your scan and everything attached to it deleted.
           </p>
+          {recording ? (
+            <p>
+              <strong>We are also recording sessions on the marketing pages right now</strong>,
+              using Microsoft Clarity, and we would rather say so plainly than bury it. It
+              records where you move, scroll and click so we can see where this page confuses
+              people. <strong>It does not record what you type.</strong> Every field that could
+              hold your email address is marked so that Clarity never captures its contents, and
+              that instruction is in the page itself rather than a setting on their dashboard.
+              It is not served to visitors from the United Kingdom, the European Economic Area or
+              Switzerland, on the same rule as the pixel, and it is not on the report pages at
+              all. It is here to answer one question about why this page is not working, and it
+              comes back out when that is answered.
+            </p>
+          ) : null}
         </section>
 
         <section>

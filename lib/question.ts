@@ -43,16 +43,65 @@ const DRAWS = 4;
 /** Second person means the question is aimed at the supplier, not an assistant. */
 const ADDRESSES_VENDOR = /\b(you|your|yours|we|our|us)\b/i;
 
+/*
+ * EXCEPT WHEN "YOU" IS THE ASSISTANT, which is the commonest phrasing there is.
+ *
+ * "What Adelaide keynote speaking businesses would you recommend?" is addressed to the assistant,
+ * asks for a shortlist and names a category - and was rejected, because ADDRESSES_VENDOR saw the
+ * bare "you". Every such draw went to a repair pass it did not need, which is most of what the
+ * note about half the repairs being of good questions was describing. Found on 1 Sep 2026 by
+ * break 3 failing on a draw that was perfectly good.
+ *
+ * The idiom is stripped and the REMAINDER is tested, rather than the whole string being
+ * exempted: "would you recommend your own service" still has a vendor-addressed "your" left over
+ * once "would you recommend" is removed, and is still refused. "Can you show recent client work"
+ * - the shape this guard was built for - is not an idiom match at all and is untouched.
+ */
+const ASSISTANT_IDIOM = /\b(would|do|can|could|should)\s+you\s+(recommend|suggest|rate|say|rank|pick|choose|go with)\b/gi;
+
 /** Asking for a set of companies rather than for a supplier's own credentials. */
 const ASKS_FOR_A_SHORTLIST = /\b(which|who|what|whose|best|top|leading|recommend|recommended|options)\b/i;
 
+/*
+ * WIDENED 1 Sep 2026. Every entry here was a business-shaped noun, so a category whose members
+ * are PEOPLE - a speaker, a coach, a mentor, a dentist - matched nothing and a perfectly good
+ * question was sent to the repair pass. Half the observed repairs were of questions that were
+ * already fine.
+ *
+ * Still a list rather than a pattern. A generic plural-agent-noun rule ("\w+ers") reads
+ * "conference organisers" and "business leaders" as categories, which are the people ASKING in
+ * the question that started all this - so it would have stamped the defect as clean.
+ *
+ * "business" WAS MISSING UNTIL IT WAS REVIEWED, and it is the most generic business-shaped noun
+ * there is. The list had gained restaurant, cafe, pub, gym and salon and skipped the word itself,
+ * so "What Adelaide keynote speaking businesses would you recommend?" failed the category check
+ * and came back unverified - while `constraintBlock` was at the same time telling the model that
+ * what the buyer wants is "the kind of BUSINESS or person". The prompt steered toward a word the
+ * guard refused. Found by break 3 failing on a draw that was perfectly good.
+ */
 const NAMES_A_CATEGORY =
-  /\b(compan|agenc|vendor|supplier|provider|firm|studio|platform|tool|software|brand|installer|manufacturer|consultan|contractor|service|team|shop|practice|specialist)/i;
+  /\b(compan|agenc|vendor|supplier|provider|firm|studio|platform|tool|software|brand|installer|manufacturer|consultan|contractor|service|team|shop|practice|specialist|speaker|coach|mentor|trainer|advis|dentist|doctor|clinic|lawyer|solicitor|accountant|plumb|electric|builder|photograph|designer|developer|restaurant|cafe|pub|bar|hotel|venue|school|gym|salon|store|retailer|wholesaler|business)/i;
+
+/*
+ * THE SHAPE THAT PASSED EVERY OTHER TEST AND WAS STILL WRONG.
+ *
+ *   "Who in Adelaide, SA can help conference organisers and business leaders choose between
+ *    keynote speaking and business mentoring for an event?"
+ *
+ * Third person, asks for a shortlist, names a place from the profile. It reads as a buyer
+ * question and it is not one: it asks for somebody to ADVISE ON the decision, so the engines
+ * answer with consultants and event agencies, and the business that prompted it is not in the
+ * running. The generator's prompt is fixed so this is not written in the first place; this is
+ * the check behind it, because a prompt is not a guard.
+ */
+const ASKS_FOR_AN_ADVISER =
+  /\b(help|helps|assist|advise|guide|support)\b[^?]{0,80}\b(choose|choosing|decide|deciding|pick|picking|select|selecting|compare|comparing|work out|figure out)\b/i;
 
 export function isBuyerQuestion(question: string): boolean {
   const q = question.trim();
   if (q.length < 20 || q.length > 320) return false;
-  if (ADDRESSES_VENDOR.test(q)) return false;
+  if (ADDRESSES_VENDOR.test(q.replace(ASSISTANT_IDIOM, ' '))) return false;
+  if (ASKS_FOR_AN_ADVISER.test(q)) return false;
   return ASKS_FOR_A_SHORTLIST.test(q) && NAMES_A_CATEGORY.test(q);
 }
 
@@ -106,6 +155,17 @@ export async function writeBuyerQuestion(
   question: string;
   attempts: number;
   repaired: boolean;
+  /**
+   * Did the question we are returning pass isBuyerQuestion?
+   *
+   * ADDED 1 Sep 2026, AND IT IS PRINCIPLE §5 AGAIN. When every draw failed the guard and the
+   * repair failed it too, this function returned the longest draw anyway and told nobody. A
+   * question the guard rejected and a question it passed left here in the same shape, so the
+   * card showed both with the same confidence. There is always a question to return - the run
+   * has to continue and the visitor can now edit it - but which of the two it is has to reach
+   * the screen.
+   */
+  verified: boolean;
 }> {
   /*
    * §4: IF buyer IS NULL, DO NOT WRITE A QUESTION. It is the one field a run cannot proceed
@@ -133,14 +193,16 @@ export async function writeBuyerQuestion(
   if (!candidates.length) throw new Error('Could not write the question. Try again in a moment.');
 
   const clean = candidates.find(isBuyerQuestion);
-  if (clean) return { question: clean, attempts: candidates.length, repaired: false };
+  if (clean) return { question: clean, attempts: candidates.length, repaired: false, verified: true };
 
   // Repair the longest draw, since it carries the most of the buyer's detail.
   const best = candidates.reduce((a, b) => (b.length > a.length ? b : a));
   const repaired = tidy(await askText(repairPrompt(best, profile, brandName)));
+  const ok = isBuyerQuestion(repaired);
   return {
-    question: isBuyerQuestion(repaired) ? repaired : best,
+    question: ok ? repaired : best,
     attempts: candidates.length + 1,
     repaired: true,
+    verified: ok,
   };
 }

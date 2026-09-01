@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from 'next/font/google';
 import { headers } from 'next/headers';
 import { env } from '@/lib/env';
-import { metaAllowedFor } from '@/lib/meta';
+import { analyticsAllowedFor, metaAllowedFor } from '@/lib/meta';
 import { MetaPixel } from '@/components/MetaPixel';
+import { Clarity } from '@/components/Clarity';
 import { JsonLd } from '@/components/reviews/JsonLd';
 import { organisationSchema, websiteSchema } from '@/lib/schema';
 import './globals.css';
@@ -83,6 +84,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // or the EEA, and the script is never in the page at all - not loaded and disabled, absent.
   const country = (await headers()).get('x-vercel-ip-country');
   const pixel = metaAllowedFor(country) ? env.metaPixelId : null;
+  // Same region rule, different vendor and a different question - see components/Clarity.tsx.
+  // Deliberately not gated on `pixel`: Clarity is here to find out why the pixel reports zero,
+  // so it must not be switched off by the same thing it is investigating.
+  const clarity = analyticsAllowedFor(country) ? env.clarityProjectId : null;
 
   return (
     <html lang="en" className={`${sans.variable} ${condensed.variable} ${mono.variable}`}>
@@ -94,6 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <JsonLd schema={[organisationSchema(env.siteUrl), websiteSchema(env.siteUrl)]} />
         {children}
         {pixel ? <MetaPixel pixelId={pixel} /> : null}
+        {clarity ? <Clarity projectId={clarity} /> : null}
       </body>
     </html>
   );

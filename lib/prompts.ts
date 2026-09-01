@@ -71,6 +71,24 @@ ${siteText}`;
  *   "- Include the country or region."   instructed the model to name a place whether or not one
  *                              was known, on top of a country that defaulted to Australia.
  *
+ * AND A THIRD, FOUND 1 SEP 2026 IN A LIVE RUN. "It must name what they are choosing between",
+ * over a `sells` holding two services, made the two services the options: the question asked who
+ * could help a conference organiser choose between keynote speaking and business mentoring.
+ * Right direction, wrong noun. The options are businesses. See constraintBlock in lib/profile.ts,
+ * which carried the same word and is fixed alongside this.
+ *
+ * AND THE HALF OF IT THAT SURVIVED THE FIRST FIX, seen in the verification run an hour later:
+ *
+ *   "Which Adelaide business offers keynote speaking and business mentoring for conference
+ *    organisers and business leaders?"
+ *
+ * It asks for a business, so the guard passes it, and it is still wrong in a way that matters
+ * more than phrasing. Two services joined by "and" can only be answered by a business doing both.
+ * That is not the field the buyer is choosing from, it is a much smaller one - and if the client
+ * happens to be the only local business doing both, the scan reports them named and looks like a
+ * win it did not earn. A question that narrows the field flatters whoever commissioned it, which
+ * is the one thing this product cannot afford to do.
+ *
  * The buyer was extracted, carried on the profile, and then dropped before this prompt was
  * built. It is now the first constraint, because it decides which direction the question runs.
  */
@@ -78,9 +96,23 @@ export function questionPrompt(profile: BusinessProfile, brandName: string): str
   return `Write ONE question that a real person would type into an AI assistant while they are
 deciding which business to choose.
 
-The question must be asked BY the person choosing, ABOUT their options. It must name what they
-are choosing between. The business described below is one of the things being chosen - never the
-supplier, the vendor or the provider being asked to pitch, unless the constraints below say so.
+The question must be asked BY the person choosing, ABOUT their options.
+
+WHAT THEY ARE CHOOSING BETWEEN IS BUSINESSES, and nothing else. The answer to this question is a
+shortlist of businesses or people the asker could go to. The business described below is one of
+them - never the supplier being asked to pitch, and never an adviser brought in to help with the
+decision.
+
+So do not ask who can help someone choose, compare, decide or work out which option is right.
+That question asks for a consultant. Ask which business to go to.
+
+ONE THING, ONE OCCASION, ONE KIND OF ASKER. If the constraints name more than one thing the
+business offers, or more than one kind of person choosing, PICK ONE OF EACH and write about those.
+Do not join them with "and".
+
+A question naming two services at once can only be answered by a business that does both, and
+that is a much smaller field than the one the asker is really choosing from. The whole point is
+to find out who gets named when the field is the real one.
 
 CONSTRAINTS. These are the only facts you have. Use them and add nothing.
 ${constraintBlock(profile)}

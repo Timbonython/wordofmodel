@@ -170,6 +170,7 @@ export function ScanResult({
               id="reveal-email"
               className="field"
               type="email"
+              data-clarity-mask="true"
               inputMode="email"
               autoComplete="email"
               required

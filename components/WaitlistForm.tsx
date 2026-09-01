@@ -69,6 +69,7 @@ export function WaitlistForm({
         id={`waitlist-${source}`}
         className="field"
         type="email"
+        data-clarity-mask="true"
         inputMode="email"
         autoComplete="email"
         required

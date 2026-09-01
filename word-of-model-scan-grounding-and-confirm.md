@@ -206,3 +206,108 @@ is called done:
   US$30/month, so location is already a first-class billing entity. Singular is the decision for
   this build; the plural shape is a schema decision to be made when there is a multi-site customer
   and run data showing how often several locations are found.
+
+---
+
+## 9. The question itself, made editable (1 September 2026, later the same day)
+
+§5 put three facts on the card and left the question they produce out of sight. A second live run
+showed why that is not enough. A keynote speaker and business mentor in Adelaide produced:
+
+> Who in Adelaide, SA can help conference organisers and business leaders choose between keynote
+> speaking and business mentoring for an event?
+
+The geography is right, the direction is right, the client is not the supplier. §2 and §3 held.
+It is still the wrong question, for a reason those sections do not cover: it asks for **an adviser
+on the decision**, not for one of the businesses being chosen. Both engines answer it with event
+agencies and consultants, and the business that prompted the scan is not in the running.
+
+### Three causes, all closed
+
+1. **The constraint's label taught the inversion.** `constraintBlock` rendered `sells` as
+   *"What they are choosing between"*. Over a profile holding two services, the two services
+   became the options. It now reads *"The kind of business or person they are looking for"*, and
+   `questionPrompt` says the same thing again in its own words: the options are businesses, and a
+   question asking who can help someone choose, compare or decide is asking for a consultant.
+
+2. **A failed guard looked exactly like a passed one.** `isBuyerQuestion` rejected every draw and
+   the repair, and `writeBuyerQuestion` returned the longest draw anyway with nothing to say so.
+   §5 of the principles, in the most expensive place it could sit: the question is what the run is
+   built from. It now returns `verified`, and the card renders an unverified draft in red pen with
+   a sentence saying we are not confident in it.
+
+3. **The category list had no people in it.** Every entry was a business-shaped noun, so a
+   speaker, a mentor, a coach and a dentist all failed a check they should have passed and were
+   sent to a repair pass they did not need. Widened, deliberately as a list: a generic plural
+   agent-noun rule reads "conference organisers" and "business leaders" as categories, which are
+   the people **asking** in the question above, so it would have stamped the defect clean.
+
+### A fourth cause, found in the verification run itself
+
+The three fixes above produced this, three times out of three, and `verified` was true each time:
+
+> Which Adelaide business offers keynote speaking **and** business mentoring for conference
+> organisers **and** business leaders?
+
+It asks for a business, so the guard is satisfied, and it is still wrong - in the direction that
+costs the most. **A question naming two services at once can only be answered by a business doing
+both.** That is not the field the buyer is choosing from, it is a much smaller one. If the client
+happens to be the only local business doing both, they come back named and the scan reports a win
+it did not earn. A question that narrows the field flatters whoever commissioned it, and that is
+the one thing this product cannot afford to do: the whole proposition is finding out who gets
+named when the field is the real one.
+
+`questionPrompt` now says: one thing, one occasion, one kind of asker, and do not join them with
+"and". Break 3 fails on a question that fuses the pair on either side, not only on an unverified
+one - the first version of that break passed a question this bad, which is exactly why a guard is
+not shipped until you have watched it fail.
+
+The free scan asks one question, so picking one service is not a loss of coverage; the paid
+product's five slots are where the spread belongs.
+
+### The step
+
+The written question now sits on the confirm card, under the three facts and above the button, in
+a field. Reading down the card is the argument in order: here is what we read, here is what it
+produced, here is the button that spends the engines.
+
+- Correcting a fact rewrites the question in place, debounced, via `POST /api/question`. That
+  route calls `profileFrom` like everything else, so §2 is untouched: a place name still cannot
+  reach the generator from anywhere but the card.
+- Once the visitor types their own question, the automatic rewrite stops and is offered as a link
+  instead. Taking somebody's words away because they also fixed a typo in their suburb is not a
+  correction, it is the software overruling them.
+- An empty question blocks the run, and names the fact it is waiting on. It used to submit and
+  fail at the far end of a run the visitor had already paid attention to.
+- The question is now sent to `/api/scan` verbatim, always. It was `edited ? undefined : written`,
+  which had the server rewrite whenever a fact changed - correct while the question was invisible,
+  wrong now that one is on screen above the button.
+- **The 24-hour cache is no longer keyed on the domain alone.** A cached run is used only when its
+  question matches the one being asked. Otherwise a rewritten question would have been answered
+  with yesterday's answer to a different one, with the new question printed above it.
+
+### Verification
+
+`npm run guard:check` is new and needs no keys or network: it pins the shapes the guard must
+accept and reject, including the live sentence above, and runs inside `npm run check`.
+`npm run grounding:check` gains break 3, which puts a two-service profile through the real model
+three times and fails if any draw comes back unverified.
+
+- [ ] `npm run check` and `npm run grounding:check`, on a machine with egress. Neither the
+      container nor the sandbox this was written in can reach the API.
+- [ ] Re-run the speaker site. The question asks which speakers **or** mentors to go to, naming
+      one of the two and one kind of asker, not both joined by "and".
+- [ ] Edit a question by hand and confirm the engines are asked that string and not a rewrite.
+- [ ] Correct a fact and watch the question change on the card before the button is pressed.
+- [ ] Scan a domain twice in a day with a different question the second time, and confirm the
+      second run is not served the first run's answer.
+- [ ] Fold re-measured at 390 x 844 / 734 / 664 / 628. The card grew by a field.
+
+### Not settled
+
+- **The row does not record whether the visitor rewrote the question.** `profileEdited` covers the
+  facts only. Knowing how often people rewrite, and what they change it to, is the best available
+  read on whether the generator is any good - and it needs a column, so it is a migration and a
+  separate decision.
+- Whether the paid wizard's five question slots carry the same adviser inversion. §8 asked the
+  same about the earlier defect and it is still open.

@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { recordVisit, visitRowFor } from '@/lib/visits';
 
 /**
  * Refreshes the magic link session on the way through, so a signed in
@@ -21,8 +22,36 @@ import { createServerClient } from '@supabase/ssr';
  *   - the environment is read straight from process.env and a missing value
  *     returns the request untouched rather than throwing. A misconfigured auth
  *     env should cost you a login, never the front page.
+ *
+ * It also counts the visit, added 1 Sep 2026. This is the only place on the site
+ * that sees every page request, which is the whole reason traffic is measured
+ * here rather than in a layout or a browser script - lib/visits.ts says why at
+ * length. Three properties make it safe to put in front of the front page:
+ *
+ *   - it is handed to event.waitUntil, so it runs AFTER the response has gone
+ *     and adds nothing to time-to-first-byte. Awaiting it would put a Supabase
+ *     round trip on every navigation to buy a number nobody reads until 8am.
+ *   - it runs before the auth refresh below, so the row is queued even when the
+ *     Supabase env is missing and this function returns early.
+ *   - it cannot throw. visitRowFor returns null rather than raising, and
+ *     recordVisit swallows everything. A measurement must never be able to take
+ *     down the thing it measures.
+ *
+ * The matcher already excludes static assets and the scan and wizard API routes,
+ * so what reaches here is close to the set of real page requests; lib/visits.ts
+ * drops the prefetches and RSC fetches that survive it.
  */
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event?: NextFetchEvent) {
+  const visit = visitRowFor(request);
+  if (visit) {
+    // No await. If there is no event - a context that calls proxy directly, such
+    // as a test - fall back to a floating promise with its own catch rather than
+    // blocking, because the alternative is a test harness deciding the latency
+    // of the live front page.
+    if (event) event.waitUntil(recordVisit(visit));
+    else void recordVisit(visit);
+  }
+
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return NextResponse.next({ request });

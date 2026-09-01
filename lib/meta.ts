@@ -172,6 +172,24 @@ announceMetaMode();
  */
 export function metaAllowedFor(country: string | null | undefined): boolean {
   if (!env.metaPixelId) return false;
+  return analyticsAllowedFor(country);
+}
+
+/**
+ * The same region rule, without the Meta pixel id in front of it.
+ *
+ * ADDED 1 SEP 2026 FOR MICROSOFT CLARITY, and it is a split rather than a copy on purpose.
+ * metaAllowedFor answers "may we serve the Meta pixel", which is correctly false when no pixel
+ * id is set; reusing it for a different vendor would have made Clarity depend on whether Meta
+ * was configured, which is a coupling nobody would ever guess from the call site. The region
+ * list stays in exactly one place, which is the part that must not be duplicated: a second copy
+ * of NO_TRACK is a promise in published copy drifting out of sync with the code that keeps it.
+ *
+ * An unknown country is untrackable, same as the pixel. Vercel sets the header on every request
+ * it serves, so a missing value means something is in front of us that we do not understand,
+ * and the safe reading of that is "assume Europe".
+ */
+export function analyticsAllowedFor(country: string | null | undefined): boolean {
   if (!country) return false;
   return !NO_TRACK.has(country.toUpperCase());
 }

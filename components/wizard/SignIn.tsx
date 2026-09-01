@@ -38,6 +38,7 @@ export default function SignIn() {
         <input
           className="field"
           type="email"
+          data-clarity-mask="true"
           placeholder="you@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

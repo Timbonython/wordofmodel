@@ -112,20 +112,29 @@ export async function POST(request: Request) {
      * where that field gets filled, and the run continues from there.
      */
     let question: string | null = null;
+    let questionVerified: boolean | null = null;
     if (!reason) {
       emit({ type: 'stage', stage: 'writing', label: 'Writing the question a buyer would ask' });
       try {
         // profileFrom, not a second copy of it. The whole invariant rests on there being ONE
         // line in the codebase that narrows a wide profile to the three facts the generator
         // sees, so that "could a city reach the prompt from anywhere else" has one answer.
-        const { question: q } = await writeBuyerQuestion(profileFrom(out), out.brand_name ?? domain);
+        const { question: q, verified } = await writeBuyerQuestion(profileFrom(out), out.brand_name ?? domain);
         question = q;
+        questionVerified = verified;
       } catch (err) {
         // Missing facts are not an error here, they are what the card is for.
         if (!(err instanceof MissingFactError)) throw err;
       }
     }
 
-    emit({ type: 'detected', profile: out, question, needs_manual: reason !== null, manual_reason: reason });
+    emit({
+      type: 'detected',
+      profile: out,
+      question,
+      question_verified: questionVerified,
+      needs_manual: reason !== null,
+      manual_reason: reason,
+    });
   });
 }

@@ -78,13 +78,34 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   const [edited, setEdited] = useState(false);
   const [question, setQuestion] = useState<string | null>(null);
   /**
-   * The question /api/detect wrote from the UNEDITED facts.
+   * The question, on the card and editable, from 1 Sep 2026.
    *
-   * Handed back only when the visitor changed nothing. The moment a fact is corrected this is
-   * dropped and the server writes a new one - a question built from facts the visitor has since
-   * fixed is precisely the wrong question to ask, and reusing it would make the card decorative.
+   * WHAT THIS REPLACED, so the reasoning survives. It used to hold the question /api/detect
+   * wrote, hidden, and hand it back only if the visitor changed nothing; correcting a fact
+   * dropped it and the server wrote a new one mid-run. So the question - the single thing the
+   * whole scan turns on - was the one part of the run nobody could see before it was asked, and
+   * a wrong one cost the visitor the entire result. It is now on screen, in a field, above the
+   * button that spends the engines.
    */
-  const [writtenQuestion, setWrittenQuestion] = useState<string | null>(null);
+  const [draftQuestion, setDraftQuestion] = useState('');
+  /** False when the guard rejected every draw and the repair. Null when none was written. */
+  const [questionVerified, setQuestionVerified] = useState<boolean | null>(null);
+  /**
+   * Has the visitor typed in the question box?
+   *
+   * It decides one thing: whether correcting a fact is allowed to overwrite what is in there.
+   * Once somebody has written their own question, replacing it because they also fixed a typo in
+   * their suburb would be the software taking their work away. After that the rewrite is offered
+   * and never automatic.
+   */
+  const [questionEdited, setQuestionEdited] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  /** Which fact the question cannot be written without, from /api/question. §4. */
+  const [missingFact, setMissingFact] = useState<'buyer' | 'sells' | null>(null);
+  /* Debounce, so a fact typed one character at a time is four draws and not forty. */
+  const rewriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* The last rewrite asked for. An earlier reply landing late must not overwrite a later one. */
+  const rewriteSeq = useRef(0);
   const [steps, setSteps] = useState<Step[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -131,7 +152,10 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
         setManualReason(event.manual_reason);
         // Written in the detect stream from 1 Sep 2026, so the card sits between it and the
         // engines. Held so it can be handed back unchanged when nothing was corrected.
-        setWrittenQuestion(event.question);
+        setDraftQuestion(event.question ?? '');
+        setQuestionVerified(event.question_verified);
+        setQuestionEdited(false);
+        setMissingFact(event.question ? null : 'buyer');
         setPhase('confirm');
         break;
 
@@ -200,6 +224,62 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
     }
   }
 
+  /**
+   * Rewrite the question from whatever the card currently holds.
+   *
+   * Called on a corrected fact, and by hand from the link under the box. It never runs while the
+   * visitor has their own question in there unless they ask for it - see questionEdited.
+   */
+  async function rewrite(next: Editable): Promise<void> {
+    const seq = ++rewriteSeq.current;
+    setRewriting(true);
+    try {
+      const response = await fetch('/api/question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, ...next }),
+      });
+      const data = (await response.json()) as {
+        question?: string | null;
+        verified?: boolean;
+        missing?: 'buyer' | 'sells';
+        error?: string;
+      };
+      // A reply to an older keystroke, arriving after a newer one. Drop it.
+      if (seq !== rewriteSeq.current) return;
+      if (data.question) {
+        setDraftQuestion(data.question);
+        setQuestionVerified(data.verified ?? null);
+        setMissingFact(null);
+      } else if (data.missing) {
+        /*
+         * NOT AN ERROR, AND IT MUST NOT LOOK LIKE ONE. §4: without knowing who is choosing there
+         * is no question to write. The field is on screen above this. Clear the box rather than
+         * leaving the old question sitting under facts it no longer comes from.
+         */
+        setDraftQuestion('');
+        setQuestionVerified(null);
+        setMissingFact(data.missing);
+      }
+    } catch {
+      /*
+       * DELIBERATELY QUIET, AND THIS IS THE ONE PLACE IN THE PANEL THAT IS. The visitor is
+       * mid-correction with a working question already on screen; a failed rewrite means it is
+       * now slightly stale, not that anything is broken. The stale-question warning under the
+       * box is already saying the true thing. An error banner here would read as "your
+       * correction failed", which it did not.
+       */
+    } finally {
+      if (seq === rewriteSeq.current) setRewriting(false);
+    }
+  }
+
+  /** Wait for them to stop typing. A fact is entered a character at a time; a rewrite is not free. */
+  function scheduleRewrite(next: Editable): void {
+    if (rewriteTimer.current) clearTimeout(rewriteTimer.current);
+    rewriteTimer.current = setTimeout(() => void rewrite(next), 800);
+  }
+
   async function stream(url: string, body: unknown): Promise<void> {
     const response = await fetch(url, {
       method: 'POST',
@@ -230,6 +310,10 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
     setEdited(false);
     setManual(false);
     setManualReason(null);
+    setDraftQuestion('');
+    setQuestionVerified(null);
+    setQuestionEdited(false);
+    setMissingFact(null);
     setSteps([]);
     setPhase('detecting');
     scanRegion.current?.scrollIntoView({ block: 'nearest' });
@@ -251,6 +335,29 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
       setError('We need your brand name and what you sell. The rest we can work with.');
       return;
     }
+    /*
+     * NO QUESTION, NO RUN - AND THIS IS NEW ON 1 SEP 2026.
+     *
+     * It used to submit with an empty question and let the server write one, which threw when the
+     * buyer was missing and the visitor got an error at the end of a run they had already paid
+     * attention to. The question is on the card now, so an empty box is a visible, fixable state
+     * and the fact it is waiting on is one line above it.
+     */
+    const asking = draftQuestion.trim();
+    if (!asking) {
+      setError(
+        missingFact === 'sells'
+          ? 'Tell us what you do and we can write the question.'
+          : 'Tell us who chooses you and we can write the question.',
+      );
+      return;
+    }
+    // Drop a rewrite that is still in flight, along with the one that has not fired yet. Its
+    // reply would land after the run had started and quietly change the question on a card the
+    // visitor has already left.
+    if (rewriteTimer.current) clearTimeout(rewriteTimer.current);
+    rewriteSeq.current++;
+    setRewriting(false);
     setError(null);
     setPhase('running');
 
@@ -262,7 +369,14 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
         domain,
         profile,
         edited,
-        question: edited ? undefined : (writtenQuestion ?? undefined),
+        /*
+         * THE QUESTION ON THE CARD, ALWAYS, AND VERBATIM. It was `edited ? undefined : written`
+         * - the server rewrote whenever a fact had changed, which was correct while the question
+         * was invisible and is wrong now that one is on screen above the button. Whatever the
+         * visitor last read is what gets asked. /api/scan will not use a cached run of a
+         * different question against it.
+         */
+        question: asking,
         touch: touchFromUrl(),
       });
       setPhase((current) => (current === 'running' ? 'confirm' : current));
@@ -292,8 +406,10 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
           value={profile[key]}
           placeholder={placeholder}
           onChange={(e) => {
+            const next = { ...profile, [key]: e.target.value };
             setEdited(true);
-            setProfile((current) => ({ ...current, [key]: e.target.value }));
+            setProfile(next);
+            if (!questionEdited) scheduleRewrite(next);
           }}
         />
       </label>
@@ -398,16 +514,81 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
                 location: fact(profile.location, 'extracted'),
               }}
               onChange={(next) => {
-                setEdited(true);
-                setProfile((p) => ({
-                  ...p,
+                const updated = {
+                  ...profile,
                   what_they_sell: next.sells?.value ?? '',
                   buyer: next.buyer?.value ?? '',
                   location: next.location?.value ?? '',
-                }));
+                };
+                setEdited(true);
+                setProfile(updated);
+                /*
+                 * THE CARD'S TWO HALVES HAVE TO AGREE. A corrected fact with the old question
+                 * still sitting under it is the same defect the card was built to remove, one
+                 * layer up: what is on screen would no longer be what the run is built from.
+                 */
+                if (!questionEdited) scheduleRewrite(updated);
               }}
             />
           )}
+
+          {/*
+            THE QUESTION, ON THE CARD AND EDITABLE. §5 of the grounding brief put the three facts
+            here; this is the thing those facts were only ever a means to. A visitor who reads a
+            question they would never ask can now fix it in the box rather than watch it get
+            asked, and the engines get exactly what is in here.
+          */}
+          <div className="asking">
+            <div className="eyebrow">So this is what we will ask</div>
+            <textarea
+              className="field asking-input"
+              aria-label="The question we will ask"
+              rows={3}
+              value={draftQuestion}
+              placeholder="The question a buyer would type"
+              onChange={(e) => {
+                setQuestionEdited(true);
+                // Ours to vouch for, not theirs. Their own words are not "unverified".
+                setQuestionVerified(null);
+                setDraftQuestion(e.target.value);
+              }}
+            />
+            {rewriting ? (
+              <p className="note asking-note">Rewriting it from your correction.</p>
+            ) : !draftQuestion.trim() ? (
+              <p className="asking-warn">
+                {missingFact === 'sells'
+                  ? 'We cannot write the question until we know what you do. Fill that in above.'
+                  : 'We cannot write the question until we know who chooses you. Fill that in above.'}
+              </p>
+            ) : questionVerified === false ? (
+              /*
+                THE GUARD FAILED AND SAYS SO. Four draws and a repair all came back reading like
+                something nobody would type, and this is the best of them. It used to arrive on
+                screen looking exactly like a question that passed. Now it does not.
+              */
+              <p className="asking-warn">
+                We are not confident in this one. Nothing we drafted read like a question a real
+                buyer would type, so this is the closest of them. Worth rewriting in your words.
+              </p>
+            ) : (
+              <p className="note asking-note">
+                Both engines get this exact question. Change it if it is not what someone would type.
+              </p>
+            )}
+            {questionEdited && !rewriting ? (
+              <button
+                className="asking-redo"
+                type="button"
+                onClick={() => {
+                  setQuestionEdited(false);
+                  void rewrite(profile);
+                }}
+              >
+                Write it again from the facts above
+              </button>
+            ) : null}
+          </div>
 
           <div className="confirm-actions">
             <button className="button" type="submit">

@@ -149,7 +149,22 @@ export type ScanEvent =
    * the seam the brief specifies. Null when the profile was too thin to write one - which is not
    * an error, it is what the card is for.
    */
-  | { type: 'detected'; profile: Profile; question: string | null; needs_manual: boolean; manual_reason: ManualReason }
+  | {
+      type: 'detected';
+      profile: Profile;
+      question: string | null;
+      /**
+       * Did that question pass the buyer-question guard, or is it the best of four failed draws?
+       *
+       * Both used to arrive here as a plain string. The card showed them identically, so a
+       * question the guard had rejected sat on screen with the same authority as one it passed.
+       * False means: show it, and say we are not sure about it. Null when no question was
+       * written at all.
+       */
+      question_verified: boolean | null;
+      needs_manual: boolean;
+      manual_reason: ManualReason;
+    }
   | { type: 'question'; question: string }
   | { type: 'engine_started'; engine: EngineId; label: string }
   | { type: 'engine_done'; engine: EngineId; label: string; ms: number; model: string; citations: number }

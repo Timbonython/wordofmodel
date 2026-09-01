@@ -787,6 +787,7 @@ export default function Wizard({
               value={email}
               onChange={setEmail}
               type="email"
+              data-clarity-mask="true"
             />
             {/* THE CODE BOX ONLY WHERE A CODE CAN BE USED. Read from the offer registry rather
                 than hard-coded: while premium was the only plan with an offer this was

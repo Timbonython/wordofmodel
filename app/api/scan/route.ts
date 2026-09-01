@@ -93,7 +93,24 @@ export async function POST(request: Request) {
   const userAgent = request.headers.get('user-agent');
 
   return ndjson(async (emit) => {
-    const cached = await findCachedScan(domain);
+    /*
+     * THE CACHE IS KEYED ON THE DOMAIN, AND FROM 1 SEP 2026 THE QUESTION IS THE VISITOR'S.
+     *
+     * findCachedScan asks one thing: was this domain scanned in the last 24 hours. That was
+     * sound while the question was written from the domain and could not be anything else. Now
+     * that the card lets somebody rewrite the question, a domain hit would answer their new
+     * question with yesterday's answer to a different one - and the screen would show the
+     * question they typed above a result that was never asked it. Principle §5, in the most
+     * expensive place it could appear: the result is the product.
+     *
+     * So the cache is used only when the question matches. Whitespace and case are not a
+     * difference; anything else is.
+     */
+    const asked = (body.question ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const cachedRaw = await findCachedScan(domain);
+    const sameQuestion =
+      !asked || (cachedRaw?.question ?? '').trim().replace(/\s+/g, ' ').toLowerCase() === asked;
+    const cached = sameQuestion ? cachedRaw : null;
     if (cached?.result && cached.question) {
       emit({ type: 'question', question: cached.question });
       emit({

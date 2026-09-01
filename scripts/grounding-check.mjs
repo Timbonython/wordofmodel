@@ -5,7 +5,7 @@
  * fail. These call the real model, because the thing being tested is whether a constraint
  * survives contact with a strong prior, and a stub cannot answer that.
  */
-import { writeBuyerQuestion } from '../lib/question.ts';
+import { writeBuyerQuestion, isBuyerQuestion } from '../lib/question.ts';
 import { questionPrompt } from '../lib/prompts.ts';
 import { fact } from '../lib/profile.ts';
 import { detectBusiness } from '../lib/detect.ts';
@@ -72,6 +72,59 @@ for (let i = 1; i <= 2; i++) {
     bad++; console.log(`  ${i}. EXTRACTED "${p.location}"  <- not the address on the page`);
   } else console.log(`  ${i}. extracted "${p.location}"   buyer: "${p.buyer}"`);
 }
+
+/*
+ * BREAK 3, ADDED 1 Sep 2026 AFTER A LIVE RUN PRODUCED IT.
+ *
+ * A keynote speaker and business mentor in Adelaide. The question that reached the screen:
+ *
+ *   "Who in Adelaide, SA can help conference organisers and business leaders choose between
+ *    keynote speaking and business mentoring for an event?"
+ *
+ * Third person, asks for a shortlist, uses only the profile's own place - it passes every test
+ * the earlier breaks apply, and it is still useless. It asks for an ADVISER on the choice, so
+ * the engines name event agencies and the speaker is not in the running. Two causes, both fixed
+ * and both tested here: the prompt called `sells` "what they are choosing between", so two
+ * services became the options; and when every draw failed the guard the best one shipped anyway
+ * with nothing saying so.
+ */
+console.log('\n--- break 3: two services on one profile. The options are BUSINESSES, not services. ---');
+const twoServices = {
+  sells: fact('keynote speaking and business mentoring', 'extracted'),
+  buyer: fact('conference organisers and business leaders', 'extracted'),
+  location: fact('Adelaide, SA', 'extracted'),
+};
+/*
+ * TWO ASSERTIONS, AND THE SECOND ONE WAS ADDED AFTER THE FIRST PASSED.
+ *
+ * The first run of this break came back clean on `verified` and produced:
+ *
+ *   "Which Adelaide business offers keynote speaking and business mentoring for conference
+ *    organisers and business leaders?"
+ *
+ * Asks for a business, so the guard is satisfied. Still wrong, and wrong in the direction that
+ * costs us: a question naming both services can only be answered by a business doing both, which
+ * is a smaller field than the one the buyer is choosing from. If the client is the only local
+ * business doing both, they get named and the scan reports a win it did not earn. So the break
+ * now also fails when the question fuses the pair on either side.
+ */
+const BOTH_SERVICES = (q) => /keynote/i.test(q) && /mentor/i.test(q);
+const BOTH_BUYERS = (q) => /organiser/i.test(q) && /leader/i.test(q);
+for (let i = 1; i <= 3; i++) {
+  const { question, verified } = await writeBuyerQuestion(twoServices, 'Example Speaking');
+  if (!verified) { bad++; console.log(`  ${i}. UNVERIFIED  ${question}`); }
+  else if (BOTH_SERVICES(question)) { bad++; console.log(`  ${i}. NARROWED THE FIELD (both services)  ${question}`); }
+  else if (BOTH_BUYERS(question)) { bad++; console.log(`  ${i}. NARROWED THE FIELD (both buyers)  ${question}`); }
+  else console.log(`  ${i}. one service, one asker  ${question}`);
+}
+
+console.log('\n--- and the guard itself, on the sentence that got through ---');
+const LIVE = 'Who in Adelaide, SA can help conference organisers and business leaders choose between keynote speaking and business mentoring for an event?';
+if (isBuyerQuestion(LIVE)) { bad++; console.log('  THE GUARD STILL PASSES IT. The adviser shape is not caught.'); }
+else console.log('  rejected: the adviser shape');
+const GOOD = 'Who are the best keynote speakers in Adelaide for a business conference?';
+if (!isBuyerQuestion(GOOD)) { bad++; console.log(`  THE GUARD REJECTS A GOOD ONE: ${GOOD}`); }
+else console.log('  accepted: a plain buyer question about a person-shaped category');
 
 console.log('\n--- and the field the run cannot proceed without ---');
 try {

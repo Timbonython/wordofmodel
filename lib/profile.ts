@@ -140,7 +140,20 @@ export function missingForQuestion(p: Facts): 'buyer' | 'sells' | null {
 export function constraintBlock(p: Facts): string {
   const lines: string[] = [];
   if (p.buyer) lines.push(`Who is choosing: ${p.buyer.value}`);
-  if (p.sells) lines.push(`What they are choosing between: ${p.sells.value}`);
+  /*
+   * "WHAT THEY ARE CHOOSING BETWEEN" WAS THE LABEL HERE UNTIL 1 SEP 2026, and it produced the
+   * second inversion. A speaker and mentor whose `sells` read "keynote speaking and business
+   * mentoring" got this question:
+   *
+   *   "Who in Adelaide, SA can help conference organisers and business leaders choose between
+   *    keynote speaking and business mentoring for an event?"
+   *
+   * The model read the two services as the options, so the question asks for an ADVISER on the
+   * choice rather than for one of the businesses being chosen. The label was doing that: it
+   * named `sells` as the set of options. It now names the kind of business, which is what the
+   * options actually are, and the prompt says so again in its own words.
+   */
+  if (p.sells) lines.push(`The kind of business or person they are looking for: ${p.sells.value}`);
   lines.push(
     p.location
       ? `Where: ${p.location.value}`
