@@ -1563,3 +1563,37 @@ the port is free, not that a pkill returned. **And "already scanned" means withi
 ever: `findCachedScan` uses a rolling day, so a domain that was free yesterday costs US$0.37
 today. The skip message said "no stored scan", which sent me looking for a missing row that was
 there and merely too old.
+
+## "JWT issued at future", and asking twice before switching the offer off (1 Sep 2026)
+
+Three alerts on 30 and 31 Aug read *Founding count unavailable - the offer is being withheld from
+every visitor*. The guard was right and nothing was mis-sold: the count could not be read, the
+founding block did not render, and every visitor saw the standard US$249 rather than a discount
+nobody was counting.
+
+**The cause was `Founding count failed: JWT issued at future`** - Supabase refusing a token whose
+issued-at claim was ahead of the clock validating it.
+
+**It is not our token.** `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` are both the new
+`sb_secret_` / `sb_publishable_` format and neither is a JWT. The token being rejected is minted
+inside Supabase, so the skew is between their own components. Transient, self-clearing, and
+**writes to the same database succeeded seconds either side** - 7 funnel rows around 08:42, 4
+around 15:03 - which is what rules out connectivity.
+
+**So the count is now asked twice, about 150ms apart, before anything is withheld.** One blip
+should not cost every visitor the founding block, and an alert now means it failed TWICE, which
+is a far stronger signal than it was.
+
+**Deliberately not a classifier.** Retrying only on "JWT issued at future" would be a list of
+strings, and a list of strings is exactly what 0020 removed - it knew three bot names and every
+other crawler walked past it. Retrying anything once costs one query; a genuine failure fails
+twice and still fails closed. Proven by pointing the query at a table that does not exist:
+withheld, alerted, 1999ms across both attempts, and the healthy path still returns on the first
+in 183ms.
+
+### The alert could prove it happened and not why
+
+`ops_alerts` recorded the subject, the recipient and whether Resend accepted it. The reason lived
+in one inbox and in a `console.error` the Vercel CLI does not return, so the same investigation
+started from nothing three times. 0024 adds `detail` and `sendOpsAlert` fills it on all three
+paths, including the one where the email itself failed - the case that needs it most.

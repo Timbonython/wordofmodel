@@ -167,13 +167,46 @@ export const FOUNDING_CLOSES = new Date('2026-10-01T13:30:00Z');
 const ALERT_EVERY_MS = 30 * 60_000;
 let lastFoundingAlert = 0;
 
+/**
+ * ASKED TWICE BEFORE THE OFFER IS SWITCHED OFF.
+ *
+ * On 30 and 31 Aug 2026 this failed three times with `JWT issued at future` - Supabase refusing
+ * a token whose issued-at claim was ahead of the clock validating it. Both of our keys are the
+ * new sb_secret_/sb_publishable_ format and neither is a JWT, so the token in question is minted
+ * inside Supabase: the skew is between their components, not between us and them. It is
+ * transient by nature, it cleared on its own each time, and writes to the same database
+ * succeeded seconds either side.
+ *
+ * One blip should not cost every visitor the founding block. So the count is asked again before
+ * anything is withheld, and an alert now means it failed TWICE, which is a much stronger signal
+ * than it was.
+ *
+ * NOT A CLASSIFIER. It would be easy to retry only on "JWT issued at future" and fail closed
+ * immediately on everything else. That is a list of strings, and a list of strings is what
+ * migration 0020 removed for exactly this reason - it knew three bot names and every other
+ * crawler walked past it. Retrying anything once costs one query; a genuine failure fails twice
+ * and still fails closed, so the guard is unchanged in the case that matters.
+ */
+const COUNT_RETRY_MS = 150;
+
 export async function foundingOfferOrNull(): Promise<FoundingState | null> {
   if (Date.now() >= FOUNDING_CLOSES.getTime()) return null;
 
+  let firstFailure: string | null = null;
   try {
     const state = await foundingDisplay();
     // A real, readable zero. Not an error, and not alert-worthy: it is the offer selling out,
     // which is the outcome it was designed for.
+    return state.remaining > 0 ? state : null;
+  } catch (err) {
+    firstFailure = err instanceof Error ? err.message : String(err);
+    console.warn(`founding: count failed, retrying once. ${firstFailure}`);
+  }
+
+  await new Promise((r) => setTimeout(r, COUNT_RETRY_MS));
+
+  try {
+    const state = await foundingDisplay();
     return state.remaining > 0 ? state : null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -195,7 +228,12 @@ export async function foundingOfferOrNull(): Promise<FoundingState | null> {
         'This is the fail-closed path working as designed. It is still wrong to leave: the page',
         'looks completely normal while the offer is switched off, which is why this alert exists.',
         '',
-        `Reason: ${message}`,
+        `Reason, on the retry: ${message}`,
+        `Reason, first attempt:  ${firstFailure}`,
+        '',
+        'BOTH ATTEMPTS FAILED, which is why this is worth reading. A single transient failure no',
+        'longer raises this: the count is asked twice, about 150ms apart, since Supabase was',
+        'intermittently answering "JWT issued at future" on 30 and 31 Aug 2026.',
       ],
     }).catch(() => {});
     return null;
