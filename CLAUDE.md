@@ -1692,3 +1692,37 @@ there; a prompt change only writes new ones.
 
 The geography half does not apply to the paid path: `place` comes from a closed ISO list plus a
 locality the subscriber typed, so that generator cannot invent a city.
+
+## The 24 hour scan cache, and the three ways it misleads you (1 Sep 2026)
+
+`findCachedScan` re-serves any completed scan of the same domain for 24 hours. It is cost control
+and a feature - a repeat visitor sees their previous result - and it caught the same person three
+times in one day while verifying the grounding work.
+
+**1. A cached run skips everything you are trying to test.** `/api/detect` checks the cache first
+and, on a hit, emits `question` and `result` and returns. No site read, no extraction, no confirm
+card. So re-running a recently scanned domain does not exercise the pipeline at all: it replays a
+row. Re-verifying `generalhavelock.com.au` was impossible until the cached row was deleted, and
+the row it kept serving was the DEFECTIVE question from the morning.
+
+Clear the row first, and print it before you do - it is usually the evidence:
+
+```
+delete from scans where domain = 'generalhavelock.com.au';
+```
+
+**2. A cached response emits no `detected` event, so anything reading the profile reads nothing.**
+The verification parser used `prof.get("what_they_sell")` and printed Python's `None` for the
+missing keys, which rendered as `sells="None"` - **character for character identical to the real
+`"None"` string leak found on `darwindental.com.au` and fixed the same hour**. A production check
+minutes after a push appeared to show a null profile that had somehow still written a question,
+which is impossible, and it was one step from being reported as a regression in freshly shipped
+code. Principle §5 committed by the tooling built to hunt principle §5. The parser now prints
+`CACHED - no extraction ran` and labels the question as coming from the cache.
+
+**3. "Already scanned" means within the last 24 hours, not ever.** A domain that is free to test
+today costs about US$0.37 tomorrow, because the window is rolling. `pixel:check` said "no stored
+scan here" and sent somebody hunting for a missing row that was present and merely too old.
+
+The general shape, and it is §5 again: **a cached path and a fresh path must not produce
+identical-looking output.** Wherever one is possible, say which one happened.
