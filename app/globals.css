@@ -808,6 +808,10 @@ footer .wrap {
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
+  /* MEASURED AT ZERO. The button sat flush against the paragraph above it - fine when that
+     paragraph was two lines of prose in a form, tight once the card put a note directly over it.
+     A decision worth a beat of space before you make it. */
+  margin-top: 24px;
 }
 
 /* steps 5 to 7 */
@@ -1123,11 +1127,15 @@ footer .wrap {
   margin: 26px 0 0;
 }
 
+ /* 52ch WAS A READING MEASURE APPLIED TO A ROW OF CONTROLS, which are not the same thing. At
+    1440 it left a 360px input inside an 892px column - correct for a paragraph, cramped for a
+    field somebody is meant to correct a sentence in. The note below keeps the reading measure;
+    the inputs get the room. */
 .facts-rows {
   display: grid;
   gap: 16px;
   margin: 16px 0 0;
-  max-width: 52ch;
+  max-width: 72ch;
 }
 
 .facts-row {
@@ -1137,9 +1145,9 @@ footer .wrap {
 
 @media (min-width: 560px) {
   .facts-row {
-    grid-template-columns: 13ch 1fr;
+    grid-template-columns: 15ch 1fr;
     align-items: start;
-    gap: 14px;
+    gap: 18px;
   }
 }
 
