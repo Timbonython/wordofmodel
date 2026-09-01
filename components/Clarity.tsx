@@ -1,6 +1,7 @@
 'use client';
 
 import Script from 'next/script';
+import { SCRIPT_ID, armTagging } from '@/lib/clarity';
 
 /**
  * Microsoft Clarity: session replay, scroll maps, rage clicks.
@@ -19,9 +20,11 @@ import Script from 'next/script';
  *
  * AFTERINTERACTIVE, unlike MetaPixel. The pixel needs beforeInteractive because React effects
  * call fbq at hydration and would run ahead of the snippet - the 26 Aug defect, written up in
- * that file. Nothing in this build calls window.clarity, so there is no ordering to protect and
- * no reason to spend the initial HTML on it. If anything ever does call clarity() from an
- * effect, read the MetaPixel note first; the failure is silent in exactly the same way.
+ * that file. Clarity acquired the same hazard on 1 Sep, because ScanPanel now tags the session
+ * from an effect. It is handled by the queue in lib/clarity.ts rather than by moving this
+ * script into the initial HTML, which is the cheaper half of the trade: the pixel had to be
+ * beforeInteractive because a dropped conversion is money, and a tag that arrives 200ms late
+ * costs nothing as long as it is not lost.
  *
  * -------------------------------------------------------------------------------------------
  * MASKING, AND THE THING THAT MUST NOT BE RECORDED.
@@ -37,8 +40,13 @@ import Script from 'next/script';
  * because the promise on the privacy page is about the region and not about the vendor.
  */
 export function Clarity({ projectId }: { projectId: string }) {
+  /* Being in the tree at all IS the server's decision that this visitor may be recorded, so it
+     is recorded here rather than re-derived. In render and not an effect on purpose: every
+     component in the tree renders before any effect runs, and ScanPanel tags the session from
+     an effect. An effect here would be a race with a 50/50 answer. */
+  armTagging();
   return (
-    <Script id="ms-clarity" strategy="afterInteractive">
+    <Script id={SCRIPT_ID} strategy="afterInteractive">
       {`(function(c,l,a,r,i,t,y){
 c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
 t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;

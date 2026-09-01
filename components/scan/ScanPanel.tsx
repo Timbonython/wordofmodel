@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { normaliseDomain } from '@/lib/domain';
 import { readNdjson } from '@/lib/stream';
 import type { FreeResult, ManualReason, Profile, ScanEvent } from '@/lib/types';
@@ -9,6 +9,7 @@ import { ScanResult } from './ScanResult';
 import { BusinessFacts } from '@/components/BusinessFacts';
 import { fact } from '@/lib/profile';
 import { metaTrack } from '@/components/MetaPixel';
+import { tagSession } from '@/lib/clarity';
 
 type Phase = 'idle' | 'detecting' | 'confirm' | 'running' | 'result';
 
@@ -117,6 +118,44 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   } | null>(null);
 
   const scanRegion = useRef<HTMLDivElement>(null);
+
+  /**
+   * TAG THE RECORDING WITH WHERE THE VISITOR GOT TO. Added 1 Sep 2026, with Clarity, for the
+   * one question the tables cannot answer: 100+ landing views and zero completed scans, and
+   * five states a session can end in. Now a recording can be found by its ending.
+   *
+   * IT READS THE STATE RATHER THAN BEING CALLED AT THE TRANSITIONS, which is the whole reason
+   * it is one effect and not seven setPhase call sites. Phase is set in seven places, three of
+   * them inside the functional updater that reverts a failed run - and a tag added next to six
+   * of the seven is a hole exactly where the interesting cohort is. Depending on the state
+   * makes an untagged phase unrepresentable instead of merely unlikely.
+   *
+   * Clarity keeps every value a session sets for a key, so a visitor who reached the
+   * confirmation card and stopped carries idle, detecting and confirm and never carries
+   * running. That subtraction - has confirm, lacks running - is the abandonment number, and it
+   * is not available from any table in this build.
+   *
+   * Safe when Clarity was never loaded, which is every UK and EEA visitor and every environment
+   * with no project id. See tagSession; it is a no-op there and deliberately not the package's
+   * own setTag, which would throw.
+   */
+  useEffect(() => {
+    tagSession('phase', phase);
+  }, [phase]);
+
+  /**
+   * The scan id, so a recording joins to the row it produced.
+   *
+   * It is a pointer into our own data and not personal data in itself, but it does let anyone
+   * with Clarity access walk from a recording to a scans row, and that row carries an email
+   * address once the reveal has been through. That is a deliberate trade for the length of this
+   * investigation and it goes when the recorder does - the id is what makes "this session"
+   * and "this result" the same object, and without it a recording of a scan that went wrong
+   * cannot be matched to the question that was actually asked.
+   */
+  useEffect(() => {
+    if (result?.scanId) tagSession('scan', result.scanId);
+  }, [result?.scanId]);
 
   function setStep(key: string, label: string, state: StepState, detail?: string) {
     setSteps((current) => {
@@ -300,6 +339,12 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
     event.preventDefault();
     const clean = normaliseDomain(domainInput);
     if (!clean) {
+      /* NOT A PHASE, and that is the point. This visitor typed something - a business name,
+         usually - and the client rejected it before any request was made, so phase never leaves
+         "idle" and they are indistinguishable from someone who never touched the field. That is
+         the second of the four deaths this recorder was added to find, and without its own key
+         it is the one death the instrument cannot see. */
+      tagSession('rejected', 'domain');
       setError('That does not look like a website address. Try example.com');
       return;
     }
@@ -332,6 +377,10 @@ export function ScanPanel({ wizardLive = false }: { wizardLive?: boolean }) {
   async function onRun(event: React.FormEvent) {
     event.preventDefault();
     if (!profile.brand_name.trim() || !(profile.what_they_sell.trim() || profile.category_term.trim())) {
+      /* Same shape as the domain rejection above: they pressed the button on the confirmation
+         card and were sent back to it, still in phase "confirm", looking exactly like someone
+         who read it and left. */
+      tagSession('rejected', 'facts');
       setError('We need your brand name and what you sell. The rest we can work with.');
       return;
     }

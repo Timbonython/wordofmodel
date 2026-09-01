@@ -19,11 +19,19 @@
  *      formula is duplicated on purpose - lib/ratelimit.ts is server-only and drags the whole
  *      Supabase client behind it - so this is the thing that keeps the copies honest.
  *
- *   4. THE PRIVACY COPY. app/privacy/page.tsx says either "no session recording" or the Clarity
+ *   4. THE RECORDER'S TAGS. @microsoft/clarity's setTag calls window.clarity with no check that
+ *      it is defined, and it is undefined for every visitor the region gate excluded, every
+ *      environment with no project id, and everyone running an ad blocker - so the unwrapped
+ *      package throws a TypeError in the scan panel for exactly the people we promised not to
+ *      record. lib/clarity.ts wraps it; the section below runs that function with no window,
+ *      with a window and no snippet, and with a snippet that has not executed yet.
+ *
+ *   5. THE PRIVACY COPY. app/privacy/page.tsx says either "no session recording" or the Clarity
  *      disclosure, decided from the environment at render. Delete one branch and one deploy
  *      makes a published promise false without anything failing.
  */
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,6 +133,122 @@ console.log('\nthe migration\n');
 const sql = readFileSync(join(root, 'supabase/migrations/0025_visits.sql'), 'utf8');
 check('the primary key is (day, visitor_hash)', /primary key \(day, visitor_hash\)/.test(sql));
 check('the table is created if absent', /create table if not exists public\.visits/.test(sql));
+
+console.log('\nthe recorder: tagging a session that may not be recorded\n');
+
+// THE RULE THAT MAKES THE WRAPPER LOAD-BEARING. One file may touch the vendor. If a second one
+// imports it, somebody has reached past the guard to the version that throws.
+function importersOf(needle) {
+  return execFileSync('grep', ['-rln', needle, 'app', 'lib', 'components', 'scripts'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+    .trim()
+    .split('\n')
+    .filter((f) => f !== 'scripts/visits-check.mjs');
+}
+const importers = importersOf('@microsoft/clarity');
+check(
+  'only lib/clarity.ts imports @microsoft/clarity',
+  importers.length === 1 && importers[0] === 'lib/clarity.ts',
+  importers.join(', '),
+);
+
+// The three absences, against the real module rather than a transcription of it.
+//
+// setTimeout is stubbed FIRST, before any call, because "did it quietly start retrying" is half
+// of what these assertions are for: a tag that queues on the server, or for a visitor we never
+// record, is a timer running on behalf of a recorder that does not exist.
+const clarity = await import(join(root, 'lib/clarity.ts'));
+const timers = [];
+const realSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (fn) => { timers.push(fn); return 0; };
+
+function tag(key, value) {
+  try {
+    clarity.tagSession(key, value);
+    return null;
+  } catch (e) {
+    return e;
+  }
+}
+
+// 1. A browser, and the component was never rendered: the UK or EEA visitor, or an unset
+//    project id. The population the region gate exists for, running the code path the raw
+//    package throws in.
+globalThis.window = globalThis;
+let threw = tag('phase', 'idle');
+check('a tag for a visitor we never armed is a no-op', threw === null, threw?.message);
+check('and it leaves no timer running for a visitor we never record', timers.length === 0);
+
+// 2. The server render, and the arming is ON - because components/Clarity.tsx renders on the
+//    server too, so `armed` is true here. That is exactly why the no-window guard is the only
+//    thing standing between a server render and a queue with a live timer in it, and why this
+//    case has to come after the arming rather than before it, where it would pass on the
+//    strength of a flag that is false for the wrong reason.
+clarity.armTagging();
+delete globalThis.window;
+threw = tag('phase', 'idle');
+check('a tag on the server, where there is no window, is a no-op not a throw', threw === null, threw?.message);
+check('and the server queues nothing, even though the component armed it', timers.length === 0);
+
+// 3. Back in the browser, armed, and the snippet has not executed yet. This is the
+//    afterInteractive window the very first phase tag actually lands in, and the case a DOM
+//    lookup got wrong: next/script inserts its element AFTER hydration, so "no element" and
+//    "not recorded" were the same answer to two different questions.
+globalThis.window = globalThis;
+// TWO of them, and this is not padding: with one queued tag a flush that reverses the queue is
+// indistinguishable from one that does not, and "in order" below would assert nothing at all.
+clarity.tagSession('phase', 'idle');
+clarity.tagSession('phase', 'detecting');
+const sent = [];
+check('a tag sent before the snippet has run is queued, not dropped', timers.length === 1);
+check('a second one joins the queue without starting a second retry', timers.length === 1);
+check('and nothing reached the vendor yet', sent.length === 0);
+
+// 4. window.clarity appears. The held tag arrives, ahead of the live one.
+globalThis.clarity = (...args) => sent.push(args);
+timers.shift()();
+clarity.tagSession('phase', 'confirm');
+check('the held tags are flushed once window.clarity exists', sent.length === 3, JSON.stringify(sent));
+check(
+  'in the order they were sent, through the vendor call the package makes',
+  JSON.stringify(sent) ===
+    JSON.stringify([
+      ['set', 'phase', 'idle'],
+      ['set', 'phase', 'detecting'],
+      ['set', 'phase', 'confirm'],
+    ]),
+  JSON.stringify(sent),
+);
+
+globalThis.setTimeout = realSetTimeout;
+delete globalThis.clarity;
+delete globalThis.window;
+
+// ARMING. tagSession only queues for a visitor the SERVER decided may be recorded, and the
+// only thing that says so is the component being in the tree. If that call moves into an
+// effect it races ScanPanel's own effect and the first phase tag goes back to being a coin toss.
+const gate = readFileSync(join(root, 'components/Clarity.tsx'), 'utf8');
+check(
+  'the gated component arms tagging, in render and not an effect',
+  /armTagging\(\);\n  return \(/.test(gate),
+);
+check('and nothing else arms it', importersOf('armTagging').sort().join(',') === 'components/Clarity.tsx,lib/clarity.ts');
+
+// THE WIRING. The phase tag reads the state instead of being called at the seven setPhase sites,
+// so a new phase cannot be added without a tag. If this becomes a call at a transition, the hole
+// is back and it is invisible.
+const panel = readFileSync(join(root, 'components/scan/ScanPanel.tsx'), 'utf8');
+check(
+  'ScanPanel tags the phase from an effect on the state, not at the transitions',
+  /useEffect\(\(\) => \{\s*tagSession\('phase', phase\);\s*\}, \[phase\]\)/.test(panel),
+);
+check('the scan id is tagged too, so a recording joins to its row', /tagSession\('scan', result\.scanId\)/.test(panel));
+// The two refusals that never change phase. Without their own key each one is invisible inside
+// the phase it was refused in, and one of them is a death this recorder exists to measure.
+check("a domain the client refuses is tagged, since phase never leaves idle", /tagSession\('rejected', 'domain'\)/.test(panel));
+check("a confirm card sent back for missing facts is tagged too", /tagSession\('rejected', 'facts'\)/.test(panel));
 
 console.log('\nthe privacy copy\n');
 
