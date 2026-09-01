@@ -94,3 +94,30 @@ create index if not exists visits_click_idx
 create index if not exists visits_ip_hash_idx
   on public.visits (ip_hash)
   where ip_hash is not null;
+
+/*
+ * NO KEY OUTSIDE THE SERVER MAY TOUCH THIS TABLE.
+ *
+ * Added 1 Sep 2026, before the migration was first run. Every other table in this schema - all
+ * eighteen of them, across nine migrations - carries these three lines, and visits was the one
+ * exception. Not a decision: an omission.
+ *
+ * WHAT WAS ACTUALLY AT RISK, stated accurately rather than dramatically. A probe with the
+ * publishable key, which ships to every browser, shows reviews and funnel_events returning
+ * 42501 - the role has no privilege at all - and scans returning an empty array, protected by
+ * RLS rather than by the grant. So this table would probably have inherited no anon grant
+ * either and been unreadable in practice. Probably is the problem: that protection lives in
+ * project-level default privileges that are not in this repo, cannot be reviewed in a diff,
+ * and can be changed in a dashboard by anyone with access. Every other table says what it
+ * wants in the migration and does not depend on that.
+ *
+ * The rows are worth the belt and braces: ip_hash, referrer, utm_content and click_id are a
+ * complete picture of where the paid traffic comes from and, joined to scans, who it became.
+ */
+alter table public.visits enable row level security;
+revoke all on table public.visits from anon;
+revoke all on table public.visits from authenticated;
+
+comment on table public.visits is
+  'First-party page-view counting. One row per visitor per Adelaide day. RLS on with no '
+  'policies and no grants: every read and write is the server on the secret key.';

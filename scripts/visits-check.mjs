@@ -133,6 +133,10 @@ console.log('\nthe migration\n');
 const sql = readFileSync(join(root, 'supabase/migrations/0025_visits.sql'), 'utf8');
 check('the primary key is (day, visitor_hash)', /primary key \(day, visitor_hash\)/.test(sql));
 check('the table is created if absent', /create table if not exists public\.visits/.test(sql));
+// THE THING EVERY OTHER TABLE IN THIS SCHEMA DOES. visits shipped without it and would have
+// been the only table whose protection lived in a project setting rather than in the diff.
+check('RLS is enabled', /alter table public\.visits enable row level security/.test(sql));
+check('and no browser-side role is granted anything', /revoke all on table public\.visits from anon/.test(sql) && /revoke all on table public\.visits from authenticated/.test(sql));
 
 console.log('\nthe recorder: tagging a session that may not be recorded\n');
 
