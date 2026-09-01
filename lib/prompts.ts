@@ -26,14 +26,24 @@ From the text below, return ONLY this JSON, no preamble, no markdown:
   "what_they_sell": "plain, specific, max 10 words",
   "buyer": "who is CHOOSING it - the person deciding, max 10 words",
   "country": "primary market, ISO country name",
-  "location": "the town or city this business operates from, COPIED from the page",
+  "location": "the TOWN OR CITY this business SERVES CUSTOMERS IN, or null if it serves a whole country",
   "category_term": "the phrase a buyer would search, max 6 words"
 }
 
-For "location": look at the address, the footer, the contact page, any postcode, any phone area
-code, and any structured data. Copy what the page says and nothing more - "Adelaide, SA" if that
-is what appears. Do not expand it, do not name the state's capital, and do not infer a city from
-the country. If no place appears anywhere on the page, set it to null.
+For "location": WHERE THE CUSTOMERS ARE, not where the company has a desk. Look at the address,
+the footer, the contact page, any postcode, any phone area code, and any structured data.
+
+Return the TOWN OR CITY, plus the state if the page gives one - "Adelaide, SA". Not the street,
+not the building number, not the postcode: a person asking an assistant for somewhere to go names
+a suburb or a city, never a postal address, and the question is built from this string.
+
+Set it to NULL when the business is not chosen by where it is - an online shop that delivers
+nationwide, a business serving a whole country or the world. A head office in a city does not
+make that city the answer. Null is the right answer for those and a city is the wrong one.
+
+Take the words from the page and add nothing to them - do not expand an abbreviation, do not name
+the state's capital, and do not infer a city from the country. If no place appears anywhere on
+the page, set it to null.
 
 For "buyer": name the person who chooses this business, not the trade it might sell into. A pub
 is chosen by people deciding where to eat and drink, not by venues buying supplies.

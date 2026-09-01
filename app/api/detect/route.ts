@@ -1,7 +1,6 @@
 import { brandFromDomain, normaliseDomain } from '@/lib/domain';
-import { fact } from '@/lib/profile';
 import { MissingFactError, writeBuyerQuestion } from '@/lib/question';
-import { detectBusiness, needsManualEntry } from '@/lib/detect';
+import { detectBusiness, needsManualEntry, profileFrom } from '@/lib/detect';
 import { findCachedScan } from '@/lib/db';
 import { checkRateLimit, clientIp, hashIp } from '@/lib/ratelimit';
 import { ndjson } from '@/lib/stream';
@@ -116,12 +115,10 @@ export async function POST(request: Request) {
     if (!reason) {
       emit({ type: 'stage', stage: 'writing', label: 'Writing the question a buyer would ask' });
       try {
-        const { question: q } = await writeBuyerQuestion(
-          { sells: fact(out.what_they_sell || out.category_term, 'extracted'),
-            buyer: fact(out.buyer, 'extracted'),
-            location: fact(out.location, 'extracted') },
-          out.brand_name ?? domain,
-        );
+        // profileFrom, not a second copy of it. The whole invariant rests on there being ONE
+        // line in the codebase that narrows a wide profile to the three facts the generator
+        // sees, so that "could a city reach the prompt from anywhere else" has one answer.
+        const { question: q } = await writeBuyerQuestion(profileFrom(out), out.brand_name ?? domain);
         question = q;
       } catch (err) {
         // Missing facts are not an error here, they are what the card is for.

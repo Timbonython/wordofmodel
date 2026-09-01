@@ -25,7 +25,11 @@ export async function detectBusiness(siteText: string): Promise<Profile> {
   const p = await askJson<Profile>(detectPrompt(siteText), 'business_profile', PROFILE_SCHEMA);
   const clean = (v: string | null) => {
     const s = (v ?? '').trim();
-    if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'unknown') return null;
+    // The same vocabulary fact() rejects. darwindental.com.au returned the literal string
+    // "None" for two fields, which clean() passed through and the card would have rendered as a
+    // found fact reading "None". Principle §5 in four characters.
+    const low = s.toLowerCase();
+    if (!s || low === 'null' || low === 'unknown' || low === 'n/a' || low === 'none') return null;
     return s;
   };
   return {
@@ -60,7 +64,12 @@ export async function writeQuestion(p: ConfirmedProfile): Promise<string> {
  * `country` is deliberately not carried across: it is the engines' search locale, and it was the
  * field that used to default to Australia and become the question's geography.
  */
-export function profileFrom(p: ConfirmedProfile): BusinessProfile {
+export function profileFrom(p: {
+  what_they_sell: string | null;
+  buyer: string | null;
+  location: string | null;
+  category_term: string | null;
+}): BusinessProfile {
   return {
     sells: fact(p.what_they_sell || p.category_term, 'extracted'),
     buyer: fact(p.buyer, 'extracted'),
