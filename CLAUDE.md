@@ -1580,9 +1580,30 @@ inside Supabase, so the skew is between their own components. Transient, self-cl
 **writes to the same database succeeded seconds either side** - 7 funnel rows around 08:42, 4
 around 15:03 - which is what rules out connectivity.
 
-**So the count is now asked twice, about 150ms apart, before anything is withheld.** One blip
-should not cost every visitor the founding block, and an alert now means it failed TWICE, which
-is a far stronger signal than it was.
+**The retry did not work, and the alerts proved it.** Both attempts failed with the identical
+error 150ms apart, twice, on 1 Sep - visible only because 0024 had started storing the reason. So
+the skew outlasts a short retry: it is a window, most likely one gateway node whose clock is
+ahead, not a flicker. The retry now runs only on a cold instance, which has nothing cached and
+nothing else to try.
+
+**What replaced it: the last count that read cleanly is served for sixty seconds when the live
+read fails, while it shows more than three seats of room.**
+
+That is not weakening the fail-closed rule, and the reason matters. The rule exists to stop an
+unreadable counter handing out unlimited permanent discounts - and it never did that work alone.
+`claim_founding_seat` decides the charge atomically in Postgres at the moment of buying, and this
+repo's own principle §3 is that the check belongs where the decision is made rather than where the
+number is shown. A page showing US$149 hands out nothing by itself. A stale count can only cost
+anything if more people buy inside a minute than the margin allows, and near the cap it falls
+closed exactly as before, because that is the only region where staleness could overshoot.
+
+What failing closed DOES cost is real and was being paid: every visitor sees US$249 for the
+duration, at the one moment they were closest to buying, while the page looks completely normal.
+
+All three branches watched: cold instance with a broken query WITHHELD; warm cache with a broken
+query SERVED the 20-remaining count and logged that it had; and with the margin raised above the
+cached figure, WITHHELD with *"showed only 20 places left, inside the margin of 25, so it was not
+trusted"*.
 
 **Deliberately not a classifier.** Retrying only on "JWT issued at future" would be a list of
 strings, and a list of strings is exactly what 0020 removed - it knew three bot names and every

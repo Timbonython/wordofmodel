@@ -168,75 +168,115 @@ const ALERT_EVERY_MS = 30 * 60_000;
 let lastFoundingAlert = 0;
 
 /**
- * ASKED TWICE BEFORE THE OFFER IS SWITCHED OFF.
+ * THE LAST COUNT THAT READ CLEANLY, AND WHY SERVING IT IS NOT WEAKENING THE GUARD.
  *
- * On 30 and 31 Aug 2026 this failed three times with `JWT issued at future` - Supabase refusing
- * a token whose issued-at claim was ahead of the clock validating it. Both of our keys are the
- * new sb_secret_/sb_publishable_ format and neither is a JWT, so the token in question is minted
- * inside Supabase: the skew is between their components, not between us and them. It is
- * transient by nature, it cleared on its own each time, and writes to the same database
- * succeeded seconds either side.
+ * The fail-closed rule exists to stop an unreadable counter handing out unlimited permanent
+ * discounts. It does not do that work alone and never did: `claim_founding_seat` decides the
+ * charge atomically, in Postgres, at the moment of buying. This build's own rule is that the
+ * check belongs where the decision is made rather than where the number is shown - so a page
+ * showing US$149 hands out nothing by itself, and a stale count can only cost anything if more
+ * people buy inside the cache window than the margin allows.
  *
- * One blip should not cost every visitor the founding block. So the count is asked again before
- * anything is withheld, and an alert now means it failed TWICE, which is a much stronger signal
- * than it was.
+ * What failing closed DOES cost is real: every visitor sees US$249 for the duration, at the one
+ * moment they were closest to buying, and the page looks completely normal while it happens.
  *
- * NOT A CLASSIFIER. It would be easy to retry only on "JWT issued at future" and fail closed
- * immediately on everything else. That is a list of strings, and a list of strings is what
- * migration 0020 removed for exactly this reason - it knew three bot names and every other
- * crawler walked past it. Retrying anything once costs one query; a genuine failure fails twice
- * and still fails closed, so the guard is unchanged in the case that matters.
+ * So a count that read cleanly less than a minute ago is served when the live read fails, but
+ * ONLY while it showed comfortable room. Near the cap it falls closed as before, because that is
+ * the only region where staleness could actually overshoot.
+ */
+const COUNT_CACHE_MS = 60_000;
+
+/**
+ * How much room the cached count must show before it is trusted after a failed read.
+ *
+ * Three seats. The exposure is "founding purchases completed inside sixty seconds", and three is
+ * far beyond any rate this product has seen or plausibly will - while still refusing to guess in
+ * the region where guessing could hand out seat twenty-one.
+ */
+const FOUNDING_STALE_MARGIN = 3;
+
+let lastGoodCount: { at: number; state: FoundingState } | null = null;
+
+/**
+ * ONE RETRY, AND ONLY WHEN THERE IS NOTHING CACHED TO FALL BACK ON.
+ *
+ * Added 1 Sep 2026 on the theory that `JWT issued at future` was a momentary blip. It is not:
+ * both attempts failed with the identical error 150ms apart, twice, which is recorded in
+ * ops_alerts.detail. The skew outlasts the retry, so retrying costs 150ms of page latency and
+ * fixes nothing - except on a cold instance, which has no cached count and nothing else to try.
  */
 const COUNT_RETRY_MS = 150;
 
 export async function foundingOfferOrNull(): Promise<FoundingState | null> {
   if (Date.now() >= FOUNDING_CLOSES.getTime()) return null;
 
-  let firstFailure: string | null = null;
   try {
     const state = await foundingDisplay();
+    lastGoodCount = { at: Date.now(), state };
     // A real, readable zero. Not an error, and not alert-worthy: it is the offer selling out,
     // which is the outcome it was designed for.
     return state.remaining > 0 ? state : null;
   } catch (err) {
-    firstFailure = err instanceof Error ? err.message : String(err);
-    console.warn(`founding: count failed, retrying once. ${firstFailure}`);
-  }
+    const firstFailure = err instanceof Error ? err.message : String(err);
 
-  await new Promise((r) => setTimeout(r, COUNT_RETRY_MS));
+    const cached =
+      lastGoodCount && Date.now() - lastGoodCount.at < COUNT_CACHE_MS ? lastGoodCount.state : null;
 
-  try {
-    const state = await foundingDisplay();
-    return state.remaining > 0 ? state : null;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // ALWAYS LOGGED, even when the email is throttled: the log line is the record that this
-    // happened at all, and sendOpsAlert's own console line is the one being suppressed.
-    console.error(`founding: count unavailable, offer withheld. ${message}`);
+    if (cached && cached.remaining > FOUNDING_STALE_MARGIN) {
+      // NOT SILENT. A served-from-cache render and a live one must not look identical to whoever
+      // reads the logs later, which is the same rule the alert below is written to.
+      console.warn(
+        `founding: count failed, serving the count from ${Math.round((Date.now() - lastGoodCount!.at) / 1000)}s ` +
+          `ago (${cached.remaining} remaining, margin ${FOUNDING_STALE_MARGIN}). ${firstFailure}`,
+      );
+      return cached;
+    }
 
-    const now = Date.now();
-    if (now - lastFoundingAlert < ALERT_EVERY_MS) return null;
-    lastFoundingAlert = now;
+    // Nothing usable to fall back on. Try once more before withholding - on a cold instance this
+    // is the only attempt that can help, and it is the case the cache cannot cover.
+    await new Promise((r) => setTimeout(r, COUNT_RETRY_MS));
+    try {
+      const state = await foundingDisplay();
+      lastGoodCount = { at: Date.now(), state };
+      return state.remaining > 0 ? state : null;
+    } catch (err2) {
+      const message = err2 instanceof Error ? err2.message : String(err2);
+      // ALWAYS LOGGED, even when the email is throttled: the log line is the record that this
+      // happened at all, and sendOpsAlert's own console line is the one being suppressed.
+      console.error(`founding: count unavailable, offer withheld. ${message}`);
 
-    // Never throws, never blocks the page. The pricing block is worth less than the page.
-    await sendOpsAlert({
-      subject: 'Founding count unavailable - the offer is being withheld from every visitor',
-      lines: [
-        'foundingOfferOrNull() could not read the founding count, so the founding block is not',
-        'rendering and every visitor is being shown the standard US$249 rate.',
-        '',
-        'This is the fail-closed path working as designed. It is still wrong to leave: the page',
-        'looks completely normal while the offer is switched off, which is why this alert exists.',
-        '',
-        `Reason, on the retry: ${message}`,
-        `Reason, first attempt:  ${firstFailure}`,
-        '',
-        'BOTH ATTEMPTS FAILED, which is why this is worth reading. A single transient failure no',
-        'longer raises this: the count is asked twice, about 150ms apart, since Supabase was',
-        'intermittently answering "JWT issued at future" on 30 and 31 Aug 2026.',
-      ],
-    }).catch(() => {});
-    return null;
+      const now = Date.now();
+      if (now - lastFoundingAlert < ALERT_EVERY_MS) return null;
+      lastFoundingAlert = now;
+
+      const why = cached
+        ? `A count from ${Math.round((now - lastGoodCount!.at) / 1000)}s ago was available but showed only ` +
+          `${cached.remaining} places left, inside the margin of ${FOUNDING_STALE_MARGIN}, so it was not trusted.`
+        : 'Nothing was cached on this instance, so there was nothing to fall back on.';
+
+      // Never throws, never blocks the page. The pricing block is worth less than the page.
+      await sendOpsAlert({
+        subject: 'Founding count unavailable - the offer is being withheld from every visitor',
+        lines: [
+          'foundingOfferOrNull() could not read the founding count, so the founding block is not',
+          'rendering and every visitor is being shown the standard US$249 rate.',
+          '',
+          'This is the fail-closed path working as designed. It is still wrong to leave: the page',
+          'looks completely normal while the offer is switched off, which is why this alert exists.',
+          '',
+          `Reason, on the retry: ${message}`,
+          `Reason, first attempt:  ${firstFailure}`,
+          '',
+          why,
+          '',
+          'A count that read cleanly in the last sixty seconds is normally served instead of',
+          'withholding, so reaching this line means there was none, or it was too near the cap',
+          'to trust. Supabase answered "JWT issued at future" on 30 Aug and 1 Sep 2026 - a clock',
+          'skew inside their gateway, not a token of ours; neither of our keys is a JWT.',
+        ],
+      }).catch(() => {});
+      return null;
+    }
   }
 }
 
