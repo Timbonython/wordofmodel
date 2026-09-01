@@ -101,6 +101,33 @@ check(
 );
 check('a POST does not count', visitRowFor(request('https://wordofmodel.ai/', DOC, 'POST')) === null);
 
+// WHAT IS NOT A PAGE. Every path below was in the table on the first full day, and none of
+// them is a person looking at anything. 147 of 200 rows.
+check(
+  "this site's own cron is not a visitor",
+  visitRowFor(request('https://wordofmodel.ai/api/cron/sweep', { 'user-agent': 'vercel-cron/1.0' })) === null,
+);
+check('nor any other API route', visitRowFor(request('https://wordofmodel.ai/api/detect', DOC)) === null);
+check('/meta.json is not a page', visitRowFor(request('https://wordofmodel.ai/meta.json', DOC)) === null);
+check('nor robots.txt', visitRowFor(request('https://wordofmodel.ai/robots.txt', DOC)) === null);
+check('nor the manifest', visitRowFor(request('https://wordofmodel.ai/manifest.webmanifest', DOC)) === null);
+check(
+  'a bot probing for a file we do not have is not a visitor',
+  visitRowFor(request('https://wordofmodel.ai/wp-admin/install.php', DOC)) === null &&
+    visitRowFor(request('https://wordofmodel.ai/.env', DOC)) === null,
+);
+// AND WHAT STILL IS. The crawler decision above is untouched: this is about paths, not agents.
+check('the home page is still a page', visitRowFor(request('https://wordofmodel.ai/', DOC)) !== null);
+check('so is a marketing route', visitRowFor(request('https://wordofmodel.ai/pricing', DOC)) !== null);
+check(
+  'so is a scan permalink, whose id must not read as an extension',
+  visitRowFor(request('https://wordofmodel.ai/scan/5ab34625-89ca-40e4-a5d9-0b5624c06fd3', DOC)) !== null,
+);
+check(
+  'and a crawler on a real page still counts, user-agent and all',
+  visitRowFor(request('https://wordofmodel.ai/', { 'user-agent': 'SomeBot/1.0' })) !== null,
+);
+
 console.log('\nvisits: identity\n');
 
 const a = visitRowFor(request('https://wordofmodel.ai/', DOC));

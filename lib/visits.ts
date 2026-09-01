@@ -113,6 +113,33 @@ function isPageView(request: { method: string; headers: Headers }): boolean {
   return true;
 }
 
+/**
+ * Is this path a page a person could be looking at, rather than machinery or an asset?
+ *
+ * ADDED 2 SEP 2026, AFTER READING THE FIRST FULL DAY. Of 200 rows, 147 were not human page
+ * views: 106 of them were this site's own cron hitting /api/cron/sweep, 32 were /meta.json, and
+ * the rest were robots.txt and bots probing /wp-admin/install.php and /.env. The number that
+ * matters is landings against scans started, and a denominator inflated fourfold by our own
+ * scheduler makes the funnel look far worse than it is. §4 of the engineering principles is
+ * about a count without a window; this is the same error about a count without a definition.
+ *
+ * THIS IS NOT THE CRAWLER QUESTION. isPageView above deliberately counts requests with no
+ * sec-fetch-dest, because crawlers omit it and belong in this table with their user-agent
+ * stored so they can be separated at read time. A crawler asking for / is still a request for a
+ * page and still counts. This is only about paths that are not pages at all.
+ *
+ * ANY EXTENSION, rather than a list of them. Every real route in this app is extensionless -
+ * /pricing, /method, /scan/<uuid> - so "has a file extension" is the whole rule, and it catches
+ * the ones nobody would have thought to list. /.env and /wp-admin/install.php fall out of it as
+ * a deliberate consequence: an attacker probing for a file that does not exist here is not a
+ * visitor, and counting them was quietly padding the top of the funnel.
+ */
+function isPagePath(pathname: string): boolean {
+  if (pathname.startsWith('/api/')) return false;
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false;
+  return true;
+}
+
 export interface VisitRow {
   day: string;
   visitor_hash: string;
@@ -136,6 +163,7 @@ export function visitRowFor(request: {
   const salt = process.env.IP_HASH_SALT;
   if (!salt) return null;
   if (!isPageView(request)) return null;
+  if (!isPagePath(request.nextUrl.pathname)) return null;
 
   const day = adelaideDay();
   const ip = clientIp(request.headers);
