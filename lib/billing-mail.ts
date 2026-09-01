@@ -262,7 +262,7 @@ export async function sendOpsAlert(input: {
 
   if (!env.alertEmail) {
     console.error('ALERT_EMAIL is not set, so that alert went nowhere but here.');
-    await recordAlert({ subject: input.subject, status: 'no_address', recipient: null, messageId: null, error: 'ALERT_EMAIL is not set' });
+    await recordAlert({ subject: input.subject, status: 'no_address', recipient: null, messageId: null, error: 'ALERT_EMAIL is not set', detail: text });
     return;
   }
 
@@ -281,6 +281,7 @@ export async function sendOpsAlert(input: {
       recipient: env.alertEmail,
       messageId: data?.id ?? null,
       error: null,
+      detail: text,
     });
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
@@ -291,6 +292,9 @@ export async function sendOpsAlert(input: {
       recipient: env.alertEmail,
       messageId: null,
       error: reason,
+      // KEPT EVEN WHEN THE EMAIL FAILED, which is the case that needs it most: nobody received
+      // the text, so this row is the only copy of it that will ever exist.
+      detail: text,
     });
   }
 }
@@ -302,6 +306,16 @@ async function recordAlert(row: {
   recipient: string | null;
   messageId: string | null;
   error: string | null;
+  /**
+   * THE BODY, so the reason outlives the email.
+   *
+   * This table recorded that an alert was raised and whether Resend accepted it, and nothing
+   * about what was wrong. When the founding count failed three times over 30 and 31 Aug 2026 the
+   * cause existed only in one inbox and in a runtime log the Vercel CLI does not return, so the
+   * same investigation had to start from nothing each time. Delivery was recorded to this repo's
+   * own rule and the fault was not.
+   */
+  detail: string | null;
 }): Promise<void> {
   try {
     const { error } = await db().from('ops_alerts').insert({
@@ -310,6 +324,7 @@ async function recordAlert(row: {
       recipient: row.recipient,
       provider_message_id: row.messageId,
       error: row.error,
+      detail: row.detail,
     });
     if (error) throw new Error(error.message);
   } catch (err) {
