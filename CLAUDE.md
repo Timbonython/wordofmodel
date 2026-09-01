@@ -1726,3 +1726,29 @@ scan here" and sent somebody hunting for a missing row that was present and mere
 
 The general shape, and it is §5 again: **a cached path and a fresh path must not produce
 identical-looking output.** Wherever one is possible, say which one happened.
+
+## The scan result never learned about the US$69 tier (1 Sep 2026)
+
+The offer block after the email reveal - the single highest-intent moment on the site - carried
+**one button, to the expensive plan**. It read *"US$149/mo founding rate, 20 places"* at the top
+and *"US$249/mo. Founding rate US$149/mo"* at the bottom, and never mentioned Monitoring at all.
+
+The two-tier ladder shipped on 28 August. This page was written before it and was never revisited,
+so the cheapest product - and the one most free-scan visitors would actually buy - was invisible
+exactly where someone had just seen evidence they needed it. Not a presentation preference: a page
+left behind by a pricing change, which is §8 of the principles in the other direction. Architecture
+and copy disagreed, and only the copy reached the customer.
+
+Now two doors of identical width, each carrying its own price:
+
+```
+[ Monitoring, US$69 a month ]   [ Monitoring + Review, US$249 a month ]
+```
+
+**Each door names its own plan**, so the wizard opens on the tier that was clicked rather than a
+default nobody chose - `/start?plan=main&scan=…`. The scan id rides along on both, because the ad
+that produced a scan has to stay knowable through the purchase.
+
+`.button.secondary` was reached for first, to make one door quieter. It turned out to be defined
+only inside `.code-row`, so it styled nothing here - and a hierarchy is the opposite of what these
+two need. Both doors get the same treatment.

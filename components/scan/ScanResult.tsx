@@ -116,8 +116,21 @@ export function ScanResult({
     return { text, label: pick.engine_label, model: pick.model };
   })();
 
-  const ctaHref = wizardLive ? `/start?scan=${scanId}` : '/#pricing';
-  const ctaLabel = wizardLive ? 'Start my first report' : 'See the pricing';
+  /*
+   * TWO DOORS, EQUAL WEIGHT, from 1 Sep 2026.
+   *
+   * This page offered one plan and it was the expensive one. It read "US$149/mo founding rate"
+   * at the top and "US$249/mo" at the bottom, and never mentioned Monitoring at all - so the
+   * cheapest product, and the one most of these visitors would actually buy, was invisible at
+   * the single highest-intent moment on the site. That is not a presentation preference: the
+   * two-tier ladder shipped on 28 Aug and this page never learned about it.
+   *
+   * Each door carries its own price and its own plan, so the wizard opens on the tier that was
+   * clicked rather than on a default nobody chose. The scan id rides along on both, because the
+   * ad that produced a scan has to stay knowable through the purchase.
+   */
+  const planHref = (plan: 'main' | 'premium') =>
+    wizardLive ? `/start?plan=${plan}&scan=${scanId}` : '/#pricing';
 
   return (
     <div className="result">
@@ -211,11 +224,17 @@ export function ScanResult({
               answers to five questions, every month, with the companies that came up instead of you
               ranked beside you and what to do about it, in order.
             </p>
-            <a className="button" href={ctaHref}>
-              {ctaLabel}
-            </a>
+            <div className="offer-doors">
+              <a className="button offer-door" href={planHref('main')}>
+                {/* price-door: button */}
+                Monitoring, {priceLabel('main_monthly')} a month
+              </a>
+              <a className="button offer-door" href={planHref('premium')}>
+                {/* price-door: button */}
+                Monitoring + Review, {priceLabel('premium_monthly')} a month
+              </a>
+            </div>
             <p className="note" style={{ marginTop: 10 }}>
-              {priceLabel('premium_founding_monthly')}/mo founding rate, {FOUNDING_SEATS_PUBLIC} places.
               Three minutes to set up, and your first report lands within 24 hours.
             </p>
           </div>
@@ -287,13 +306,23 @@ export function ScanResult({
               destination: two chances to act on one thing being offered. */}
           <div className="offer">
             <p>
-              <strong>{priceLabel('premium_monthly')}/mo.</strong> Founding rate{' '}
-              {priceLabel('premium_founding_monthly')}/mo, {FOUNDING_SEATS_PUBLIC} places, held at that
-              price for as long as you stay. Cancel any time.
+              {/* price-door: no purchase path - the rate; the two doors below are the buyable ones */}
+              <strong>Monitoring is {priceLabel('main_monthly')} a month.</strong> Monitoring +
+              Review adds a quarterly deep read by hand and is{' '}
+              {priceLabel('premium_monthly')} a month, or {priceLabel('premium_founding_monthly')} on
+              one of the {FOUNDING_SEATS_PUBLIC} founding places, held at that price for as long as
+              you stay. Cancel any time.
             </p>
-            <a className="button" href={ctaHref}>
-              {ctaLabel}
-            </a>
+            <div className="offer-doors">
+              <a className="button offer-door" href={planHref('main')}>
+                {/* price-door: button */}
+                Start Monitoring, {priceLabel('main_monthly')} a month
+              </a>
+              <a className="button offer-door" href={planHref('premium')}>
+                {/* price-door: button */}
+                Start Monitoring + Review
+              </a>
+            </div>
           </div>
         </div>
       )}

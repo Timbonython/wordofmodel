@@ -1121,6 +1121,21 @@ footer .wrap {
   color: var(--soft);
 }
 
+ /* Two doors, side by side and the same size. The scan result used to carry one button to the
+    expensive plan; equal weight is the point, so neither is allowed to be wider than the other
+    and the pair wraps rather than one shrinking. */
+.offer-doors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0 0;
+}
+
+.offer-door {
+  flex: 1 1 22ch;
+  text-align: center;
+}
+
  /* ---------- the three facts, shared by the scan's confirm card and /start step one ----------
     Flat classes: no `.class tag`, which copycheck counts against a baseline. */
 .facts {
