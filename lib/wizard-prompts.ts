@@ -74,8 +74,15 @@ export function questionsPrompt(input: {
   brand_name: string;
   largest_competitor: string;
 }): string {
-  return `Write five questions a real buyer would ask an AI assistant while choosing
-a supplier of ${input.what_they_sell} in ${input.place}. Follow this structure exactly:
+  return `Write five questions ${input.buyer} would ask an AI assistant while deciding which
+business to choose for ${input.what_they_sell} in ${input.place}.
+
+The business these questions are about is one of the things BEING CHOSEN. Do not write questions
+addressed to it, and do not frame it as a supplier being asked to pitch - unless ${input.buyer}
+genuinely buys on trade terms, in which case say so plainly. Who is choosing decides which
+direction every one of these runs.
+
+Follow this structure exactly:
 
 1. CATEGORY: who is best at ${input.category_term} in ${input.place}
 2. SITUATION: written in first person by ${input.buyer} describing their actual
@@ -113,7 +120,8 @@ export function rewriteSlotPrompt(input: {
   brand_name: string;
 }): string {
   return `Rewrite ONE question a real buyer would ask an AI assistant while choosing
-a supplier of ${input.what_they_sell} in ${input.place}.
+which business to choose for ${input.what_they_sell} in ${input.place}. The business is one of
+the things being chosen, never the supplier being asked to pitch.
 
 It must follow this structure exactly:
 ${input.instruction}

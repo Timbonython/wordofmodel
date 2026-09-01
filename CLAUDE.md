@@ -1597,3 +1597,82 @@ in 183ms.
 in one inbox and in a `console.error` the Vercel CLI does not return, so the same investigation
 started from nothing three times. 0024 adds `detail` and `sendOpsAlert` fills it on all three
 paths, including the one where the email itself failed - the case that needs it most.
+
+## The scan invented a city, and inverted the transaction (1 Sep 2026)
+
+Governed by `word-of-model-scan-grounding-and-confirm.md` and `word-of-model-engineering-principles.md`,
+both now in the repo root beside the other briefs.
+
+One run, `generalhavelock.com.au`, produced *"Which Australian pub food and drinks supplier can
+reliably cover 20+ venues across metro Melbourne and regional Victoria..."* for a single pub at 162
+Hutt Street, Adelaide. Two errors, and **both were two lines of code rather than a vague prompt
+weakness**:
+
+```js
+country: (p?.country?.trim() || 'Australia')   // confirmProfile, app/api/scan/route.ts
+"close to choosing a supplier of ${what_they_sell} in ${country}"   // questionPrompt
+"- Include the country or region."             // ...and its rules
+```
+
+A country the model could not determine became Australia in the same shape as a found fact, and
+the prompt then instructed the model to name a place. That is principle §5 exactly, and §5's own
+list already contained "a failed count and a genuine zero, identical on the page".
+
+`buyer` was extracted, carried on the profile, and **dropped** before generation. The word
+"supplier" was hardcoded, so every business came out selling into trade.
+
+### What makes a wrong city unrepresentable now
+
+`questionPrompt(profile, brandName)` takes a `BusinessProfile` and nothing else - no site text, no
+country string. **One line narrows a wide profile to the three facts the generator sees**
+(`profileFrom`, lib/detect.ts). So "could a city reach the prompt from anywhere else" has one
+answer, and there is deliberately **no downstream check hunting for wrong cities** - principle §1
+says that is the second-best version.
+
+`Provenance` is `'extracted' | 'confirmed'`. There is no `'inferred'`, and adding one later as a
+convenience is the defect with a name.
+
+### Three defects only the real runs found
+
+Reasoning would have missed all three; §6's runs caught them.
+
+- The first Havelock re-run extracted the whole postal address and asked *"...at 162 Hutt Street
+  Adelaide SA 5000?"*. Correct on both original counts and still a question nobody would type.
+- `whogivesacrap.org` extracted `"Melbourne, VIC"` from a head office and asked *"Which Melbourne,
+  VIC stores..."* for a company that ships nationwide. A **true fact used as the wrong geography**.
+  Extraction now asks where the CUSTOMERS are and returns null when a business is not chosen by
+  where it is.
+- `darwindental.com.au` returned the literal string `"None"`. `clean()` rejected 'null' and
+  'unknown' but not 'none', so the card would have rendered a found fact reading "None".
+
+### The confirm card
+
+Three facts at the seam between writing the question and asking the engines, so the question is
+written in `/api/detect` now. The client hands it back unchanged when nothing was corrected and
+drops it the moment a fact is edited - reusing it would make the card decorative.
+
+**One component, consumed by the scan and by `/start` step one.** An empty field carries a dashed
+rule, the red-pen colour and its own line saying what could not be found.
+
+Fold re-measured at 390 x 844 / 734 / 664 / 628: input and button bottom at 508px, unchanged. A
+full timed run with the card is **45 seconds**, against a promise of about three minutes, so no
+copy moved.
+
+### The same inversion was in the paid path
+
+`lib/wizard-prompts.ts` framed the client as "a supplier of X" in both `questionsPrompt` and
+`rewriteSlotPrompt`. The slot structure absorbs most of it - "CATEGORY: who is best at X in Y"
+runs the right way whatever the framing says - but slots 2 and 4 are written in the buyer's own
+voice and a procurement register leaks straight in.
+
+**It is not a ban on the word "supplier".** `westcoastdental.com.au` genuinely sells to dentists,
+and a trade question is the right one there. `buyer` is what decides direction, which is why it is
+now named in the first line rather than only inside slot 2. Proven by generating both shapes: the
+pub's five questions are from people choosing where to eat, the dental supplier's ask about trade
+pricing and restocking.
+
+**No existing subscriber is affected.** Approved questions live in `questions` and are read from
+there; a prompt change only writes new ones.
+
+The geography half does not apply to the paid path: `place` comes from a closed ISO list plus a
+locality the subscriber typed, so that generator cannot invent a city.
