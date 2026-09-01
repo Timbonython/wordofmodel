@@ -1,6 +1,6 @@
 'use client';
 
-import { confirmFact, type BusinessProfile } from '@/lib/profile';
+import { confirmFact, type Facts } from '@/lib/profile';
 
 /**
  * The three facts a question is written from, shown back to the person they are about.
@@ -22,8 +22,13 @@ export function BusinessFacts({
   heading,
   onFieldBlur,
 }: {
-  value: BusinessProfile;
-  onChange: (next: BusinessProfile) => void;
+  /*
+   * `Facts`, not `BusinessProfile`. The card renders and edits three fields; it does not narrow
+   * anything, and it must not be able to hand the generator a profile. Only profileFrom produces
+   * the branded type, and only the generator takes it.
+   */
+  value: Facts;
+  onChange: (next: Facts) => void;
   /** Shown in the heading so the card reads as being about them, not about a form. */
   brandName?: string;
   /** The wizard is not confirming a read; it is collecting. Same fields, different sentence. */

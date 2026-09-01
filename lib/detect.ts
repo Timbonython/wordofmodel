@@ -2,7 +2,10 @@ import 'server-only';
 import { askJson } from './openai';
 import { detectPrompt } from './prompts';
 import { writeBuyerQuestion } from './question';
-import { fact, type BusinessProfile } from './profile';
+// profileFrom lives in lib/profile.ts, with the brand it is the only producer of. Re-exported
+// so existing callers keep their import, and imported so this file can use it.
+import { profileFrom } from './profile';
+export { profileFrom };
 import type { ConfirmedProfile, Profile } from './types';
 
 const PROFILE_SCHEMA = {
@@ -56,23 +59,3 @@ export async function writeQuestion(p: ConfirmedProfile): Promise<string> {
   return question;
 }
 
-/**
- * The confirmed profile, as the three facts the generator is allowed to see.
- *
- * ONE PLACE WHERE THE WIDE SHAPE NARROWS. Everything the generator gets passes through here, so
- * there is a single line to read when asking "could a city reach the prompt from anywhere else".
- * `country` is deliberately not carried across: it is the engines' search locale, and it was the
- * field that used to default to Australia and become the question's geography.
- */
-export function profileFrom(p: {
-  what_they_sell: string | null;
-  buyer: string | null;
-  location: string | null;
-  category_term: string | null;
-}): BusinessProfile {
-  return {
-    sells: fact(p.what_they_sell || p.category_term, 'extracted'),
-    buyer: fact(p.buyer, 'extracted'),
-    location: fact(p.location, 'extracted'),
-  };
-}

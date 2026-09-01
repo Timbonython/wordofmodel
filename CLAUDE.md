@@ -1625,9 +1625,25 @@ list already contained "a failed count and a genuine zero, identical on the page
 
 `questionPrompt(profile, brandName)` takes a `BusinessProfile` and nothing else - no site text, no
 country string. **One line narrows a wide profile to the three facts the generator sees**
-(`profileFrom`, lib/detect.ts). So "could a city reach the prompt from anywhere else" has one
+(`profileFrom`, lib/profile.ts). So "could a city reach the prompt from anywhere else" has one
 answer, and there is deliberately **no downstream check hunting for wrong cities** - principle §1
 says that is the second-best version.
+
+**And that one line is now enforced by the type system rather than by a grep.** `BusinessProfile`
+carries a brand keyed on a `unique symbol` that `lib/profile.ts` declares and never exports, so no
+other file can produce a value of the type. An object literal does not satisfy it. A second
+narrowing therefore does not fail a review or a script - **it fails the build, at the call site,
+in the editor**. Watched failing:
+
+```
+app/api/scan/route.ts(160,32): error TS2345
+  Property '[narrowed]' is missing in type '{ sells: null; buyer: null; location: Fact | null; }'
+```
+
+The confirm card takes the unbranded `Facts` instead: it renders and edits three fields, it does
+not narrow anything, and it must not be able to hand the generator a profile. The only remaining
+route past the brand is an explicit `as never`, which is legible in a diff - which is the trade
+this buys, and it is the right one.
 
 `Provenance` is `'extracted' | 'confirmed'`. There is no `'inferred'`, and adding one later as a
 convenience is the defect with a name.
