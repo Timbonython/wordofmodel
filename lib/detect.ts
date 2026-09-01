@@ -2,17 +2,21 @@ import 'server-only';
 import { askJson } from './openai';
 import { detectPrompt } from './prompts';
 import { writeBuyerQuestion } from './question';
+import { fact, type BusinessProfile } from './profile';
 import type { ConfirmedProfile, Profile } from './types';
 
 const PROFILE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['brand_name', 'what_they_sell', 'buyer', 'country', 'category_term'],
+  required: ['brand_name', 'what_they_sell', 'buyer', 'country', 'location', 'category_term'],
   properties: {
     brand_name: { type: ['string', 'null'] },
     what_they_sell: { type: ['string', 'null'] },
     buyer: { type: ['string', 'null'] },
+    // The engines' search locale, not the question's geography. See prompts.ts.
     country: { type: ['string', 'null'] },
+    // Quoted from the page. Null when no place appears anywhere on it, which is a real answer.
+    location: { type: ['string', 'null'] },
     category_term: { type: ['string', 'null'] },
   },
 } as const;
@@ -29,6 +33,7 @@ export async function detectBusiness(siteText: string): Promise<Profile> {
     what_they_sell: clean(p.what_they_sell),
     buyer: clean(p.buyer),
     country: clean(p.country),
+    location: clean(p.location),
     category_term: clean(p.category_term),
   };
 }
@@ -43,6 +48,22 @@ export function needsManualEntry(p: Profile): boolean {
 }
 
 export async function writeQuestion(p: ConfirmedProfile): Promise<string> {
-  const { question } = await writeBuyerQuestion(p);
+  const { question } = await writeBuyerQuestion(profileFrom(p), p.brand_name);
   return question;
+}
+
+/**
+ * The confirmed profile, as the three facts the generator is allowed to see.
+ *
+ * ONE PLACE WHERE THE WIDE SHAPE NARROWS. Everything the generator gets passes through here, so
+ * there is a single line to read when asking "could a city reach the prompt from anywhere else".
+ * `country` is deliberately not carried across: it is the engines' search locale, and it was the
+ * field that used to default to Australia and become the question's geography.
+ */
+export function profileFrom(p: ConfirmedProfile): BusinessProfile {
+  return {
+    sells: fact(p.what_they_sell || p.category_term, 'extracted'),
+    buyer: fact(p.buyer, 'extracted'),
+    location: fact(p.location, 'extracted'),
+  };
 }

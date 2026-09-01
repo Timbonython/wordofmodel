@@ -46,11 +46,32 @@ function confirmProfile(p: Partial<ConfirmedProfile> | undefined): ConfirmedProf
   const sells = sold || term;
   const category = term || sold;
   if (!brand || !category || !sells) return null;
+  /*
+   * NOTHING IS DEFAULTED HERE ANY MORE, AND THAT IS THE FIX.
+   *
+   * This function used to read:
+   *
+   *   buyer:   (p?.buyer?.trim()   || 'buyers in this category').slice(0, 200),
+   *   country: (p?.country?.trim() || 'Australia').slice(0, 80),
+   *
+   * A country the model could not determine became Australia, in the same shape as a found
+   * fact, and questionPrompt then instructed the model to "include the country or region" - so
+   * it chose one. On 1 Sep 2026 that put an Adelaide pub in metro Melbourne and regional
+   * Victoria. Principle §5: a failed read and a genuine answer, identical downstream.
+   *
+   * Null now reaches the profile as null, renders on the confirm card as visibly empty, and
+   * produces a question with no geography rather than a question about the wrong place.
+   */
+  const trimmed = (v: string | null | undefined, max: number) => {
+    const t = v?.trim();
+    return t ? t.slice(0, max) : null;
+  };
   return {
     brand_name: brand.slice(0, 120),
     what_they_sell: sells.slice(0, 200),
-    buyer: (p?.buyer?.trim() || 'buyers in this category').slice(0, 200),
-    country: (p?.country?.trim() || 'Australia').slice(0, 80),
+    buyer: trimmed(p?.buyer, 200),
+    country: trimmed(p?.country, 80),
+    location: trimmed(p?.location, 200),
     category_term: category.slice(0, 120),
   };
 }

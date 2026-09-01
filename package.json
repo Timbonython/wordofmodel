@@ -16,6 +16,7 @@
     "stripe:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/stripe-setup.mjs",
     "stripe:mode": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/stripe-mode-check.mjs",
     "founding:cap": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/founding-cap-check.mjs",
+    "grounding:check": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/grounding-check.mjs",
     "reviews:check": "node --conditions=react-server --import ./scripts/ts-register.mjs scripts/reviews-check.mjs",
     "verdict:check": "node --conditions=react-server --import ./scripts/ts-register.mjs scripts/verdict-check.mjs",
     "locations:billing": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/location-billing-check.mjs",

@@ -10,7 +10,10 @@ export interface Profile {
   brand_name: string | null;
   what_they_sell: string | null;
   buyer: string | null;
+  /** The engines' search locale. NOT the question's geography - see lib/prompts.ts. */
   country: string | null;
+  /** Quoted from the page, or null. Added 1 Sep 2026 by the grounding brief. */
+  location: string | null;
   category_term: string | null;
 }
 
@@ -18,8 +21,16 @@ export interface Profile {
 export interface ConfirmedProfile {
   brand_name: string;
   what_they_sell: string;
-  buyer: string;
-  country: string;
+  /**
+   * NOW NULLABLE, and that is the point. It used to be defaulted to "buyers in this category",
+   * which is a phrase that looks like a fact and tells the generator nothing. §4: a run with no
+   * buyer does not proceed to a question, it goes to the confirm card.
+   */
+  buyer: string | null;
+  /** NOW NULLABLE. It used to default to 'Australia'. See lib/profile.ts. */
+  country: string | null;
+  /** Quoted from the page, typed by the visitor, or null. Never defaulted. */
+  location: string | null;
   category_term: string;
 }
 

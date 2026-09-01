@@ -1,7 +1,24 @@
 import 'server-only';
 import { askText } from './openai';
 import { questionPrompt } from './prompts';
-import type { ConfirmedProfile } from './types';
+import { constraintBlock, missingForQuestion, type BusinessProfile } from './profile';
+
+/**
+ * Thrown when the profile is missing a fact the question cannot be written without.
+ *
+ * A distinct type rather than a string, so the scan route can tell "we could not write a
+ * question" from "we do not yet know who is choosing" and route the second to the confirm card
+ * instead of to an error.
+ */
+export class MissingFactError extends Error {
+  // A plain field, not a constructor parameter property: Node's type-stripping loader refuses
+  // those, and scripts/grounding-check.mjs imports this module directly.
+  readonly field: 'buyer' | 'sells';
+  constructor(field: 'buyer' | 'sells') {
+    super(`The profile has no ${field}, so no question can be written from it.`);
+    this.field = field;
+  }
+}
 
 /**
  * A guard around the spec's question prompt. The prompt itself is used verbatim
@@ -53,18 +70,28 @@ function tidy(raw: string): string {
  * prompt came back addressed to the supplier. It rewrites, it does not invent: the
  * buyer's own requirements are carried across.
  */
-function repairPrompt(question: string, p: ConfirmedProfile): string {
-  return `The question below was meant to be one a buyer would type into an AI assistant when
-choosing a supplier of ${p.what_they_sell} in ${p.country}. Instead it is addressed to the
-supplier, as if filling in a tender.
+/*
+ * THE REPAIR CARRIED THE SAME TWO DEFECTS AS THE PROMPT IT REPAIRS, which is what made it worth
+ * reading rather than assuming. It said "choosing a supplier of X in {country}" and instructed
+ * "Include {country} or the region" - so a draw that was rescued here came back with the
+ * inversion reinstated and a country the profile never held. It now takes the same constraints
+ * the generator did and adds no geography of its own.
+ */
+function repairPrompt(question: string, profile: BusinessProfile, brandName: string): string {
+  return `The question below was meant to be one a real person would type into an AI assistant
+while deciding which business to choose. Instead it is addressed to the business itself, as if
+filling in a tender.
 
-Rewrite it as a question put to an assistant, asking which companies to consider.
+Rewrite it as a question put to an assistant, asking which businesses to consider.
+
+CONSTRAINTS. These are the only facts you have. Use them and add nothing.
+${constraintBlock(profile)}
 
 Rules:
-- Keep the specific requirements, sizes, locations and constraints already in it.
-- Never mention ${p.brand_name} or any brand name.
+- Keep the specific requirements, sizes and constraints already in it.
+- Never mention ${brandName} or any brand name.
 - Never address the reader as "you" or refer to "we" or "our".
-- Include ${p.country} or the region.
+- Introduce no place name that is not in the constraints above.
 - One sentence. No preamble.
 
 Return only the rewritten question.
@@ -72,16 +99,27 @@ Return only the rewritten question.
 QUESTION: ${question}`;
 }
 
-export async function writeBuyerQuestion(profile: ConfirmedProfile): Promise<{
+export async function writeBuyerQuestion(
+  profile: BusinessProfile,
+  brandName: string,
+): Promise<{
   question: string;
   attempts: number;
   repaired: boolean;
 }> {
-  const prompt = questionPrompt({
-    what_they_sell: profile.what_they_sell || profile.category_term,
-    country: profile.country,
-    brand_name: profile.brand_name,
-  });
+  /*
+   * §4: IF buyer IS NULL, DO NOT WRITE A QUESTION. It is the one field a run cannot proceed
+   * without - everything else degrades honestly, and a question with no geography is a
+   * defensible question, but without knowing who is choosing there is no way to write one that
+   * runs in the right direction. Refusing here is what sends the visitor to the confirm card,
+   * which is where the field gets filled.
+   */
+  const missing = missingForQuestion(profile);
+  if (missing) {
+    throw new MissingFactError(missing);
+  }
+
+  const prompt = questionPrompt(profile, brandName);
 
   const drawn = await Promise.all(
     Array.from({ length: DRAWS }, () =>
@@ -99,7 +137,7 @@ export async function writeBuyerQuestion(profile: ConfirmedProfile): Promise<{
 
   // Repair the longest draw, since it carries the most of the buyer's detail.
   const best = candidates.reduce((a, b) => (b.length > a.length ? b : a));
-  const repaired = tidy(await askText(repairPrompt(best, profile)));
+  const repaired = tidy(await askText(repairPrompt(best, profile, brandName)));
   return {
     question: isBuyerQuestion(repaired) ? repaired : best,
     attempts: candidates.length + 1,

@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       what_they_sell: null,
       buyer: null,
       country: null,
+      location: null,
       category_term: null,
     };
 
