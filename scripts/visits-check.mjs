@@ -116,6 +116,18 @@ check(
   visitRowFor(request('https://wordofmodel.ai/wp-admin/install.php', DOC)) === null &&
     visitRowFor(request('https://wordofmodel.ai/.env', DOC)) === null,
 );
+check(
+  'a generated icon route is an image, not a page',
+  visitRowFor(request('https://wordofmodel.ai/icon', DOC)) === null &&
+    visitRowFor(request('https://wordofmodel.ai/apple-icon', DOC)) === null,
+);
+check(
+  'nor is anything under a dot-directory - /.git/HEAD has no extension to catch',
+  visitRowFor(request('https://wordofmodel.ai/.git/HEAD', DOC)) === null &&
+    visitRowFor(request('https://wordofmodel.ai/.git/config', DOC)) === null &&
+    visitRowFor(request('https://wordofmodel.ai/.well-known/ucp', DOC)) === null,
+);
+
 // AND WHAT STILL IS. The crawler decision above is untouched: this is about paths, not agents.
 check('the home page is still a page', visitRowFor(request('https://wordofmodel.ai/', DOC)) !== null);
 check('so is a marketing route', visitRowFor(request('https://wordofmodel.ai/pricing', DOC)) !== null);

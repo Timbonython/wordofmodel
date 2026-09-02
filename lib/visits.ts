@@ -134,9 +134,22 @@ function isPageView(request: { method: string; headers: Headers }): boolean {
  * a deliberate consequence: an attacker probing for a file that does not exist here is not a
  * visitor, and counting them was quietly padding the top of the funnel.
  */
+/**
+ * Next generates these as routes, and they render an image rather than a page. They are
+ * extensionless, so the rule above does not see them. Taken from the build output, where they
+ * are the static entries alongside robots.txt and the manifest.
+ */
+const GENERATED_ASSETS = new Set(['/icon', '/icon1', '/icon2', '/apple-icon', '/opengraph-image', '/twitter-image']);
+
 function isPagePath(pathname: string): boolean {
   if (pathname.startsWith('/api/')) return false;
   if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false;
+  /* A dot-directory, not just a dot-file: /.git/HEAD and /.git/config have no extension on the
+     last segment and sailed through the rule above. Nothing under a dotted path is ever a page
+     here, and everything asking for one is looking for a repository we have not left lying
+     around. /.well-known goes the same way - real, occasionally useful, never a page view. */
+  if (pathname.split('/').some((segment) => segment.startsWith('.'))) return false;
+  if (GENERATED_ASSETS.has(pathname)) return false;
   return true;
 }
 
