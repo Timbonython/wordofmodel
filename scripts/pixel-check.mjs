@@ -23,8 +23,11 @@
  * code deliberately stopped having is the same defect as a stale comment, and it costs more,
  * because somebody acts on it.
  *
- * Needs Playwright and a real Chrome, neither of which is a dependency of this project:
- *   npm i --no-save playwright && NODE_PATH=./node_modules npm run pixel:check
+ * Needs a real Chrome, which is not something this project can install for you. Playwright
+ * itself is a devDependency as of 2 Sep 2026 - it was not, and this file simply crashed on the
+ * import for anyone who had not run the npm line that used to sit here. A check nobody can run
+ * without reading its source first is a check nobody runs. It drives the Chrome already on the
+ * machine (channel: 'chrome'), so no browser download is involved.
  *
  * WHY THIS EXISTS. For a fortnight a boot line said "browser funnel events are served" and
  * Meta had received exactly none of them, because the line described an intention and nothing
@@ -83,16 +86,36 @@ async function runScan(page, allowPaid) {
   await page.locator('#scan input').first().fill(process.env.PIXEL_CHECK_DOMAIN ?? 'holafly.com');
   await page.locator('#scan button').first().click();
 
-  const confirm = page.getByRole('button', { name: /yes, run it/i });
+  /*
+   * MATCHED ON THE STABLE HALF OF THE LABEL. The button read "Yes, run it" until the grounding
+   * work on 1 Sep 2026 renamed it to "Looks right - ask the engines", or "That is right - ask
+   * the engines" once a fact has been edited. This file went on looking for the old text and
+   * reported it as /api/detect being slow, which is the exact failure its own header describes
+   * two paragraphs up and cost another hour to find. "ask the engines" is the part that carries
+   * the meaning; the half in front of it is a message about the visitor's edits.
+   */
+  const confirm = page.getByRole('button', { name: /ask the engines/i });
   const reveal = page.locator('#reveal-email');
   let cached = true;
   await Promise.race([
     confirm.waitFor({ timeout: 90000 }).then(() => { cached = false; }),
     reveal.waitFor({ timeout: 90000 }).then(() => { cached = true; }),
-  ]).catch(() => {
+  ]).catch(async () => {
+    /* WHAT IS ACTUALLY ON SCREEN, because the old message named one cause and it was usually
+       the other. A renamed button and a failing API both time out here, and being told to go
+       and look at /api/detect when the API is fine sends the next person the wrong way. */
+    const screen = await page
+      .evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 400))
+      .catch(() => '(the page could not be read)');
+    const buttons = await page
+      .evaluate(() => Array.from(document.querySelectorAll('button')).map((b) => b.innerText.trim()).filter(Boolean))
+      .catch(() => []);
     throw new Error(
-      'Neither the confirmation nor a result appeared. /api/detect is slow or failed - open the ' +
-        'page by hand before believing anything about the pixel.',
+      'Neither the confirmation card nor a result appeared within 90s.\n\n' +
+        'This is a stale selector at least as often as it is a slow API: the confirm button ' +
+        'has been renamed once already. Check the buttons below before touching /api/detect.\n\n' +
+        `  buttons on the page: ${buttons.length ? buttons.map((b) => JSON.stringify(b)).join(', ') : '(none)'}\n` +
+        `  page text: ${screen}`,
     );
   });
 
