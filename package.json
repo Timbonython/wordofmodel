@@ -11,7 +11,7 @@
     "copycheck": "node scripts/copycheck.mjs",
     "docscheck": "node scripts/docscheck.mjs",
     "brandcheck": "node --conditions=react-server --import ./scripts/ts-register.mjs scripts/brandcheck.mjs",
-    "check": "npm run typecheck && npm run docscheck && npm run copycheck && npm run brandcheck && npm run guard:check && npm run verdict:check && npm run locations:check && npm run reviews:check && npm run visits:check",
+    "check": "npm run typecheck && npm run docscheck && npm run copycheck && npm run brandcheck && npm run guard:check && npm run verdict:check && npm run locations:check && npm run reviews:check && npm run visits:check && npm run pixel:strict",
     "smoke": "node --env-file=.env.local scripts/smoke.mjs",
     "stripe:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/stripe-setup.mjs",
     "stripe:mode": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/stripe-mode-check.mjs",
@@ -36,8 +36,9 @@
     "trial:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/founding-trial-setup.mjs",
     "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs",
     "favicon": "node scripts/make-favicon.mjs",
-    "pixel:check": "node scripts/pixel-check.mjs",
-    "pixel": "node scripts/pixel-probe.mjs"
+    "pixel:check": "node --env-file-if-exists=.env.local scripts/pixel-check.mjs",
+    "pixel": "node scripts/pixel-probe.mjs",
+    "pixel:strict": "PIXEL_CHECK_STRICT=yes npm run pixel:check"
   },
   "dependencies": {
     "@microsoft/clarity": "^1.0.2",

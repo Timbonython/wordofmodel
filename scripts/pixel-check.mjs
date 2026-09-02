@@ -1,10 +1,13 @@
 /**
  * Does the browser actually send our named Meta events?
  *
- *   npm run pixel:check                     against a local production build
- *   npm run pixel:check -- https://...      against a deployment
- *   PIXEL_CHECK_DOMAIN=x.com npm run pixel:check   use a different already-scanned domain
- *   PIXEL_CHECK_PAID=yes npm run pixel:check       allow a run that asks real engines
+ *   npm run pixel:check                     builds, starts a server, checks, stops it
+ *   npm run pixel:check -- https://...      against a deployment already running
+ *   npm run pixel:strict                    the same, but a SKIP is a failure. In `npm run check`.
+ *   PIXEL_CHECK_DOMAIN=x.com                use a particular already-scanned domain
+ *   PIXEL_CHECK_PAID=yes                    allow a run that asks real engines, about US$0.37
+ *   PIXEL_CHECK_NO_BUILD=yes                trust the build already on disk
+ *   PIXEL_CHECK_PORT / _BASE / _COUNTRY / _EMAIL / _PIXEL_ID / _HEADED
  *
  * WHAT THE DEFAULT RUN COVERS, AND WHY IT IS USUALLY FREE. On 27 Aug 2026 Lead was moved off
  * Wizard mount - where it meant "somebody loaded /start" and the campaign was optimising toward
@@ -51,8 +54,130 @@
  * open. Both checks are needed and neither replaces the other.
  */
 import { chromium } from 'playwright';
+import { spawn, spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const BASE = process.argv[2] ?? 'http://localhost:3000';
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * WHERE TO POINT, AND STARTING ONE IF THERE IS NOTHING THERE.
+ *
+ * Added 2 Sep 2026 so this can run from `npm run check` without a person having remembered to
+ * build, start a server and set a throwaway pixel id in another terminal first. If something is
+ * already answering - a server you started yourself, or a deployment passed as an argument - it
+ * is used untouched. Otherwise this builds, starts one on a port nothing else uses, and stops it
+ * again on the way out.
+ *
+ * IT BUILDS RATHER THAN TRUSTING .next. A stale build is the one failure this file cannot
+ * report honestly: every event would pass against code that is no longer the code, and the
+ * output would look identical to a real pass. Turbopack makes an incremental build cheap enough
+ * that guessing is not worth it. PIXEL_CHECK_NO_BUILD=yes if you know the build is current.
+ *
+ * THE PIXEL ID IT STARTS WITH IS DELIBERATELY FAKE. See the note above: the identical build
+ * sends nothing under the real id in a driven browser, because Meta's per-pixel config carries
+ * automation detection. A server started here always gets the throwaway.
+ */
+const OWN_PORT = Number(process.env.PIXEL_CHECK_PORT ?? 3111);
+const ARG_BASE = process.argv[2] ?? process.env.PIXEL_CHECK_BASE ?? null;
+
+async function reachable(base) {
+  try {
+    const r = await fetch(base, { signal: AbortSignal.timeout(2500) });
+    return r.ok || r.status < 500;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A DOMAIN THIS ENVIRONMENT HAS ALREADY SCANNED, found rather than hardcoded.
+ *
+ * ViewContent and Lead both require reaching the free result, which is free on a domain with a
+ * stored scan and about US$0.37 on one without. The default was holafly.com, and the day it
+ * falls out of the 24 hour window both cases SKIP - which exits 0 and, from inside `npm run
+ * check`, reads as a pass. Two of the three events this file exists to verify would quietly
+ * stop being verified, and the suite would stay green.
+ *
+ * So it asks the database what has been scanned recently and uses that. Falls back to the old
+ * default when there are no credentials, which keeps the script usable with no environment at
+ * all - it will just skip, and say so.
+ */
+async function recentlyScannedDomain() {
+  if (process.env.PIXEL_CHECK_DOMAIN) return process.env.PIXEL_CHECK_DOMAIN;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) return null;
+  const since = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/scans?select=domain,created_at&created_at=gte.${since}&order=created_at.desc&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!r.ok) return null;
+    const [row] = await r.json();
+    return row?.domain ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let ownServer = null;
+
+async function resolveBase() {
+  const preferred = ARG_BASE ?? 'http://localhost:3000';
+  if (await reachable(preferred)) return preferred;
+  if (ARG_BASE) {
+    console.log(`\nNothing is answering at ${ARG_BASE}. Passing a base explicitly means using it as given.\n`);
+    process.exit(1);
+  }
+
+  if (process.env.PIXEL_CHECK_NO_BUILD !== 'yes') {
+    console.log('  building, so the events are checked against the current code');
+    const built = spawnSync(join(root, 'node_modules', '.bin', 'next'), ['build'], { encoding: 'utf8' });
+    if (built.status !== 0) {
+      console.log(`\nThe build failed, so there is nothing honest to check.\n${built.stderr?.slice(-800) ?? ''}`);
+      process.exit(1);
+    }
+  }
+
+  const own = `http://localhost:${OWN_PORT}`;
+  console.log(`  starting a server on ${OWN_PORT} with a throwaway pixel id`);
+  /* THE BINARY, NOT npx. `npx next start` is two processes: killing npx leaves the next server
+     it spawned holding the port, and the first version of this left one running after every
+     successful run. Spawning node_modules/.bin/next directly means the pid we hold is the pid
+     we kill. */
+  ownServer = spawn(join(root, 'node_modules', '.bin', 'next'), ['start', '-p', String(OWN_PORT)], {
+    /* The throwaway ALWAYS wins here, and it is not `?? process.env.META_PIXEL_ID`. This script
+       reads .env.local so it can find a scanned domain, and .env.local is where the real pixel
+       id lives - inheriting it would point a driven browser at the live pixel, which sends
+       nothing and reports a false negative. PIXEL_CHECK_PIXEL_ID to override deliberately. */
+    env: { ...process.env, META_PIXEL_ID: process.env.PIXEL_CHECK_PIXEL_ID ?? '1000000000000001' },
+    stdio: 'ignore',
+  });
+  /* Unreferenced, and stopped explicitly at the end. A live child handle keeps the event loop
+     alive on its own: without this the script finishes every case, sets an exit code and then
+     hangs forever with a server running behind it, which is exactly what it did the first time
+     it was put into `npm run check`. */
+  ownServer.unref();
+  for (let i = 0; i < 60; i++) {
+    if (await reachable(own)) return own;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  console.log(`\nThe server never came up on ${OWN_PORT}.\n`);
+  ownServer.kill('SIGKILL');
+  process.exit(1);
+}
+
+function stopOwnServer() {
+  if (ownServer && !ownServer.killed) ownServer.kill('SIGKILL');
+  ownServer = null;
+}
+process.on('exit', stopOwnServer);
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stopOwnServer(); process.exit(130); });
+
+const BASE = await resolveBase();
+const SCAN_DOMAIN = (await recentlyScannedDomain()) ?? 'holafly.com';
 
 /**
  * Every named event the build intends to fire, and how a visitor causes it.
@@ -83,7 +208,7 @@ const SKIP_REASON =
  */
 async function runScan(page, allowPaid) {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.locator('#scan input').first().fill(process.env.PIXEL_CHECK_DOMAIN ?? 'holafly.com');
+  await page.locator('#scan input').first().fill(SCAN_DOMAIN);
   await page.locator('#scan button').first().click();
 
   /*
@@ -245,6 +370,7 @@ for (const c of CASES) {
 }
 
 await browser.close();
+stopOwnServer();
 
 // A SKIPPED CASE IS REPORTED, NEVER FOLDED INTO A PASS. "Every named event put a request on the
 // wire" over one of two cases reads identically to the same line over both, and this build has
@@ -255,8 +381,24 @@ if (failures) {
   console.log(`\n${failures} event(s) never reached the wire.`);
 } else if (skipped) {
   console.log(`\n${ran} of ${CASES.length} events put a request on the wire. ${skipped} SKIPPED and unverified.`);
+  console.log(`  domain used: ${SCAN_DOMAIN}`);
   console.log('PIXEL_CHECK_PAID=yes npm run pixel:check   to cover the rest, at about US$0.37.');
 } else {
-  console.log('\nEvery named event put a request on the wire.');
+  console.log(`\nEvery named event put a request on the wire. (domain: ${SCAN_DOMAIN})`);
 }
-process.exitCode = failures ? 1 : 0;
+
+/*
+ * STRICT IS FOR THE SUITE. Standalone, a skip is information and exit 0 is right - you asked to
+ * look, and it told you what it could see. Inside `npm run check` the same exit code is a claim
+ * that the pixel is verified, printed among forty other lines nobody reads to the end. §5: the
+ * absence has to look different from the presence, and here it has to be the exit code, because
+ * that is the only part of the output the next command reads.
+ */
+const strict = process.env.PIXEL_CHECK_STRICT === 'yes';
+if (strict && skipped) {
+  console.log(
+    `\nStrict: ${skipped} unverified event(s) is a failure here, not a note. Scan any domain in ` +
+      'this environment and run again, or PIXEL_CHECK_PAID=yes to spend about US$0.37.',
+  );
+}
+process.exitCode = failures || (strict && skipped) ? 1 : 0;
