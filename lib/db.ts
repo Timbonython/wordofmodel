@@ -14,8 +14,6 @@ let client: SupabaseClient | null = null;
  */
 export function db(): SupabaseClient {
   if (!client) {
-const k = env.supabaseSecretKey;
-console.log('supabase key shape', { prefix: k.slice(0, 3), len: k.length, dots: (k.match(/\./g) ?? []).length });
     client = createClient(env.supabaseUrl, env.supabaseSecretKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { 'X-Client-Info': 'wordofmodel-scan/1.0' } },
