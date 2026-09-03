@@ -70,7 +70,11 @@ Availability is decided in code: count active subscriptions on the founding pric
 
 This section said the opposite from 28 August to 3 September, and the reasoning was right when it was written:
 
-> **If that count query errors or returns nothing, do not offer the founding price.** Show $249. A failed count that falls through to "offer it" is indistinguishable from a genuine zero, and the failure mode is selling an unlimited number of permanent 40% discounts with nobody noticing.
+> **If that count query errors or returns nothing, do not offer the founding price.** Show $249.
+>
+> This is the eighth or ninth time this pattern has bitten this project: a missing value rendering identically to its opposite. A failed count that falls through to "offer it" is indistinguishable from a genuine zero, and the failure mode is selling an unlimited number of permanent 40% discounts with nobody noticing.
+
+That last observation is still true and is not what changed. A failed count *is* indistinguishable from a genuine zero, which is why the fail-open state carries `countKnown: false` and renders no number: the two look identical on screen deliberately, and must not be identical in the code.
 
 What changed is the evidence, not the principle.
 
