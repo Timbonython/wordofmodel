@@ -24,6 +24,10 @@ conversation until now.
 | `wordofmodel-onboarding-billing-spec.md` | Stripe, the wizard, the five question slots, founding-rate counter logic |
 | `word-of-model-pricing-and-stripe-plan.md` | The ladder, the founding offer, currency, the Stripe object model. §3 is the cap |
 | `word-of-model-purchase-path.md` | Homepage and pricing page: one button per tier, the four steps, the founding block |
+| `word-of-model-site-brand-and-structure.md` | The mark, brand tokens, navigation, homepage and pricing page. The "§N of the brand brief" the code keeps citing |
+| `word-of-model-handover.md` | How the work is split across projects, what moves and what stays, and what is in none of them |
+| `word-of-model-competitor-landscape.md` | The market, the table, and the position that survives it |
+| `word-of-model-content-plan.md` | The article, the naming question, tile copy and sequence |
 
 `wordofmodel-report-template.html` is a fragment (no `<html>`/`<body>` wrapper) — it starts at
 `<meta>` and renders fine as-is.
