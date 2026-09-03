@@ -24,14 +24,20 @@ export const metadata: Metadata = {
 /**
  * The pricing page. §5 of the brand brief, §1 of the pricing plan.
  *
- * THE FOUNDING BLOCK IS DECIDED ON THE SERVER AND FAILS CLOSED. foundingOfferOrNull() returns
- * null when the count cannot be read, when the places are gone, or when 30 September has
- * passed - and in every one of those cases nothing renders here and the reader sees the
- * standard US$249 on the premium card. Never a block without a number, and never a fallback
- * count. A failed count cannot tell you whether the offer is open, so it cannot be offered.
+ * THE FOUNDING BLOCK IS DECIDED ON THE SERVER, AND SINCE 3 SEP 2026 IT FAILS OPEN.
+ * foundingOfferOrNull() returns null on the two things that genuinely close the offer - the
+ * places are gone, or 30 September has passed - and nothing renders here. When the COUNT cannot
+ * be read it now returns a state with countKnown false, and this block renders with the cap, the
+ * reason, and no figure.
  *
- * It also alerts, in lib/billing.ts, because the failure mode this page cannot show you is a
- * silently withheld offer on a page that looks completely normal.
+ * Why that reversed: the count failed three times in five days from clock skew inside Supabase's
+ * gateway, each failure switched the offer off for every visitor on a page that looked normal,
+ * and demand across that window was two free scans and zero purchases. The guard cost more than
+ * the risk. It was never carrying the cap on its own either - claim_founding_seat decides the
+ * charge atomically at the moment of buying. See lib/billing.ts.
+ *
+ * It still alerts, with different wording. This changed what happens on failure, not whether the
+ * failure is visible.
  */
 export default async function PricingPage() {
   const founding = await foundingOfferOrNull();
@@ -84,7 +90,11 @@ export default async function PricingPage() {
               </p>
               {/* A COUNT ONLY ONCE ONE IS TAKEN, §3. "All 20 are open" volunteers that nobody
                   has bought yet; "20 founding places" is already a complete statement. */}
-              {founding.remaining < FOUNDING_SEATS_PUBLIC ? (
+              {/* AND ONLY WHEN A COUNT WAS ACTUALLY READ. Since the 3 Sep 2026 reversal a failed
+                  count renders this block with the cap and no figure, and its remaining sits at
+                  the cap so it reads as "none taken yet" - which is right on screen and wrong to
+                  print a number from. countKnown is the difference. */}
+              {founding.countKnown && founding.remaining < FOUNDING_SEATS_PUBLIC ? (
                 <p className="founding-count">
                   {founding.remaining === 1 ? 'One place left.' : `${founding.remaining} places left.`}
                 </p>

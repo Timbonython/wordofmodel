@@ -22,6 +22,8 @@ conversation until now.
 | `wordofmodel-site-copy.md` | Page copy, sections 1–10, plus the copy rules block |
 | `wordofmodel-report-template.html` | The design system. IBM Plex, highlighter on competitors, red pen on absence |
 | `wordofmodel-onboarding-billing-spec.md` | Stripe, the wizard, the five question slots, founding-rate counter logic |
+| `word-of-model-pricing-and-stripe-plan.md` | The ladder, the founding offer, currency, the Stripe object model. §3 is the cap |
+| `word-of-model-purchase-path.md` | Homepage and pricing page: one button per tier, the four steps, the founding block |
 
 `wordofmodel-report-template.html` is a fragment (no `<html>`/`<body>` wrapper) — it starts at
 `<meta>` and renders fine as-is.
@@ -166,6 +168,37 @@ about twenty minutes from payment. `runsAwaitingReport()` refuses any run still 
 a report built mid-extraction is not incomplete, it is wrong, because unextracted captures are
 excluded from the score. The daily pass no longer delivers; it alerts on anything complete and
 unsent for six hours, which is the failure the speed would otherwise hide.
+
+**A guard can be more expensive than the risk it prevents** (3 Sep 2026, and it reverses a rule
+written on 28 Aug). `foundingOfferOrNull()` failed closed: an unreadable founding count withheld
+the offer from every visitor and showed US$249. The reasoning was sound - a failed count is
+indistinguishable from a genuine zero, and falling through to "offer it" is how you sell an
+unbounded number of permanent 40% discounts without noticing.
+
+Then it was measured. The count failed three times in five days, every time from clock skew
+inside Supabase's gateway answering `JWT issued at future` - not ours to cause and not ours to
+fix; neither of our keys is a JWT. Each failure switched the offer off for everyone, on a page
+that looked completely normal, at the moment they were closest to buying. Demand across that
+window was two free scans and zero purchases.
+
+It now fails OPEN: the block renders with the cap and the reason and no remaining count, the
+same shape as "none taken yet". Two things still close the offer and both are hard-coded - the
+30 September date, and a count that reads cleanly at zero remaining.
+
+Three things this is not. It is not a weakening of the cap: `claim_founding_seat` decides the
+charge atomically at the moment of buying and returns the standard rate if it cannot reach the
+database, which is where the cap always actually lived. It is not silent: the alert and the
+console line still fire, with wording that no longer claims the offer is being withheld. And it
+is not a general licence to fail open - the direction was chosen by counting what each failure
+had actually cost, which is the part worth repeating, not the answer.
+
+**What it cost to find:** the fix exposed that the wizard had been printing "20 of 20 places
+left" since it shipped - the exact "all 20 are open" sentence §3 of both briefs says to delete -
+because the homepage and pricing page suppressed the count below the cap and `/start` never did.
+One nullable number was carrying two different facts: whether the offer is running, and whether
+anyone could read how full it is. Under fail-open it would have stated a figure from a count
+that failed. **When a value can be missing, check whether every renderer of it agrees on what
+missing means.**
 
 ---
 
@@ -934,6 +967,10 @@ taking `searchParams` and this measurement with it.
 
 ## A fail-closed rule protects the layer it is written about (28 Aug 2026)
 
+> **Reversed 3 Sep 2026** for the display layer specifically — see "A guard can be more expensive
+> than the risk it prevents". The point this section makes about *layers* still stands, and is in
+> fact why the reversal was safe: the charge was never protected by the display rule.
+
 **The check belongs where the decision is made, not where the number is shown.**
 
 §3 of the pricing plan says the founding cap must fail closed: if the count query errors or
@@ -1588,6 +1625,10 @@ nothing else to try.
 
 **What replaced it: the last count that read cleanly is served for sixty seconds when the live
 read fails, while it shows more than three seats of room.**
+
+*(Superseded 3 Sep 2026: the fail-closed rule this paragraph defends was itself reversed. The
+cache survives and now decides whether a real number is shown, not whether the offer is. See
+"A guard can be more expensive than the risk it prevents".)*
 
 That is not weakening the fail-closed rule, and the reason matters. The rule exists to stop an
 unreadable counter handing out unlimited permanent discounts - and it never did that work alone.

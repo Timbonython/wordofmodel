@@ -282,10 +282,10 @@ export default async function Page({
               </PriceCard>
             ))}
 
-            {/* FAIL-CLOSED, unchanged. Null means the count could not be read, the offer has
-                closed, or the places are gone - and in every one of those cases nothing
-                renders and the reader sees the standard price above. foundingOfferOrNull()
-                alerts when the cause was a failure rather than a genuine zero. */}
+            {/* FAILS OPEN ON AN UNREADABLE COUNT, from 3 Sep 2026. Null now means only the two
+                things that actually close the offer: the places are gone, or 30 September has
+                passed. A count that cannot be read renders this block with no figure instead of
+                withholding it from everybody, and still alerts. See lib/billing.ts. */}
             {founding !== null && (
               <PriceCard
                 name="Founding"
@@ -307,7 +307,11 @@ export default async function Page({
                   {/* A COUNT ONLY ONCE ONE IS TAKEN. "All 20 are open" is true and volunteers
                       that nobody has bought yet - the same self-inflicted emptiness that
                       "first 20 subscribers" avoided from the other direction. §3. */}
-                  {founding.remaining < FOUNDING_SEATS_PUBLIC ? (
+                  {/* AND ONLY WHEN A COUNT WAS ACTUALLY READ. Since the 3 Sep 2026 reversal a failed
+                      count renders this block with the cap and no figure, and its remaining sits at
+                      the cap so it reads as "none taken yet" - which is right on screen and wrong to
+                      print a number from. countKnown is the difference. */}
+                  {founding.countKnown && founding.remaining < FOUNDING_SEATS_PUBLIC ? (
                     <>
                       {' '}
                       {founding.remaining === 1

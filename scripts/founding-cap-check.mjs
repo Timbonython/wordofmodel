@@ -6,11 +6,16 @@
  * Sets the cap to 2, gives two accounts a founding place, and confirms the THIRD is offered
  * the standard rate rather than the founding one.
  *
- * TESTED AT BOTH LAYERS, DELIBERATELY. §3's fail-closed rule was written about what the page
- * renders, and claim_founding_seat is a different layer with its own failure mode - a stale
- * price_key inside it returned zero holders forever while every display guard still passed.
- * So this exercises the database function that decides the CHARGE and the application path
- * that decides the DISPLAY, and reports them separately.
+ * TESTED AT BOTH LAYERS, DELIBERATELY. §3's rule about what the page renders and
+ * claim_founding_seat are different layers with different failure modes - a stale price_key
+ * inside the function returned zero holders forever while every display guard still passed. So
+ * this exercises the database function that decides the CHARGE and the application path that
+ * decides the DISPLAY, and reports them separately.
+ *
+ * AND THE FAILURE PATH, from 3 Sep 2026. §3 said the display must fail CLOSED and now says it
+ * fails open, which is a reversal a comment cannot hold on its own: the two sentences read
+ * identically to anyone who does not run the code. The last section points the count at a dead
+ * host and asserts what actually comes back.
  *
  * Everything it creates is removed at the end, including on the failure paths.
  */
@@ -152,5 +157,68 @@ try {
   const { data } = await db().from('subscriptions').select('id');
   console.log(`  subscription rows remaining: ${data?.length ?? '?'}`);
 }
+
+// --------------------------------------------------------------- the failure path, 3 Sep 2026
+
+/**
+ * §3 REVERSED: an unreadable count now SHOWS the offer without a number.
+ *
+ * Run in a child process, because the only honest way to break the count is to point the whole
+ * client at somewhere that is not there, and that cannot be undone inside a process that still
+ * has cleanup to do.
+ *
+ * ALERT_EMAIL IS FORCED EMPTY, and that is not tidiness. This path sends an ops alert. Proving
+ * it during development sent two real ones to a real inbox before this line existed, and they
+ * did not appear in ops_alerts either, because the dead host that broke the count also broke
+ * the record of the alert. Set, not unset: node's --env-file will fill in a name that is
+ * absent, and will not override one that is already there.
+ */
+console.log('\n  the failure path (§3, reversed 3 Sep 2026):');
+
+const probe = `
+  const { foundingOfferOrNull } = await import('${join(here, '../lib/billing.ts')}');
+  process.stdout.write('RESULT ' + JSON.stringify(await foundingOfferOrNull()));
+`;
+const { execFileSync } = await import('node:child_process');
+let offer = null;
+try {
+  const out = execFileSync(
+    process.execPath,
+    ['--env-file=.env.local', '--conditions=react-server', '--import', './scripts/ts-register.mjs', '--input-type=module', '--eval', probe],
+    {
+      cwd: join(here, '..'),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ALERT_EMAIL: '', SUPABASE_URL: 'http://127.0.0.1:9' },
+    },
+  );
+  offer = JSON.parse(out.slice(out.indexOf('RESULT ') + 7));
+} catch (err) {
+  check('the failure path ran at all', false, err.message?.slice(0, 200));
+}
+
+/* OUTSIDE THE NULL GUARD, and the first version had it inside - so reverting the reversal made
+   the whole section vanish rather than fail, which is the check being unable to see the one
+   thing it was added for. It passed until it was broken on purpose. */
+check('an unreadable count no longer withholds the offer', offer !== null, JSON.stringify(offer));
+if (offer) {
+  check('and it is flagged as a count nobody read', offer.countKnown === false);
+  check('with the "none taken yet" values, so no figure is rendered', offer.taken === 0 && offer.remaining === 20);
+}
+
+// The half that did NOT reverse: the charge still fails closed on its own error.
+const claimWhenBroken = execFileSync(
+  process.execPath,
+  ['--env-file=.env.local', '--conditions=react-server', '--import', './scripts/ts-register.mjs', '--input-type=module', '--eval',
+    `const { claimFoundingSeat } = await import('${join(here, '../lib/founding.ts')}');
+     process.stdout.write('KEY ' + (await claimFoundingSeat('00000000-0000-0000-0000-000000000000')).priceKey);`],
+  { cwd: join(here, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ALERT_EMAIL: '', SUPABASE_URL: 'http://127.0.0.1:9' } },
+);
+check(
+  'the CHARGE still fails closed when the database is unreachable',
+  claimWhenBroken.includes('KEY premium_monthly'),
+  claimWhenBroken.slice(-60),
+);
 
 process.exit(failures ? 1 : 0);

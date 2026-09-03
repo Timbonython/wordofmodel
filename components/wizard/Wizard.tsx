@@ -11,6 +11,7 @@ import {
   priceLabel,
   type PlanTier,
   type QuestionSlot,
+  FOUNDING_SEATS_PUBLIC,
 } from '@/lib/scope';
 import { MARKET_OPTIONS, isSupportedMarket } from '@/lib/geo';
 import { categoryConcern, type CompetitorConcern } from '@/lib/competitor-check';
@@ -131,12 +132,23 @@ export default function Wizard({
   prefill,
   prefillEmail,
   foundingRemaining,
+  foundingOpen,
   initialTier = 'premium',
   scanId,
 }: {
   prefill: WizardProfileInput | null;
   prefillEmail: string | null;
+  /**
+   * How many places are left, or null when nobody could read the count.
+   *
+   * NULL NO LONGER MEANS "NO OFFER" - foundingOpen does. Split on 3 Sep 2026 with the fail-open
+   * reversal, because one nullable number was being asked to carry two different facts: whether
+   * the offer is running, and whether we know how full it is. It could not, and the version that
+   * tried printed "20 of 20 places left" from a count that had failed.
+   */
   foundingRemaining: number | null;
+  /** Is the founding offer running at all? Decided on the server by foundingOfferOrNull(). */
+  foundingOpen: boolean;
   /** From ?plan= on /start, so a pricing card's CTA carries the plan the buyer clicked. */
   initialTier?: PlanTier;
   /** Carried into the Checkout session so a paying customer traces back to the ad. */
@@ -243,7 +255,16 @@ export default function Wizard({
   const [discount, setDiscount] = useState<{ code: string; priceUsd: number; line: string } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
 
-  const founding = foundingRemaining !== null && foundingRemaining > 0;
+  const founding = foundingOpen;
+  /*
+   * A COUNT ONLY ONCE ONE IS TAKEN, which is §3 of both briefs and was true on the pricing page
+   * and the homepage and never here. This line read "20 of 20 places left." from the day the
+   * wizard shipped - the exact "all 20 are open" sentence §3 says to remove, volunteering that
+   * nobody has bought yet. Null is the unreadable count; the cap is nobody taken. Neither is a
+   * number worth printing.
+   */
+  const showFoundingCount =
+    foundingRemaining !== null && foundingRemaining > 0 && foundingRemaining < FOUNDING_SEATS_PUBLIC;
   // Formatted from the same constants Stripe charges, never typed. The two literals that
   // used to be here were the fourth and fifth copies of a number that lives in lib/stripe.ts.
   // THE PLAN, and until 29 Aug 2026 there was no choice to make: the wizard sold premium and
@@ -768,10 +789,10 @@ export default function Wizard({
           {foundingApplies && (
             <p className="founding">
               Founding rate: {priceLabel('premium_founding_monthly')} a month, held at that price for
-              as long as you stay.{' '}
-              {foundingRemaining === 1
-                ? 'One place left.'
-                : `${foundingRemaining} of 20 places left.`}
+              as long as you stay.
+              {showFoundingCount
+                ? ` ${foundingRemaining === 1 ? 'One place left.' : `${foundingRemaining} of ${FOUNDING_SEATS_PUBLIC} places left.`}`
+                : null}
             </p>
           )}
 

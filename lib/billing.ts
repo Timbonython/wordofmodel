@@ -49,6 +49,16 @@ export interface FoundingState {
   remaining: number;
   /** The price the wizard should use right now. */
   priceKey: PriceKey;
+  /**
+   * Did a count actually come back, or is this the fail-open forecast?
+   *
+   * Added 3 Sep 2026 with the reversal below. `taken` and `remaining` are filled in either way
+   * so the block can render, and a renderer that prints a NUMBER must check this first - the
+   * fail-open values are the shape of "none taken yet", which on screen is indistinguishable
+   * from a real zero and is meant to be. In the type it must not be, or the next person reads
+   * remaining as twenty and writes "20 of 20 places left" from a count nobody could read.
+   */
+  countKnown: boolean;
 }
 
 /**
@@ -121,6 +131,7 @@ export async function foundingDisplay(): Promise<FoundingState> {
     taken,
     remaining,
     priceKey: remaining > 0 ? 'premium_founding_monthly' : 'premium_monthly',
+    countKnown: true,
   };
 }
 
@@ -136,20 +147,36 @@ export const FOUNDING_CLOSES = new Date('2026-10-01T13:30:00Z');
 
 /**
  * THE ONE THE PAGE READS. Null means DO NOT OFFER, and the caller renders no founding block at
- * all - not a block without a number.
+ * all. Two things still return null, and they are the actual cap: the date is past, or a count
+ * came back cleanly and said zero remaining.
  *
- * FAILS CLOSED, and this is the whole point of the function.
+ * FAILS OPEN ON A FAILED COUNT, REVERSED 3 SEPTEMBER 2026.
  *
- * Until 28 Aug 2026 this was foundingDisplayOrNull(), it returned null on failure, and the
- * callers read null as "render the offer without a count". So an unreadable counter offered
- * the founding rate to everybody, indefinitely, with nothing to say how many places were
- * left - which is selling an unbounded number of permanent 40% discounts and not finding out.
- * A failed count cannot tell you whether the offer is open, so it cannot be offered.
+ * It failed closed from 28 Aug to 3 Sep, and the reasoning was sound when it was written: an
+ * unreadable counter must not hand out an unbounded number of permanent 40% discounts. What
+ * changed is the evidence, not the principle.
  *
- * AND IT ALERTS. A silently broken count refuses the offer to every visitor while the page
- * looks perfectly normal - the same defect in the opposite direction, and the one more likely
- * to run for a week before anybody notices. The read failing is the alert; a genuine zero is
- * not an error and does not alert.
+ *   - The count failed three times in five days, every time from clock skew inside Supabase's
+ *     gateway answering "JWT issued at future". Nothing in this codebase causes it and nothing
+ *     here can fix it. Neither of our keys is a JWT.
+ *   - Each failure withheld the offer from every visitor for the duration, on a page that
+ *     looked completely normal.
+ *   - Total demand across that window was two free scans and zero purchases.
+ *
+ * So the guard cost more than the risk it prevented, and it was buying protection this function
+ * was never providing on its own. `claim_founding_seat` decides the charge atomically, in
+ * Postgres, at the moment of buying - "ONE READ DECIDES THE PRICE, AND IT IS THIS ONE", and it
+ * is not this one. A page showing US$149 hands out nothing. The worst case here is a visitor
+ * shown the offer who is charged the standard rate because the seat could not be claimed, which
+ * is a real cost and a far smaller one than switching the offer off for everybody.
+ *
+ * WHAT IT SHOWS ON FAILURE: the cap and the reason, with no remaining count. Deliberately the
+ * same shape as "none taken yet" rather than a second one, because there is nothing useful to
+ * tell a visitor about a number we could not read. countKnown is false, and that is how a
+ * renderer knows not to print a figure.
+ *
+ * THE ALERT IS UNCHANGED IN EVERYTHING BUT ITS WORDING. This changes what happens on failure,
+ * not whether the failure is visible. A genuine zero is not an error and does not alert.
  */
 /**
  * One alert per process per half hour, not one per page render.
@@ -170,19 +197,18 @@ let lastFoundingAlert = 0;
 /**
  * THE LAST COUNT THAT READ CLEANLY, AND WHY SERVING IT IS NOT WEAKENING THE GUARD.
  *
- * The fail-closed rule exists to stop an unreadable counter handing out unlimited permanent
- * discounts. It does not do that work alone and never did: `claim_founding_seat` decides the
- * charge atomically, in Postgres, at the moment of buying. This build's own rule is that the
- * check belongs where the decision is made rather than where the number is shown - so a page
- * showing US$149 hands out nothing by itself, and a stale count can only cost anything if more
- * people buy inside the cache window than the margin allows.
+ * WRITTEN 1 SEP AGAINST A FAIL-CLOSED RULE, AND IT OUTLIVED IT. On 3 Sep the failure path
+ * reversed, so the cache is no longer the difference between showing the offer and withholding
+ * it. It is now the difference between showing a real number and showing none, which is a
+ * smaller job and still worth doing: "18 places left" is better than silence, and it is true.
  *
- * What failing closed DOES cost is real: every visitor sees US$249 for the duration, at the one
- * moment they were closest to buying, and the page looks completely normal while it happens.
+ * The margin below still matters and for the original reason. A stale count near the cap could
+ * overshoot; a stale count with room cannot. Inside the margin it falls through to the fail-open
+ * state and prints no figure at all, rather than printing a number that might be wrong.
  *
- * So a count that read cleanly less than a minute ago is served when the live read fails, but
- * ONLY while it showed comfortable room. Near the cap it falls closed as before, because that is
- * the only region where staleness could actually overshoot.
+ * None of this decides a charge. `claim_founding_seat` does that atomically, in Postgres, at the
+ * moment of buying - the check belongs where the decision is made, and a page showing US$149
+ * hands out nothing by itself.
  */
 const COUNT_CACHE_MS = 60_000;
 
@@ -243,10 +269,26 @@ export async function foundingOfferOrNull(): Promise<FoundingState | null> {
       const message = err2 instanceof Error ? err2.message : String(err2);
       // ALWAYS LOGGED, even when the email is throttled: the log line is the record that this
       // happened at all, and sendOpsAlert's own console line is the one being suppressed.
-      console.error(`founding: count unavailable, offer withheld. ${message}`);
+      console.error(`founding: count unavailable, offer shown without one. ${message}`);
+
+      /*
+       * THE FAIL-OPEN STATE. The cap and the reason render; no number does.
+       *
+       * taken 0 and remaining at the cap are the "none taken yet" values on purpose - that is
+       * the shape the block already knows how to draw, and inventing a second one would mean a
+       * second thing to keep right. countKnown false is what stops any of it being printed as
+       * a figure. priceKey is a forecast for the CTA and decides nothing: claim_founding_seat
+       * settles the charge, and returns the standard rate if it cannot reach the database.
+       */
+      const failOpen: FoundingState = {
+        taken: 0,
+        remaining: FOUNDING_SEATS,
+        priceKey: 'premium_founding_monthly',
+        countKnown: false,
+      };
 
       const now = Date.now();
-      if (now - lastFoundingAlert < ALERT_EVERY_MS) return null;
+      if (now - lastFoundingAlert < ALERT_EVERY_MS) return failOpen;
       lastFoundingAlert = now;
 
       const why = cached
@@ -256,26 +298,31 @@ export async function foundingOfferOrNull(): Promise<FoundingState | null> {
 
       // Never throws, never blocks the page. The pricing block is worth less than the page.
       await sendOpsAlert({
-        subject: 'Founding count unavailable - the offer is being withheld from every visitor',
+        subject: 'Founding count could not be read - the offer is being shown without one',
         lines: [
-          'foundingOfferOrNull() could not read the founding count, so the founding block is not',
-          'rendering and every visitor is being shown the standard US$249 rate.',
+          'foundingOfferOrNull() could not read the founding count. Since 3 Sep 2026 that no',
+          'longer withholds the offer: the founding block is rendering, with the cap and the',
+          'reason and NO remaining count, which is the same thing it shows before any place is',
+          'taken.',
           '',
-          'This is the fail-closed path working as designed. It is still wrong to leave: the page',
-          'looks completely normal while the offer is switched off, which is why this alert exists.',
+          'Nothing is being given away by this. claim_founding_seat decides the charge',
+          'atomically at the moment of buying and returns the standard rate if it cannot reach',
+          'the database, so the cap still holds. What can happen is a visitor seeing the',
+          'founding rate and being charged US$249, which is the cost this reversal accepted.',
           '',
           `Reason, on the retry: ${message}`,
           `Reason, first attempt:  ${firstFailure}`,
           '',
           why,
           '',
-          'A count that read cleanly in the last sixty seconds is normally served instead of',
-          'withholding, so reaching this line means there was none, or it was too near the cap',
-          'to trust. Supabase answered "JWT issued at future" on 30 Aug and 1 Sep 2026 - a clock',
-          'skew inside their gateway, not a token of ours; neither of our keys is a JWT.',
+          'A count that read cleanly in the last sixty seconds is served instead, so reaching',
+          'this line means there was none, or it was too near the cap to trust. Supabase',
+          'answered "JWT issued at future" on 30 Aug, 1 Sep and 2 Sep 2026 - a clock skew',
+          'inside their gateway, not a token of ours; neither of our keys is a JWT. Three',
+          'failures in five days is what this reversal was decided on.',
         ],
       }).catch(() => {});
-      return null;
+      return failOpen;
     }
   }
 }

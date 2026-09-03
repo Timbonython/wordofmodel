@@ -94,7 +94,12 @@ export default async function StartPage({
         <Wizard
           prefill={prefill}
           prefillEmail={prefillEmail}
-          foundingRemaining={founding?.remaining ?? null}
+          /* TWO FACTS, TWO PROPS, since 3 Sep 2026. Whether the offer is running is not the
+             same question as whether we could read how full it is, and a single nullable
+             number was answering both - which is how the wizard came to print "20 of 20
+             places left" from a count that had failed. */
+          foundingOpen={founding !== null}
+          foundingRemaining={founding?.countKnown ? founding.remaining : null}
           initialTier={planTierFrom(params.plan)}
           scanId={scanId ?? null}
         />
