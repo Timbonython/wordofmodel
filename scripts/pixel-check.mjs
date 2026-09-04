@@ -177,7 +177,16 @@ process.on('exit', stopOwnServer);
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stopOwnServer(); process.exit(130); });
 
 const BASE = await resolveBase();
-const SCAN_DOMAIN = (await recentlyScannedDomain()) ?? 'holafly.com';
+const FOUND_DOMAIN = await recentlyScannedDomain();
+const SCAN_DOMAIN = FOUND_DOMAIN ?? 'holafly.com';
+/*
+ * COULD THIS RUN HAVE COVERED THE PAID CASES AT ALL? Strict mode fails on a skip, which was
+ * right for a skip somebody could have avoided and wrong for a quiet day: with nothing scanned
+ * in the last twenty hours there is no free domain to use, and `npm run check` went red every
+ * morning for a reason that had nothing to do with the code it was checking. A guard that cries
+ * on a Monday gets switched off by Tuesday.
+ */
+const COVERAGE_WAS_AVAILABLE = FOUND_DOMAIN !== null;
 
 /**
  * Every named event the build intends to fire, and how a visitor causes it.
@@ -354,6 +363,29 @@ for (const c of CASES) {
     await context.close();
     continue;
   }
+  /*
+   * WAIT FOR IT BEFORE FORCING A FLUSH, and this is not belt-and-braces - it is the bug.
+   *
+   * Measured 5 Sep 2026 on the cached path, where /api/detect returns a stored result and the
+   * reveal appears in about 700ms: fbevents.js is requested at 284ms, the pixel config at
+   * 701ms, the reveal at 702ms, and PageView and ViewContent go out at 749ms. runScan returns
+   * the moment the reveal appears, so the next line used to navigate to about:blank inside
+   * that 47ms window and destroy the page before fbq had sent anything. The report was
+   * "nothing reached Meta at all" - not "ViewContent is missing", NOTHING, PageView included,
+   * which is the tell: a page that never got the chance rather than an event that never fired.
+   *
+   * It only ever failed on the fast path. Lead passes because typing an email buys seconds, and
+   * a paid run passes because a forty second scan leaves the pixel long since loaded. So the
+   * check reported a product failure on the exact runs that were cheapest to do, which is the
+   * third time this file has been the thing that was wrong. See the header.
+   *
+   * Ten seconds, then flush anyway: a genuinely missing event still fails, it just takes twelve.
+   */
+  const deadline = Date.now() + 10000;
+  while (!seen.some((s) => s.ev === c.event) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
   // Leaving the page is what a real visitor does, and modern fbevents can hold a batch until
   // then. Without this a real send looks like a missing one.
   await page.goto('about:blank', { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -395,10 +427,26 @@ if (failures) {
  * that is the only part of the output the next command reads.
  */
 const strict = process.env.PIXEL_CHECK_STRICT === 'yes';
-if (strict && skipped) {
+const avoidable = skipped && COVERAGE_WAS_AVAILABLE;
+
+if (skipped && !COVERAGE_WAS_AVAILABLE) {
+  // LOUD, AND LAST. This does not fail the suite, so the only thing standing between it and
+  // being missed is where it sits - after everything else, in its own block, at the end of the
+  // output somebody is already reading to find out whether they can push.
   console.log(
-    `\nStrict: ${skipped} unverified event(s) is a failure here, not a note. Scan any domain in ` +
-      'this environment and run again, or PIXEL_CHECK_PAID=yes to spend about US$0.37.',
+    '\n' +
+      '  ============================================================\n' +
+      `  ${skipped} of ${CASES.length} pixel events were NOT verified this run.\n` +
+      '  Nothing has been scanned in this environment in the last 20 hours,\n' +
+      '  so there was no cached domain to walk the funnel on for free.\n' +
+      '  Not a failure and not a pass: run a free scan on any domain and\n' +
+      '  try again, or PIXEL_CHECK_PAID=yes to spend about US$0.37.\n' +
+      '  ============================================================',
+  );
+} else if (strict && avoidable) {
+  console.log(
+    `\nStrict: ${skipped} unverified event(s) is a failure here, not a note. A recently scanned ` +
+      `domain WAS available (${SCAN_DOMAIN}), so this skip was avoidable.`,
   );
 }
-process.exitCode = failures || (strict && skipped) ? 1 : 0;
+process.exitCode = failures || (strict && avoidable) ? 1 : 0;
