@@ -54,6 +54,7 @@
  * open. Both checks are needed and neither replaces the other.
  */
 import { chromium } from 'playwright';
+import { SCAN_CACHE_MS } from '../lib/db.ts';
 import { spawn, spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,10 +109,15 @@ async function recentlyScannedDomain() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
-  const since = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+  /* THE APP'S OWN WINDOW, imported rather than guessed. This function is trying to predict
+     findCachedScan(): if it picks a domain that one would not serve from cache, the run is not
+     free. It used to ask for twenty hours against the app's twenty-four and skipped the status
+     filter entirely, so it under-reported for four hours a day and could nominate a scan that
+     never completed. status=complete is the other half of that same query. */
+  const since = new Date(Date.now() - SCAN_CACHE_MS).toISOString();
   try {
     const r = await fetch(
-      `${url}/rest/v1/scans?select=domain,created_at&created_at=gte.${since}&order=created_at.desc&limit=1`,
+      `${url}/rest/v1/scans?select=domain,created_at&status=eq.complete&created_at=gte.${since}&order=created_at.desc&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) },
     );
     if (!r.ok) return null;
@@ -314,10 +320,47 @@ const CASES = [
     async run(page, { allowPaid }) {
       const cached = await runScan(page, allowPaid);
       if (cached === 'skip') return { skipped: SKIP_REASON };
+
+      /*
+       * A DIFFERENT ADDRESS EVERY RUN, because the reveal is rate limited per address and this
+       * case used one fixed one. Observed 5 Sep 2026 after several runs in a day:
+       *
+       *   /api/reveal -> HTTP 429  "That address has had its results a few times today already."
+       *
+       * and the case reported "Lead never reached the wire", which is true and points at the
+       * pixel rather than at the check having exhausted its own quota. It passed in the morning
+       * and failed by the afternoon with nothing in between but its own repetition - the worst
+       * shape a check can have, because the thing that changed is the checking.
+       *
+       * The rate limit is right and stays. example.com is reserved by RFC 2606 and cannot
+       * receive mail, and the plus tag keeps every one of these obviously synthetic in the table.
+       */
+      const address =
+        process.env.PIXEL_CHECK_EMAIL ?? `pixel-check+${Date.now().toString(36)}@example.com`;
+
+      /* WATCH THE REQUEST, not just the pixel. A reveal that never succeeded cannot fire Lead,
+         and without this the two are indistinguishable in the output. */
+      let revealStatus = null;
+      let revealBody = '';
+      page.on('response', async (r) => {
+        if (r.url().includes('/api/reveal')) {
+          revealStatus = r.status();
+          try { revealBody = (await r.text()).slice(0, 160).replace(/\s+/g, ' '); } catch {}
+        }
+      });
+
       const reveal = page.locator('#reveal-email');
-      await reveal.fill(process.env.PIXEL_CHECK_EMAIL ?? 'pixel-check@example.com');
+      await reveal.fill(address);
       await reveal.press('Enter');
       await page.waitForTimeout(9000);
+
+      if (revealStatus !== null && revealStatus !== 200) {
+        return {
+          skipped:
+            `the reveal itself returned HTTP ${revealStatus}, so Lead could not fire and this ` +
+            `says nothing about the pixel. ${revealBody}`,
+        };
+      }
       return {};
     },
   },
@@ -444,9 +487,14 @@ if (skipped && !COVERAGE_WAS_AVAILABLE) {
       '  ============================================================',
   );
 } else if (strict && avoidable) {
+  /* NAMES NO CAUSE. The first version said "a recently scanned domain WAS available, so this
+     skip was avoidable" - which asserted the domain was the reason, and a skip can just as
+     easily be a rate-limited reveal. The SKIP line above already carries the actual reason;
+     repeating a guess underneath it is how somebody ends up investigating the wrong thing. */
   console.log(
-    `\nStrict: ${skipped} unverified event(s) is a failure here, not a note. A recently scanned ` +
-      `domain WAS available (${SCAN_DOMAIN}), so this skip was avoidable.`,
+    `\nStrict: ${skipped} unverified event(s) is a failure here, not a note - a cached domain ` +
+      `was available (${SCAN_DOMAIN}), so this run was expected to cover everything. The reason ` +
+      'each one skipped is on its own line above.',
   );
 }
 process.exitCode = failures || (strict && avoidable) ? 1 : 0;

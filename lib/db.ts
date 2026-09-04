@@ -44,8 +44,22 @@ export interface ScanRow {
  * and, as the spec notes, it makes the cache a feature: a repeat visitor sees
  * their previous result.
  */
+/**
+ * How long a completed scan is reused instead of asking the engines again.
+ *
+ * EXPORTED 5 SEP 2026 because something else needed to predict this decision and guessed. The
+ * pixel check has to find a domain that /api/detect will answer from cache - that is the whole
+ * difference between a free run and one that spends about US$0.37 - and it asked for a scan in
+ * the last TWENTY hours, a number nothing produced. So for four hours a day it reported no
+ * domain available while this function would have served one, and it never picked up the status
+ * filter either, so it could nominate a scan that never completed.
+ *
+ * One constant, imported by both. The two cannot disagree rather than merely happening to agree.
+ */
+export const SCAN_CACHE_MS = 24 * 60 * 60 * 1000;
+
 export async function findCachedScan(domain: string): Promise<ScanRow | null> {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - SCAN_CACHE_MS).toISOString();
   const { data, error } = await db()
     .from('scans')
     .select('*')

@@ -36,7 +36,7 @@
     "trial:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/founding-trial-setup.mjs",
     "discount:setup": "node --env-file=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/discount-setup.mjs",
     "favicon": "node scripts/make-favicon.mjs",
-    "pixel:check": "node --env-file-if-exists=.env.local scripts/pixel-check.mjs",
+    "pixel:check": "node --env-file-if-exists=.env.local --conditions=react-server --import ./scripts/ts-register.mjs scripts/pixel-check.mjs",
     "pixel": "node scripts/pixel-probe.mjs",
     "pixel:strict": "PIXEL_CHECK_STRICT=yes npm run pixel:check"
   },
