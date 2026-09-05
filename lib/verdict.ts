@@ -1,4 +1,5 @@
 import type { Capture, EngineId, FreeResult, GatedResult } from './types';
+import { engineWord, noCompanyNamed } from './engine-count';
 import { ENGINE_LABEL } from './types';
 import { sameBrand } from './score';
 
@@ -24,7 +25,11 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
 
   const competitors = competitorNames(brandName, captures);
   const competitor_count = competitors.length;
-  const engines_run = captures.length;
+  /* THE LIST IS THE TRUTH AND THE COUNT COMES OFF IT. Written this way round so the two cannot
+     disagree: engines_run existed first and every sentence below used to assert "two" regardless
+     of what these captures actually contain. See lib/engine-count.ts. */
+  const engines: EngineId[] = captures.map((c) => c.engine);
+  const engines_run = engines.length;
   const naming = captures.filter((c) => c.score.target_mentioned);
   const recommending = captures.filter((c) => c.score.target_recommended);
   const engineNames = captures.map((c) => ENGINE_LABEL[c.engine]);
@@ -46,14 +51,17 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
         lines.push(`But ${label} didn't name you at all, and ${countPhrase(competitor_count)} did come up.`);
       }
     }
-    lines.push('One question, two engines. The full picture takes twenty five.');
+    /* DERIVED, 5 Sep 2026. This sentence is the subscription argument in miniature and it was a
+       literal: a run where one engine failed told the visitor we had asked two. */
+    lines.push(`One question, ${engineWord(engines_run)}. The full picture takes twenty five.`);
 
     return {
       kind: 'recommended',
       headline: `Good news. You came up first on ${ENGINE_LABEL[winner.engine]}.`,
       lines,
       competitor_count,
-      engines_run,
+      engines,
+    engines_run,
       engines_naming_you: naming.length,
       top_recommendation: top?.brand ?? null,
       winning_engine: winner.engine,
@@ -85,7 +93,8 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
       headline: "You were mentioned. You weren't recommended.",
       lines,
       competitor_count,
-      engines_run,
+      engines,
+    engines_run,
       engines_naming_you: naming.length,
       top_recommendation: top?.brand ?? null,
       winning_engine: null,
@@ -101,11 +110,15 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
       headline: 'Nobody came up. Not you, not anyone.',
       lines: [
         `We asked ${joinList(engineNames)} the question above.`,
-        '**Neither engine named a single company.**',
-        'That happens when a category has no clear answer online yet. It is an opening, not a verdict.',
+        `**${noCompanyNamed(engines_run)}**`,
+        /* TIGHTENED 5 Sep 2026. It read "It is an opening, not a verdict." That survives a strict
+           reading - the opening belongs to the category - but it is the sentence most likely to
+           be quoted back at us, and it should not need a strict reading. */
+        'That happens when a category has no clear answer online yet. Which is a fact about the category, not about you.',
       ],
       competitor_count: 0,
-      engines_run,
+      engines,
+    engines_run,
       engines_naming_you: 0,
       top_recommendation: null,
       winning_engine: null,
@@ -121,6 +134,7 @@ export function buildVerdict(brandName: string, captures: Capture[]): FreeResult
     headline: "You didn't come up.",
     lines,
     competitor_count,
+    engines,
     engines_run,
     engines_naming_you: 0,
     top_recommendation: top?.brand ?? null,

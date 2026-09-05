@@ -219,9 +219,13 @@ css.split('\n').forEach((raw, i) => {
 // purchase path - the wizard is the checkout, the scan result puts its CTA against the price,
 // and the account page shows what a subscriber already pays. None of them is a price a visitor
 // cannot act on.
+  // ScanResult CAME OFF THIS LIST on 5 Sep 2026. The exemption was not holding a policy
+  // difference, it was hiding four marker bugs: three prices marked `price-door: button` that
+  // sit inside an <a> rather than a <button>, and a prose sentence whose `no purchase path`
+  // marker covered its first line while the sentence ran on to two more prices. An exemption
+  // argued for once and then never re-read stops being an argument and becomes a hole.
 const PRICE_DOOR_EXEMPT = new Set([
   'components/wizard/Wizard.tsx',   // the checkout itself
-  'components/scan/ScanResult.tsx', // price and CTA rendered together, both blocks
   'app/account/page.tsx',           // what an existing subscriber pays
   'components/PriceCard.tsx',       // the component that holds the invariant
   'app/terms/page.tsx',             // legal text describing the price, not an offer to buy it

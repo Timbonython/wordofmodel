@@ -5,6 +5,7 @@ import { splitBold, stripMarkdown } from '@/lib/markup';
 import type { FreeResult, GatedResult } from '@/lib/types';
 import { AnswerExcerpt } from './AnswerExcerpt';
 import { priceLabel, FOUNDING_SEATS_PUBLIC } from '@/lib/scope';
+import { engineCount, answerWord, noCompanyNamed, noSourceCited, theAnswers } from '@/lib/engine-count';
 import { metaTrack } from '@/components/MetaPixel';
 
 function Bolded({ text }: { text: string }) {
@@ -129,6 +130,10 @@ export function ScanResult({
    * clicked rather than on a default nobody chose. The scan id rides along on both, because the
    * ad that produced a scan has to stay knowable through the purchase.
    */
+  /* ONE READ OF THE COUNT, used by every sentence that asserts one. Ten literals said "two"
+     regardless of what ran; see lib/engine-count.ts. */
+  const engines = engineCount(free);
+
   const planHref = (plan: 'main' | 'premium') =>
     wizardLive ? `/start?plan=${plan}&scan=${scanId}` : '/#pricing';
 
@@ -152,12 +157,43 @@ export function ScanResult({
         </p>
       ) : null}
 
+      {/* ---------------- the offer, out from behind the gate ----------------
+          MOVED 5 Sep 2026. It lived inside the `revealed` branch below, which meant the price
+          did not exist on this screen until the visitor had handed over an email address. The
+          highest-attention moment on the site had exactly one door on it and that door was a
+          form. Everyone who reaches a result now sees what it costs; the email capture below
+          becomes the fallback for somebody not buying today, per result-state §6.
+
+          Still two doors and still not a PriceCard. That is §2 block 5 and it is deliberately
+          not in this commit - the CTA becomes state-dependent there, and building it now means
+          building it twice. */}
+      <div className="offer offer-top">
+        <p className="gap">
+          <strong>That was {answerWord(engines)} to one question, once.</strong> Your report is twenty five
+          answers to five questions, every month, with the companies that came up instead of you
+          ranked beside you and what to do about it, in order.
+        </p>
+        <div className="offer-doors">
+          <a className="button offer-door" href={planHref('main')}>
+            {/* price-door: linked */}
+            Monitoring, {priceLabel('main_monthly')} a month
+          </a>
+          <a className="button offer-door" href={planHref('premium')}>
+            {/* price-door: linked */}
+            Monitoring + Review, {priceLabel('premium_monthly')} a month
+          </a>
+        </div>
+        <p className="note" style={{ marginTop: 10 }}>
+          Three minutes to set up, and your first report lands within 24 hours.
+        </p>
+      </div>
+
       {/* ---------------- step 6: the gate ---------------- */}
       {!gated ? (
         <div className="gate">
           <div className="eyebrow">What we are holding back</div>
           <ul className="gate-list">
-            <li>Both answers, word for word</li>
+            <li>{theAnswers(engines)}, word for word</li>
             <li>Every brand named, in the order they came up</li>
             <li>The sites the engines cited, so you can see who owns the answer</li>
             {free.kind === 'absent' || free.kind === 'named_not_recommended' ? <li>The competitor who beat you, named</li> : null}
@@ -219,27 +255,6 @@ export function ScanResult({
             </blockquote>
           ) : null}
 
-          <div className="offer offer-top">
-            <p className="gap">
-              <strong>That was two answers to one question, once.</strong> Your report is twenty five
-              answers to five questions, every month, with the companies that came up instead of you
-              ranked beside you and what to do about it, in order.
-            </p>
-            <div className="offer-doors">
-              <a className="button offer-door" href={planHref('main')}>
-                {/* price-door: button */}
-                Monitoring, {priceLabel('main_monthly')} a month
-              </a>
-              <a className="button offer-door" href={planHref('premium')}>
-                {/* price-door: button */}
-                Monitoring + Review, {priceLabel('premium_monthly')} a month
-              </a>
-            </div>
-            <p className="note" style={{ marginTop: 10 }}>
-              Three minutes to set up, and your first report lands within 24 hours.
-            </p>
-          </div>
-
           <div className="eyebrow" style={{ marginTop: 44 }}>
             The rest of it
 
@@ -273,7 +288,7 @@ export function ScanResult({
               ))}
             </p>
           ) : (
-            <p>Neither engine named a single company.</p>
+            <p>{noCompanyNamed(engines)}</p>
           )}
 
           <div className="eyebrow" style={{ marginTop: 40 }}>
@@ -289,7 +304,7 @@ export function ScanResult({
               ))}
             </ul>
           ) : (
-            <p>Neither engine cited a source, which is its own finding.</p>
+            <p>{noSourceCited(engines)}</p>
           )}
 
           {gated.beaten_by ? (
@@ -310,13 +325,14 @@ export function ScanResult({
               {/* price-door: no purchase path - the rate; the two doors below are the buyable ones */}
               <strong>Monitoring is {priceLabel('main_monthly')} a month.</strong> Monitoring +
               Review adds a quarterly deep read by hand and is{' '}
+              {/* price-door: no purchase path - the sentence continues; the doors below are the buyable ones */}
               {priceLabel('premium_monthly')} a month, or {priceLabel('premium_founding_monthly')} on
               one of the {FOUNDING_SEATS_PUBLIC} founding places, held at that price for as long as
               you stay. Cancel any time.
             </p>
             <div className="offer-doors">
               <a className="button offer-door" href={planHref('main')}>
-                {/* price-door: button */}
+                {/* price-door: linked */}
                 Start Monitoring, {priceLabel('main_monthly')} a month
               </a>
               <a className="button offer-door" href={planHref('premium')}>

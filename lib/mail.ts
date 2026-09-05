@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { env } from './env';
 import { priceLabel } from './scope';
 import type { FreeResult } from './types';
+import { engineCount, answerWord, theAnswers, eitherEngine } from './engine-count';
 import { BRAND, FONT } from './brand';
 
 /**
@@ -92,6 +93,10 @@ function firstLine(free: FreeResult): string {
 
 export function buildScanEmail(input: ScanEmailInput): { subject: string; html: string; text: string } {
   const { brandName, free, scanId } = input;
+  /* THE COUNT THE RUN ACTUALLY PRODUCED. Four sentences in this file asserted two engines and
+     both answers; a run where one engine failed sent the visitor a confident wrong number in
+     writing, which is worse than on screen because they keep it. See lib/engine-count.ts. */
+  const engines = engineCount(free);
   const result = resultUrl(scanId);
   const start = startUrl(scanId);
 
@@ -104,14 +109,14 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
     ``,
     firstLine(free),
     ``,
-    `That was two answers to one question, once. Your report is twenty five answers`,
+    `That was ${answerWord(engines)} to one question, once. Your report is twenty five answers`,
     `to five questions, every month, with the companies that came up instead of you`,
     `ranked beside you and what to do about it, in order.`,
     ``,
     `START MY FIRST REPORT`,
     start,
     ``,
-    `Your full scan result, with both answers word for word:`,
+    `Your full scan result, with ${theAnswers(engines).toLowerCase()} word for word:`,
     result,
     ``,
     `${priceLabel('premium_founding_monthly')}/mo founding rate. Scanned ${input.domain}.`,
@@ -141,7 +146,7 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
         <p style="font-family:${MONO};font-size:14px;line-height:1.7;color:${PALETTE.ink};border-left:3px solid ${PALETTE.rule};padding-left:14px;margin:0 0 18px 0;">${escapeHtml(askedLine(input.question))}</p>
         <p style="font-family:${SANS};font-size:16px;line-height:1.6;color:${PALETTE.inkSoft};margin:0 0 22px 0;">${escapeHtml(firstLine(free))}</p>
         <p style="font-family:${SANS};font-size:16px;line-height:1.6;color:${PALETTE.ink};margin:0 0 24px 0;">
-          That was two answers to one question, once. Your report is twenty five answers to five
+          That was ${answerWord(engines)} to one question, once. Your report is twenty five answers to five
           questions, every month, with the companies that came up instead of ${escapeHtml(brandName)}
           ranked beside you and what to do about it, in order.
         </p>
@@ -154,8 +159,8 @@ export function buildScanEmail(input: ScanEmailInput): { subject: string; html: 
           </td></tr>
         </table>
         <p style="font-family:${SANS};font-size:14px;line-height:1.6;color:${PALETTE.inkSoft};margin:18px 0 0 0;">
-          Or read <a href="${escapeHtml(result)}" style="color:${PALETTE.ink};">your full scan result</a>, with both
-          answers word for word and every company either engine named.
+          Or read <a href="${escapeHtml(result)}" style="color:${PALETTE.ink};">your full scan result</a>, with
+          ${theAnswers(engines).toLowerCase()} word for word and every company ${eitherEngine(engines)} named.
         </p>
       </td></tr>
 

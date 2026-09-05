@@ -106,6 +106,29 @@ export interface FreeResult {
   headline: string;
   lines: string[];
   competitor_count: number;
+  /**
+   * WHICH ENGINES ACTUALLY ANSWERED, not how many were attempted.
+   *
+   * Added 5 Sep 2026. The pair is hardcoded at app/api/scan/route.ts:251 - chatgpt and
+   * perplexity - but :255 filters out any that failed, so a run can produce one capture. Every
+   * sentence and every rendered cell that asserts a count has to come from THIS, because the
+   * number the visitor is told and the number that ran were previously unrelated.
+   *
+   * The identities, not a count, because the coverage grid lights cells by engine and a count
+   * cannot say which. A count is what it had before, and a grid drawn from one would have been
+   * lighting the wrong squares confidently.
+   */
+  engines: EngineId[];
+  /**
+   * DERIVED, and kept only for results stored before `engines` existed.
+   *
+   * buildVerdict sets this to engines.length, so the two cannot disagree on anything written
+   * from now on. It survives because /api/detect serves the stored FreeResult JSON for 24 hours
+   * (findCachedScan, lib/db.ts) and rows written before this change have the count and not the
+   * list. The permalink does not need it - app/scan/[scanId] rebuilds the verdict from captures.
+   *
+   * Once no pre-5-Sep row can still be served, this field and engineCount()'s fallback go.
+   */
   engines_run: number;
   engines_naming_you: number;
   top_recommendation: string | null;

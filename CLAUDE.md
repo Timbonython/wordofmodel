@@ -24,6 +24,7 @@ conversation until now.
 | `wordofmodel-onboarding-billing-spec.md` | Stripe, the wizard, the five question slots, founding-rate counter logic |
 | `word-of-model-pricing-and-stripe-plan.md` | The ladder, the founding offer, currency, the Stripe object model. §3 is the cap |
 | `word-of-model-purchase-path.md` | Homepage and pricing page: one button per tier, the four steps, the founding block |
+| `word-of-model-result-state.md` | The post-scan state: block order, the coverage grid, the three result closes |
 | `word-of-model-site-brand-and-structure.md` | The mark, brand tokens, navigation, homepage and pricing page. The "§N of the brand brief" the code keeps citing |
 | `word-of-model-handover.md` | How the work is split across projects, what moves and what stays, and what is in none of them |
 | `word-of-model-competitor-landscape.md` | The market, the table, and the position that survives it |
@@ -172,6 +173,35 @@ about twenty minutes from payment. `runsAwaitingReport()` refuses any run still 
 a report built mid-extraction is not incomplete, it is wrong, because unextracted captures are
 excluded from the score. The daily pass no longer delivers; it alerts on anything complete and
 unsent for six hours, which is the failure the speed would otherwise hide.
+
+**A sentence that states a number the run did not produce** (5 Sep 2026). The free scan attempts
+two engines and keeps the ones that answered - `app/api/scan/route.ts:251` fires both,
+`:255` filters out failures - so a completed run can hold one capture. Ten rendered sentences
+said "two engines", "both answers", "neither engine" as literals. On a one-engine run every one
+of them told the visitor, confidently and in writing, something we had not done. The caption
+*"One question, two engines"* is the subscription argument in miniature, so it was the worst
+sentence on the site to be wrong.
+
+The fix is `FreeResult.engines: EngineId[]` - the identities, not a count - built from the
+captures in `lib/verdict.ts` and read through `lib/engine-count.ts`. The list rather than a
+number because the coverage grid lights cells by engine, and a count cannot say which. Ten
+literals became one module: a new sentence that needs the number now has somewhere to get it
+instead of typing "two".
+
+**Two things this taught that the fix itself did not.**
+
+The first version of the helper returned a SUBJECT - "Neither engine" / "The engine that
+answered" - to sit in front of *"named a single company."* On a one-engine run that produced
+*"The engine that answered named a single company"*, which states the opposite: the negation
+lived in the subject and left with it. That is the `countPhrase` defect exactly - a
+substitution that reads correctly either side of a boundary it does not respect - and no
+typecheck or grep could see it. It was caught by running the one-engine case, not by reading
+the diff. **Negative findings return the whole clause; there is no arrangement of them that can
+lose the "no".**
+
+And the field is the truth while `engines_run` is derived from it, rather than the two being
+written side by side. Two fields holding one fact is the same shape as two renderings of one
+catalogue, and it drifts the same way.
 
 **A guard can be more expensive than the risk it prevents** (3 Sep 2026, and it reverses a rule
 written on 28 Aug). `foundingOfferOrNull()` failed closed: an unreadable founding count withheld
